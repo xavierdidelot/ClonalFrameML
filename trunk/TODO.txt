@@ -1,0 +1,30 @@
+- Construct a file similar to cf_new.in.core.fasta and cf_new.in.corrected.fasta of length equal to the whole genome, but with non-core sites (i.e. sites with any Ns) padded entirely with Ns.
+- ALTERNATIVELY, simply construct a FASTA file from the raw (filtered) calls of every genome, and allow the program to strip out sites with any Ns.
+- ALTERNATIVELY AGAIN, allow the program to take a list of FASTA files (gzipped?) and read them directly?
+- ALTERNATIVELY, give the program a list of sites to ignore
+
+- Output reconstructed 
+- Reduce memory reallocation during computation
+- New function that does ancestral state reconstruction with two rates (unimported and imported) and corrected branch lengths
+- Implement iterative refinement of ancestral states and inference of cross-species recombination/correction of branch lengths
+- As a minimum, implement ancestral state reconstruction (for all sites?) using the corrected branch lengths
+- Parallelize using OpenMP
+- Implement quantification of uncertainty in reconstructed nucleotide and importation states via marginal probabilities
+
+Implement command line options:
+- List of sites to ignore (e.g. because they have been padded with invariant sites during pre-processing)
+- Flag: ignore sites with any Ns? (default no)
+- Flag: use multiallelic and homoplasious sites for ClonalFrame reconstruction? (default no)
+- Flag: correct branch lengths for cross-species recombination? (default yes)
+- Flag: report ancestral state reconstruction based on corrected branch lengths? (Or implied by correct branch lengths flag?)
+- Flag: excess divergence model (default yes for 2 sequences only): in this model, the import_divergence augments the branch lengths instead of replacing it, ensuring cross-species recombination always increases expected divergence
+- Tolerance for Powell and Brent ML algorithms
+- Flag: output progress of ML algorithms to screen? (default no)
+- Flag: compress ancestral state reconstruction output? (default yes)
+
+Output files:
+- Reconstructed ancestral (and imputed) sequences: FASTA format
+- Reconstructed recombination status 0: unimported 1: imported 2: homoplasy ignored or unimported 3: homoplasy imported: FASTA format
+- ClonalFrame tree with (possibly corrected) branch lengths and labelled nodes: Newick format
+- Parameter estimates: to standard output
+
