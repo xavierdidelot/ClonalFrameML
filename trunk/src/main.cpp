@@ -37,6 +37,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine." << endl;
 		errTxt << "-joint_branch_param            true or false (default)   Jointly optimize branch lengths and recombination parameters." << endl;
 		errTxt << "-rho_per_branch                true or false (default)   Estimate recombination parameters separately for each branch." << endl;
+		errTxt << "-rho_per_branch_no_lrt         true or false (default)   As above but suppress likelihood ratio test for recombination." << endl;
 		errTxt << "-rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model." << endl;		
 		errTxt << "-multithread                   true or false (default)   Enable OpenMP parallel code. Overhead may cancel out gains." << endl;
 		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
@@ -56,7 +57,7 @@ int main (const int argc, const char* argv[]) {
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
 	string correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
-	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rescale_no_recombination="false", multithread="false", show_progress="false", compress_reconstructed_sites="true";
+	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false", multithread="false", show_progress="false", compress_reconstructed_sites="true";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3;
 	// Process options
 	arg.add_item("correct_branch_lengths",		TP_STRING, &correct_branch_lengths);
@@ -69,6 +70,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("powell_tolerance",			TP_DOUBLE, &powell_tolerance);
 	arg.add_item("joint_branch_param",			TP_STRING, &joint_branch_param);
 	arg.add_item("rho_per_branch",				TP_STRING, &rho_per_branch);
+	arg.add_item("rho_per_branch_no_lrt",		TP_STRING, &rho_per_branch_no_LRT);
 	arg.add_item("rescale_no_recombination",	TP_STRING, &rescale_no_recombination);
 	arg.add_item("multithread",			        TP_STRING, &multithread);
 	arg.add_item("show_progress",				TP_STRING, &show_progress);
@@ -81,6 +83,7 @@ int main (const int argc, const char* argv[]) {
 	bool USE_INCOMPATIBLE_SITES			= string_to_bool(use_incompatible_sites,		"use_incompatible_sites");
 	bool JOINT_BRANCH_PARAM				= string_to_bool(joint_branch_param,			"joint_branch_param");
 	bool RHO_PER_BRANCH					= string_to_bool(rho_per_branch,				"rho_per_branch");
+	bool RHO_PER_BRANCH_NO_LRT			= string_to_bool(rho_per_branch_no_LRT,			"rho_per_branch_no_lrt");
 	bool RESCALE_NO_RECOMBINATION		= string_to_bool(rescale_no_recombination,		"rescale_no_recombination");
 	bool MULTITHREAD					= string_to_bool(multithread,					"multithread");
 	bool SHOW_PROGRESS					= string_to_bool(show_progress,					"show_progress");
@@ -95,9 +98,9 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "powell_tolerance value out of range (0,0.1], default 0.001";
 		error(errTxt.str().c_str());
 	}
-	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RESCALE_NO_RECOMBINATION)>1) {
+	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION)>1) {
 		stringstream errTxt;
-		errTxt << "joint_branch_param, rho_per_branch and rescale_no_recombination are mutually incompatible";
+		errTxt << "joint_branch_param, rho_per_branch, rho_per_branch_no_lrt and rescale_no_recombination are mutually incompatible";
 		error(errTxt.str().c_str());
 	}
 	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION) && !CORRECT_BRANCH_LENGTHS) {
@@ -259,7 +262,7 @@ int main (const int argc, const char* argv[]) {
 			// Output the importation status
 			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
-		} else if(RHO_PER_BRANCH) {
+		} else if(RHO_PER_BRANCH_NO_LRT) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
 			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
 			// Now estimate branch lengths
@@ -366,6 +369,88 @@ int main (const int argc, const char* argv[]) {
 				ML += -Pow.function_minimum;
 			}
 			cout << "Log-likelihood after branch optimization is " << ML << endl;
+		} else if(RHO_PER_BRANCH) {
+			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
+			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
+			// Also impose a likelihood ratio test, so only report simpler model if no signifcant improvement with the recombination model.
+			// Now estimate branch lengths
+			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
+			cout << "B   uncorrected branch length" << endl;
+			cout << "L0  maximum log-likelihood per branch (no recombination model)" << endl;
+			cout << "L   maximum log-likelihood per branch" << endl;
+			cout << "*   preferred model based on likelihood ratio test" << endl;
+			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
+			cout << "R   expected number of recombination imports per branch      (> 0)" << endl;
+			cout << "F   ratio of imported versus unimported sites                (0-1)" << endl;
+			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
+			double ML = 0.0;
+			vector< vector<ImportationState> > is_imported(ctree.size-2);
+			for(i=0;i<ctree.size-2;i++) {
+				// Crudely re-estimate branch length
+				double pd = 1.0, pd_den = 2.0;
+				const int dec_id = ctree.node[i].id;
+				const int anc_id = ctree.node[i].ancestor->id;
+				int j,k;
+				for(j=0,k=0;j<isBLC.size();j++) {
+					if(isBLC[j]) {
+						Nucleotide dec = node_nuc[dec_id][ipat[k]];
+						Nucleotide anc = node_nuc[anc_id][ipat[k]];
+						if(dec!=anc) ++pd;
+						++pd_den;
+						++k;
+					}
+				}
+				const double initial_branch_length = pd/pd_den;
+				// Initial values for the other parameters
+				const double initial_rho_over_theta = 0.1;
+				const double initial_import_ratio = 0.1;			// constrained to be less than 1
+				const double initial_import_divergence = 0.1;		// multiplicative excess (excess model is mandatory), so subst_rate = mut_rate * (2+import_divergence)
+				// Minimum branch length
+				const double min_branch_length = 1.0e-7;
+				// Object for the no-recombination model
+				ClonalFrameRescaleBranchFunction cff0(ctree.node[i],node_nuc,pat1,cpat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,initial_branch_length,min_branch_length);
+				// Object for the per-branch recombination model
+				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],initial_branch_length,min_branch_length);
+				// Setup optimization function
+				Powell Pow0(cff0);
+				Powell Pow(cff);
+				Pow0.coutput = Pow0.brent.coutput = Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
+				Pow0.TOL = Pow.TOL = brent_tolerance;
+				// Initially, estimate parameter for the no-recombination model
+				vector<double> param0(1,log10(initial_branch_length)), param(3);
+				param0 = Pow0.minimize(param0,powell_tolerance);
+				// Next estimate parameters for the recombination model with total substitution rate fixed at this estimate
+				param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio)); param[2] = param0[0];
+				param = Pow.minimize(param,powell_tolerance);
+				// Then refine
+				const double import_ratio = 1.0/(1.0+pow(10.,-param[1]));
+				const double import_divergence = pow(10.,param[2]);
+				param.push_back(log10(initial_branch_length/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
+				param = Pow.minimize(param,powell_tolerance);
+				// Test if the recombination model is a significant improvement (2 log-likelihoods per additional parameter)
+				const bool LRT_pass = (-Pow.function_minimum>-Pow0.function_minimum+6.0);
+				// Ensure importation status is updated correctly
+				const double final_branch_length = (LRT_pass) ? pow(10.,param[3]) : pow(10.,param0[0]);
+				const double final_rho_over_theta = (LRT_pass) ? pow(10.,param[0]) : 1e-20;
+				const double final_mean_import_length = (LRT_pass) ? (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta : 1e20;
+				const double final_import_divergence = (LRT_pass) ? final_branch_length*(2.0+pow(10.,param[2])) : 1e20;
+				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
+				// Update branch length in the tree
+				// Note this is unsafe in general because the corresponding node times are not adjusted
+				ctree.node[i].edge_time = final_branch_length;
+				if(LRT_pass) {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "  L = " << -Pow.function_minimum << "* M = " << final_branch_length << " R = " << pow(10.,param[0]+param[3]) << " F = " << 1.0/(1.0+pow(10.,-param[1])) << " E = " << final_branch_length*(1.0+pow(10.,param[2])) << endl;
+					ML += -Pow.function_minimum;
+				} else {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "* L = " << -Pow.function_minimum << "  M = " << final_branch_length << endl;
+					ML += -Pow0.function_minimum;
+				}
+			}
+			cout << "Log-likelihood after branch optimization is " << ML << endl;
+			
+			// Output the importation status
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else {
 			// Estimate parameters with branch lengths fixed
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model

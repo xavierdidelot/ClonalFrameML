@@ -38,6 +38,7 @@ The following options are available:
  -powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine.
  -joint_branch_param            true or false (default)   Jointly optimize branch lengths and recombination parameters.
  -rho_per_branch                true or false (default)   Estimate recombination parameters separately for each branch.
+ -rho_per_branch_no_lrt         true or false (default)   As above but suppress likelihood ratio test for recombination.
  -rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model.
  -show_progress                 true or false (default)   Output the progress of the maximum likelihood routines.
  -compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file.
