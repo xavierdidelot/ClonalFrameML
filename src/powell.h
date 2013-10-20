@@ -1,3 +1,25 @@
+/*  Copyright 2013 Daniel Wilson.
+ *
+ *  powell.h
+ *
+ *  The myutils library is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  The myutils library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU Lesser General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with the myutils library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Parts of this code are taken from code in Numerical Recipes in C++
+ *  WH Press, SA Teukolsky, WT Vetterling, BP Flannery (2002)
+ *  from algorithms declared by them to be in the public domain.
+ *
+ */
 #ifndef _POWELL_MINIMISATION_H_
 #define _POWELL_MINIMISATION_H_
 
@@ -5,7 +27,7 @@
 #include <math.h>
 #include <limits>
 #include <myutils.h>
-#include "brent.h"
+#include <brent.h>
 
 #pragma warning( disable : 4355 )
 
