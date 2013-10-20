@@ -409,23 +409,26 @@ int main (const int argc, const char* argv[]) {
 				const double min_branch_length = 1.0e-7;
 				// Object for the no-recombination model
 				ClonalFrameRescaleBranchFunction cff0(ctree.node[i],node_nuc,pat1,cpat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,initial_branch_length,min_branch_length);
-				// Object for the per-branch recombination model
-				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],initial_branch_length,min_branch_length);
 				// Setup optimization function
 				Powell Pow0(cff0);
-				Powell Pow(cff);
-				Pow0.coutput = Pow0.brent.coutput = Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-				Pow0.TOL = Pow.TOL = brent_tolerance;
+				Pow0.coutput = Pow0.brent.coutput = SHOW_PROGRESS;
+				Pow0.TOL = brent_tolerance;
 				// Initially, estimate parameter for the no-recombination model
 				vector<double> param0(1,log10(initial_branch_length)), param(3);
 				param0 = Pow0.minimize(param0,powell_tolerance);
-				// Next estimate parameters for the recombination model with total substitution rate fixed at this estimate
-				param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio)); param[2] = param0[0];
+				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
+				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],pow(10.,param0[0]),min_branch_length);
+				// Setup optimization function
+				Powell Pow(cff);
+				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
+				Pow.TOL = brent_tolerance;
+				// Now estimate parameters for the recombination model with total substitution rate fixed at this estimate
+				param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio)); param[2] = log10(initial_import_divergence);
 				param = Pow.minimize(param,powell_tolerance);
 				// Then refine
 				const double import_ratio = 1.0/(1.0+pow(10.,-param[1]));
 				const double import_divergence = pow(10.,param[2]);
-				param.push_back(log10(initial_branch_length/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
+				param.push_back(log10(pow(10.,param0[0])/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
 				param = Pow.minimize(param,powell_tolerance);
 				// Test if the recombination model is a significant improvement (2 log-likelihoods per additional parameter)
 				const bool LRT_pass = (-Pow.function_minimum>-Pow0.function_minimum+6.0);
