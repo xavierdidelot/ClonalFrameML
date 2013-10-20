@@ -1,5 +1,5 @@
 ClonalFrameML
-Daniel Wilson. 2013
+Xavier Didelot and Daniel Wilson. 2013
 
 This program reads in a Newick tree and FASTA file and, for all variable sites, reconstructs
 the joint maximum likelihood sequences at all nodes (including, for the purposes of imputation, tips)

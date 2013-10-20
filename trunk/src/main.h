@@ -1,8 +1,20 @@
-/*
- *  main.h
- *  ClonalFrameML
+/*  Copyright 2013 Daniel Wilson and Xavier Didelot.
  *
- *  Created by Daniel Wilson on 09/04/2013.
+ *  main.h
+ *  Part of ClonalFrameML
+ *
+ *  The myutils library is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  
+ *  The myutils library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU Lesser General Public License for more details.
+ *  
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with the myutils library. If not, see <http://www.gnu.org/licenses/>.
  *
  */
 #ifndef _MAIN_H_
@@ -10,7 +22,7 @@
 #include <iostream>
 #include <newick.h>
 #include <coalesce.h>
-#include "coalescent_record.h"
+#include <coalescent_record.h>
 #include <sstream>
 #include <myutils.h>
 #include <fstream>
@@ -18,7 +30,7 @@
 #include <DNA.h>
 #include <mydouble.h>
 #include <mutation.h>
-#include "powell.h"
+#include <powell.h>
 #include <argumentwizard.h>
 #include <time.h>
 #include <omp.h>
