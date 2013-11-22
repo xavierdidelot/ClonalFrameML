@@ -481,4 +481,65 @@ public:
 	}
 };
 
+class ClonalFrameSingleRho : public PowellFunction {
+public:
+	// References to non-member variables
+	const marginal_tree &tree;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector< vector<ImportationState> > &is_imported;
+	// True member variable
+	const bool use_viterbi;
+	double ML;
+	int neval;
+	bool excess_divergence_model;
+	const bool multithread;
+	const vector<double> &substitutions_per_branch;
+	double min_branch_length;
+public:
+	ClonalFrameSingleRho(const bool _use_viterbi, const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+									const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, vector< vector<ImportationState> > &_is_imported, const vector<double> _substitutions_per_branch, const double _min_branch_length) : 
+	use_viterbi(_use_viterbi), tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), neval(0),
+	excess_divergence_model(_excess_divergence_model), multithread(_multithread), is_imported(_is_imported), substitutions_per_branch(_substitutions_per_branch), min_branch_length(_min_branch_length) {
+/* CHECK !!! */
+//		if(!excess_divergence_model) error("ClonalFrameSingleRho::f(): excess_divergence_model is mandatory");	
+	};
+	double f(const vector<double>& x) {
+		++neval;
+		// Process parameters
+		if(!(x.size()==3)) error("ClonalFrameSingleRho::f(): 3 arguments required");
+		const double rho_over_theta = pow(10.,x[0]);
+		const double import_ratio = 1.0/(1.0+pow(10.,-x[1]));
+		const double import_divergence = pow(10.,x[2]);
+		ML = 0.0;
+		int i;
+		for(i=0;i<tree.size-2;i++) {
+			const mt_node &node = tree.node[i];
+			double branch_length;
+			/* **CHECK** */
+			// Constrain EACH BRANCH so that the expected number of substitutions equals crude_branch_length
+			// crude_branch_length = branch_length + import_ratio/(1+import_ratio)*branch_length*(2+import_divergence)
+			//                     = branch_length*(1 + import_ratio/(1+import_ratio)*(2+import_divergence))
+			// so    branch_length = crude_branch_length/(1 + import_ratio/(1+import_ratio)*(2+import_divergence))
+			branch_length = substitutions_per_branch[i]/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence));
+			if(branch_length<min_branch_length) branch_length = min_branch_length;
+			const int dec_id = node.id;
+			const int anc_id = node.ancestor->id;
+			const double mean_import_length = import_ratio/branch_length/rho_over_theta;
+			const double final_import_divergence = (excess_divergence_model) ? branch_length*(2.0 + import_divergence) : import_divergence;
+			if(use_viterbi) {
+				// Calculate likelihood: Viterbi
+				ML += maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence,is_imported[i]).LOG();
+			} else {
+				// Calculate likelihood: Forward algorithm
+				ML += marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+			}
+		}
+		return -ML;
+	}
+};
+
 #endif // _MAIN_H_
