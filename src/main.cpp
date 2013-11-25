@@ -38,6 +38,8 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-joint_branch_param            true or false (default)   Jointly optimize branch lengths and recombination parameters." << endl;
 		errTxt << "-rho_per_branch                true or false (default)   Estimate recombination parameters separately for each branch." << endl;
 		errTxt << "-rho_per_branch_no_lrt         true or false (default)   As above but suppress likelihood ratio test for recombination." << endl;
+		errTxt << "-single_rho_viterbi            true or false (default)   Jointly optimize recombination parameters using Viterbi algorithm." << endl;
+		errTxt << "-single_rho_forward            true or false (default)   Jointly optimize recombination parameters using forward algorithm." << endl;
 		errTxt << "-rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model." << endl;		
 		errTxt << "-multithread                   true or false (default)   Enable OpenMP parallel code. Overhead may cancel out gains." << endl;
 		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
