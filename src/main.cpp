@@ -121,6 +121,11 @@ int main (const int argc, const char* argv[]) {
 		warning(wrnTxt.str().c_str());
 		EXCESS_DIVERGENCE_MODEL = true;
 	}
+	if(EXCESS_DIVERGENCE_MODEL && (SINGLE_RHO_FORWARD || SINGLE_RHO_VITERBI)) {
+		stringstream errTxt;
+		errTxt << "single_rho not implemented under excess_divergence_model";
+		error(errTxt.str().c_str());
+	}
 	if(MULTITHREAD) {
 		cout << "WARNING: multithreaded version not implemented, ignoring." << endl;
 	}
@@ -488,8 +493,8 @@ int main (const int argc, const char* argv[]) {
 			// Jointly estimate the recombination parameters across branches, subject to the fixed expected number of substitutions per branch
 			// Initial values for the recombination parameters
 			const double initial_rho_over_theta = 0.1;
-			const double initial_import_ratio = 0.1;			// constrained to be less than 1
-			const double initial_import_divergence = 0.1;		// multiplicative excess (excess model is mandatory), so subst_rate = mut_rate * (2+import_divergence)
+			const double initial_mean_import_length = 1000.0;
+			const double initial_import_divergence = 0.1;
 			// Minimum branch length
 			const double min_branch_length = 1.0e-7;
 			ClonalFrameSingleRho cff(SINGLE_RHO_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported,substitutions_per_branch,min_branch_length);
@@ -499,31 +504,28 @@ int main (const int argc, const char* argv[]) {
 			Pow.TOL = brent_tolerance;
 			vector<double> param(3);
 			param[0] = log10(initial_rho_over_theta);
-			param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio));
+			param[1] = log10(initial_mean_import_length);
 			param[2] = log10(initial_import_divergence);
 			param = Pow.minimize(param,powell_tolerance);
 			// Output results to screen
 			const double ML = -Pow.function_minimum;
-			const double final_rho_over_theta = pow(10.,param[0]);
-			const double final_mean_import_ratio = 1.0/(1.0+pow(10.,-param[1]));
-			const double final_import_divergence = pow(10.,param[2]);
+			const double final_rho_over_theta = cff.get_rho_over_theta(param);
+			const double final_mean_import_length = cff.get_mean_import_length(param);
+			const double final_import_divergence = cff.get_import_divergence(param);
 			cout << "Maximum log-likelihood = " << ML << " with parameter estimates: " << endl;
 			cout << "rho/theta              = " << final_rho_over_theta << endl;
-			cout << "mean import ratio      = " << final_mean_import_ratio << endl;
+			cout << "mean import length     = " << final_mean_import_length << endl;
 			cout << "mean import divergence = " << final_import_divergence << endl;			
 			// Ensure importation status is updated correctly
 			for(i=0;i<ctree.size-2;i++) {
 				const int dec_id = ctree.node[i].id;
 				const int anc_id = ctree.node[i].ancestor->id;
-				double final_branch_length = substitutions_per_branch[i]/(1.0+final_mean_import_ratio/(1.0+final_mean_import_ratio)*(2.0+final_import_divergence));
-				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
-				const double final_mean_import_length = final_mean_import_ratio/final_branch_length/final_rho_over_theta;
-				const double branch_import_divergence = (EXCESS_DIVERGENCE_MODEL) ? final_branch_length*(2.0 + final_import_divergence) : final_import_divergence;
+				const double final_branch_length = cff.get_branch_length(substitutions_per_branch[i],param);
 				// This part of the algorithm always uses the Viterbi algorithm
-				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, branch_import_divergence, is_imported[i]);
+				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
 				// Update branch length in the tree - this will set it equal to the number of substitutions implied by the ancestral state reconstruction
 				// Note this operation is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = final_branch_length;
+				ctree.node[i].edge_time = substitutions_per_branch[i];
 			}
 			// Output the importation status
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
