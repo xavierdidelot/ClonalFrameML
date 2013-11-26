@@ -511,16 +511,27 @@ public:
 		++neval;
 		// Process parameters
 		if(!(x.size()==3)) error("ClonalFrameSingleRho::f(): 3 arguments required");
-		const double rho_over_theta = pow(10.,x[0]);
-		const double import_ratio = 1.0/(1.0+pow(10.,-x[1]));
-		const double import_divergence = pow(10.,x[2]);
+		const double rho_over_theta = get_rho_over_theta(x);
+		const double mean_import_length = get_mean_import_length(x);
+		const double import_divergence = get_import_divergence(x);
 		ML = 0.0;
 		int i;
 		for(i=0;i<tree.size-2;i++) {
 			const mt_node &node = tree.node[i];
 			double branch_length;
 			/* **CHECK** */
-			// Constrain EACH BRANCH so that the expected number of substitutions equals crude_branch_length
+			// Constrain EACH BRANCH so that the expected number of substitutions matches the ancestral state reconstruction
+			// E(# substitutions) = pr(no import) * E(# mutations) + pr(import) * import_divergence
+			//                    = [rho*tau*T/2]/[1+rho*tau*T/2] * branch_length + 1/[1+rho*tau*T/2] * import_divergence
+			// so   branch_length = [E(# substitutions) - import_divergence/(1+rho*tau*T/2)] * (1+rho*tau*T/2)/(rho*tau*T/2)
+			//                    = [(1+rho*tau*T/2) * E(# substitutions) - import_divergence]/(rho*tau*T/2)
+			// Additive model of excess divergence: import_divergence = branch_length + excess_divergence, so
+			// E(# substitutions) = [rho*tau*T/2]/[1+rho*tau*T/2] * branch_length + 1/[1+rho*tau*T/2] * (branch_length + excess_divergence)
+			// Multiplicative model of excess divergence: import_divergence = branch_length * (1 + excess_divergence), so
+			// E(# substitutions) = [rho*tau*T/2]/[1+rho*tau*T/2] * branch_length + 1/[1+rho*tau*T/2] * branch_length * (1 + excess_divergence)
+			//                    = branch_length * [1 + excess_divergence/(1+rho*tau*T/2)]
+			
+			
 			// crude_branch_length = branch_length + import_ratio/(1+import_ratio)*branch_length*(2+import_divergence)
 			//                     = branch_length*(1 + import_ratio/(1+import_ratio)*(2+import_divergence))
 			// so    branch_length = crude_branch_length/(1 + import_ratio/(1+import_ratio)*(2+import_divergence))
@@ -539,6 +550,43 @@ public:
 			}
 		}
 		return -ML;
+	}
+	double get_rho_over_theta(const vector<double>& x) {
+		return pow(10.,x[0]);
+	}
+	double get_mean_import_length(const vector<double>& x) {
+		return pow(10.,x[1]);
+	}
+	double get_import_divergence(const vector<double>& x) {
+		return pow(10.,x[2]);
+	}
+	double get_branch_length(const vector<double>& x) {
+		// Constrain EACH BRANCH so that the expected number of substitutions matches the ancestral state reconstruction
+		double b = 0.0;
+		if(excess_divergence_model) {
+			// Try again...
+			// Pr(import) = (rho*tau*T/2)/(1+rho*tau*T/2) = (branch_length*rho/theta*tau)/(1+branch_length*rho/theta*tau)
+			// E(# substitutions) = pr(no import) * E(# mutations) + pr(import) * import_divergence
+			//                    = branch_length*(1 + rho/theta*tau*import_divergence)/(1+branch_length*rho/theta*tau)
+			// 1/E(#substitutions)= 1/branch_length/(rho/theta)/tau/(1+import_divergence) + 1/(1+import_divergence)
+			// 
+			
+			
+			// E(# substitutions) = pr(no import) * E(# mutations) + pr(import) * import_divergence
+			//                    = [rho*tau*T/2]/[1+rho*tau*T/2] * branch_length + 1/[1+rho*tau*T/2] * import_divergence
+			// so   branch_length = [E(# substitutions) - import_divergence/(1+rho*tau*T/2)] * (1+rho*tau*T/2)/(rho*tau*T/2)
+			//                    = [(1+rho*tau*T/2) * E(# substitutions) - import_divergence]/(rho*tau*T/2)
+			// where rho*T/2 = branch_length*rho/theta and tau = mean_import_length
+//			b = 
+		} else {
+			// Additive model of excess divergence: import_divergence = branch_length + excess_divergence, so
+			// E(# substitutions) = [rho*tau*T/2]/[1+rho*tau*T/2] * branch_length + 1/[1+rho*tau*T/2] * (branch_length + excess_divergence)
+			// Multiplicative model of excess divergence: import_divergence = branch_length * (1 + excess_divergence), so
+			// E(# substitutions) = [rho*tau*T/2]/[1+rho*tau*T/2] * branch_length + 1/[1+rho*tau*T/2] * branch_length * (1 + excess_divergence)
+			//                    = branch_length * [1 + excess_divergence/(1+rho*tau*T/2)]
+		}
+		if(b!=b || b<min_branch_length) b = min_branch_length;
+		return b;
 	}
 };
 
