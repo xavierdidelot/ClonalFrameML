@@ -501,7 +501,7 @@ public:
 	double min_branch_length;
 public:
 	ClonalFrameSingleRho(const bool _use_viterbi, const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-									const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, vector< vector<ImportationState> > &_is_imported, vector<double> _substitutions_per_branch, const double _min_branch_length) : 
+									const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, vector< vector<ImportationState> > &_is_imported, vector<double> &_substitutions_per_branch, const double _min_branch_length) : 
 	use_viterbi(_use_viterbi), tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), neval(0),
 	excess_divergence_model(_excess_divergence_model), multithread(_multithread), is_imported(_is_imported), substitutions_per_branch(_substitutions_per_branch), min_branch_length(_min_branch_length) {
 		if(excess_divergence_model) error("ClonalFrameSingleRho::f(): excess_divergence_model not implemented");	
