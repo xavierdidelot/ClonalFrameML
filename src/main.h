@@ -553,6 +553,7 @@ public:
 		const double mean_import_length = get_mean_import_length(x);
 		const double import_divergence = get_import_divergence(x);
 		double b = expected_number_of_substitutions/(1.0+rho_over_theta*mean_import_length*(import_divergence-expected_number_of_substitutions));
+		if(expected_number_of_substitutions>=import_divergence) b = expected_number_of_substitutions;
 		if(b!=b || b<min_branch_length) b = min_branch_length;
 		return b;
 	}
