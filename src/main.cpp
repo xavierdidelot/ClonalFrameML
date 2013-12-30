@@ -494,7 +494,7 @@ int main (const int argc, const char* argv[]) {
 			// Initial values for the recombination parameters
 			const double initial_rho_over_theta = 0.1;
 			const double initial_mean_import_length = 1000.0;
-			const double initial_import_divergence = 0.1;
+			const double initial_import_divergence = 0.01;
 			// Minimum branch length
 			const double min_branch_length = 1.0e-7;
 			ClonalFrameSingleRho cff(SINGLE_RHO_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported,substitutions_per_branch,min_branch_length);
