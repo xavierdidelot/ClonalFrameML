@@ -170,6 +170,72 @@ public:
 		
 		return *this;
 	}
+	DNA& readFASTA_1pass(const char* filename) {
+		ifstream in1(filename);
+		if(!in1.is_open()) {
+			string errmsg = "DNA::readFASTA_1pass(): File ";
+			errmsg += string(filename);
+			errmsg += " not found";
+			error(errmsg.c_str());
+		}
+		
+		nseq = 0;
+		lseq = -1;
+		string s;
+		getline(in1,s);
+		if(s.length()>0 && s[0]!='>') {
+			string errmsg = "DNA::readFASTA_1pass(): File ";
+			errmsg += string(filename);
+			errmsg += " did not begin with '>'";
+			error(errmsg.c_str());
+		}
+		label.push_back(s.substr(1));
+		string newseq = "";
+		while(!in1.eof()) {
+			getline(in1,s);
+			if(s.length()>0 && s[0]=='>') {
+				if(lseq==-1) lseq = newseq.length();
+				if(newseq.length()!=lseq) {
+					string errmsg = "DNA::readFASTA_1pass(): File ";
+					errmsg += string(filename);
+					errmsg += " sequences had different lengths";
+					error(errmsg.c_str());
+				}
+				sequence.push_back(newseq);
+				newseq = "";
+				++nseq;
+				label.push_back(s.substr(1));
+			} else {
+				newseq += s;
+			}
+		}
+		if(lseq==-1) lseq = newseq.length();
+		if(newseq.length()!=lseq) {
+			string errmsg = "DNA::readFASTA_1pass(): File ";
+			errmsg += string(filename);
+			errmsg += " sequences had different lengths";
+			error(errmsg.c_str());
+		}
+		sequence.push_back(newseq);
+		newseq = "";
+		++nseq;
+		ntimes = vector<double>(nseq,0.0);
+		in1.close();
+		
+		if(sequence.size()!=label.size()) {
+			string errmsg = "DNA::readFASTA_1pass(): File ";
+			errmsg += string(filename);
+			errmsg += " different number of sequences and labels";
+			error(errmsg.c_str());
+		}
+		
+		if(coutput) for(int NSEQ=0;NSEQ<nseq;NSEQ++) {
+			cout << label[NSEQ] << endl;
+			cout << sequence[NSEQ] << endl;
+		}
+		
+		return *this;
+	}
 	DNA& writeFASTA(const char* filename) {
 		ofstream fout(filename);
 		int n,pos;

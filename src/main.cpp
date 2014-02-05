@@ -27,6 +27,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "Syntax: ClonalFrameML newick_file fasta_file kappa output_file [OPTIONS]" << endl;
 		errTxt << endl;
 		errTxt << "The following options are available:" << endl;
+		errTxt << "-fasta_file_list               true or false (default)   Take fasta_file to be a white-space separated file list." << endl;
 		errTxt << "-correct_branch_lengths        true (default) or false   Correct branch lengths using ClonalFrame model." << endl;
 		errTxt << "-excess_divergence_model       true or false (default)   Use the 'excess divergence' model. Mandatory for two sequences." << endl;
 		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
@@ -58,11 +59,12 @@ int main (const int argc, const char* argv[]) {
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
-	string correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
+	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3;
 	// Process options
+	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
 	arg.add_item("correct_branch_lengths",		TP_STRING, &correct_branch_lengths);
 	arg.add_item("excess_divergence_model",		TP_STRING, &excess_divergence_model);
 	arg.add_item("ignore_incomplete_sites",		TP_STRING, &ignore_incomplete_sites);
@@ -81,6 +83,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("show_progress",				TP_STRING, &show_progress);
 	arg.add_item("compress_reconstructed_sites",TP_STRING, &compress_reconstructed_sites);	
 	arg.read_input(argc-4,argv+4);
+	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
 	bool EXCESS_DIVERGENCE_MODEL		= string_to_bool(excess_divergence_model,		"excess_divergence_model");
 	bool IGNORE_INCOMPLETE_SITES		= string_to_bool(ignore_incomplete_sites,		"ignore_incomplete_sites");
@@ -130,8 +133,48 @@ int main (const int argc, const char* argv[]) {
 		cout << "WARNING: multithreaded version not implemented, ignoring." << endl;
 	}
 	
-	// Open the FASTA file
-	DNA fa(fasta_file);
+	// Open the FASTA file(s)
+	DNA fa;
+	if(FASTA_FILE_LIST) {
+		ifstream file_list(fasta_file);
+		if(!file_list.is_open()) {
+			stringstream errTxt;
+			errTxt << "could not find file " << fasta_file;
+			error(errTxt.str().c_str());
+		}
+		int n = 0;
+		int L = -1;
+		while(!file_list.eof()) {
+			string filename;
+			file_list >> filename;
+			// Pre-check: does it exist?
+			ifstream file_list1(filename.c_str());
+			if(!file_list1.is_open()) {
+				stringstream errTxt;
+				errTxt << "could not find listed file " << fasta_file;
+				error(errTxt.str().c_str());
+			}
+			// Read the file
+			DNA fa1(filename.c_str());
+			n += fa1.nseq;
+			if(L==-1) L = fa1.lseq;
+			if(fa1.lseq!=L) {
+				stringstream errTxt;
+				errTxt << "listed file " << fasta_file << " had sequence length " << fa1.lseq << " expecting " << L;
+				error(errTxt.str().c_str());
+			}
+			// Add to list
+			int ni;
+			for(ni=0;ni<fa1.nseq;ni++) {
+				fa.label.push_back(fa1.label[ni]);
+				fa.sequence.push_back(fa1.sequence[ni]);
+				fa.nseq++;
+				fa.ntimes.push_back(fa1.ntimes[ni]);
+			}
+		}
+	} else {
+		fa.readFASTA_1pass(fasta_file);
+	}
 	cout << "Read " << fa.nseq << " sequences of length " << fa.lseq << " sites from " << fasta_file << endl;
 	if(fa.nseq==2) {
 		if(!EXCESS_DIVERGENCE_MODEL) cout << "WARNING: with only two sequences, the excess divergence model is mandatory." << endl;
