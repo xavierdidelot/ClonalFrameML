@@ -221,6 +221,136 @@ public:
 	}
 };
 
+class ClonalFrameJointBranchLengthFunction : public PowellFunction {
+public:
+	// References to non-member variables
+	const mt_node &node;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector<ImportationState> &is_imported;
+	// True member variable
+	double ML;
+	int neval;
+	bool excess_divergence_model;
+	double rho_over_theta, mean_import_length, import_divergence;
+	bool use_viterbi;
+public:
+	ClonalFrameJointBranchLengthFunction(const bool _use_viterbi, const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+									const vector<double> &_pi, bool _excess_divergence_model, const double _rho_over_theta, const double _mean_import_length, const double _import_divergence, const bool _multithread, vector< vector<ImportationState> > &_is_imported) : 
+	use_viterbi(_use_viterbi), node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), neval(0), excess_divergence_model(_excess_divergence_model),
+	rho_over_theta(_rho_over_theta), mean_import_length(_mean_import_length), import_divergence(_import_divergence), is_imported(_is_imported) {};
+	double f(const vector<double>& x) {
+		++neval;
+		if(x.size()!=1) error("ClonalFrameJointBranchLengthFunction::f(): 1 argument required");
+		const int dec_id = node.id;
+		const int anc_id = node.ancestor->id;
+		const double branch_length = pow(10.,x[0]);
+		const double final_import_divergence = (excess_divergence_model) ? branch_length + import_divergence : import_divergence;
+		if(use_viterbi) {
+			ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence,is_imported).LOG();
+		} else {
+			ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+		}
+		return -ML;
+	}
+};
+
+class ClonalFrameFunctionJoint : public PowellFunction {
+public:
+	// References to non-member variables
+	const marginal_tree &ctree;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector< vector<ImportationState> > &is_imported;
+	// True member variable
+	vector< double > ML;
+	int neval;
+	bool excess_divergence_model;
+	clock_t last_update;
+	vector<double> &substitutions_per_branch;
+	double min_branch_length;
+	bool use_viterbi;
+public:
+	ClonalFrameFunctionJoint(const bool _use_viterbi, const marginal_tree &_ctree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+						const vector<double> &_pi, bool _excess_divergence_model, vector< vector<ImportationState> > &_is_imported, vector<double> &_substitutions_per_branch, const double _min_branch_length) : 
+	use_viterbi(_use_viterbi), ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), is_imported(_ctree.size-2), ML(_ctree.size-2), neval(0), 
+	excess_divergence_model(_excess_divergence_model), last_update(clock()), is_imported(_is_imported), substitutions_per_branch(_substitutions_per_branch), min_branch_length(_min_branch_length) {};
+	double f(const vector<double>& x) {
+		++neval;
+		if((clock()-last_update)/CLOCKS_PER_SEC>60.0) {
+			cout << "Done " << neval << " iterations" << endl;
+			last_update = clock();
+		}
+		// Process parameters
+		if(!(x.size()==3)) error("ClonalFrameFunctionJoint::f(): 3 arguments required");
+		const double rho_over_theta = get_rho_over_theta(x);
+		const double mean_import_length = get_mean_import_length(x);
+		const double import_divergence = get_import_divergence(x);
+		// Calculate likelihood
+		int i;
+		for(i=0;i<ctree.size-2;i++) {
+			const double branch_length = pow(10.,x[3+i]);
+			const double import_divergence = (excess_divergence_model) ? import_divergence_base + branch_length : import_divergence_base;
+			const mt_node &node = ctree.node[i];
+			const int dec_id = node.id;
+			const int anc_id = node.ancestor->id;
+			ClonalFrameJointBranchLengthFunction cfb(use_viterbi,node,node_nuc,iscompat,ipat,kappa,pi,excess_divergence_model,rho_over_theta,mean_import_length,import_divergence,is_imported);
+			// Maximize the branch likelihood with respect to the branch length
+			Powell Pow(cfb);
+			Pow.coutput = Pow.brent.coutput = coutput;
+			Pow.TOL = TOL;
+			param = Pow.minimize(param,powell_tolerance);
+			//ML[i] = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
+			ML[i] = -Pow.function_minimum;
+		}
+		// Separate: not included in the parallelizable code
+		double treeML = 0.0;
+		for(i=0;i<ctree.size-2;i++) {
+			treeML += ML[i];
+		}
+		// Ensure importation status is updated correctly (implement a loop here)
+//		cff.f(param);
+
+		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood (will be 1)
+		// Return minus log-likelihood
+		return treeML;
+	}
+	double get_rho_over_theta(const vector<double>& x) {
+		return pow(10.,x[0]);
+	}
+	double get_mean_import_length(const vector<double>& x) {
+		return pow(10.,x[1]);
+	}
+	double get_import_divergence(const vector<double>& x) {
+		return pow(10.,x[2]);
+	}
+	double get_branch_length(const double expected_number_of_substitutions, const vector<double>& x) {
+		if(excess_divergence_model) error("ClonalFrameSingleRho::f(): excess_divergence_model not implemented");
+		// Borrowed from ClonalFrameSingleRho
+		// Constrain EACH BRANCH so that the expected number of substitutions matches the ancestral state reconstruction
+		// SUBJECT to a minimum (positive) branch length
+		// Standard model of divergence: equal for every branch
+		// Pr(import) = (rho*tau*T/2)/(1+rho*tau*T/2) = (branch_length*rho/theta*tau)/(1+branch_length*rho/theta*tau)
+		// where tau = mean import length
+		// E(# substitutions) = pr(no import) * E(# mutations) + pr(import) * import_divergence
+		//                    = branch_length * (1 + rho/theta*tau*import_divergence)/(1+branch_length*rho/theta*tau)
+		// so   branch_length = E(# substitutions)/(1 + rho/theta*tau*(import_divergence-E(# substitutions)))
+		const double rho_over_theta = get_rho_over_theta(x);
+		const double mean_import_length = get_mean_import_length(x);
+		const double import_divergence = get_import_divergence(x);
+		double b = expected_number_of_substitutions/(1.0+rho_over_theta*mean_import_length*(import_divergence-expected_number_of_substitutions));
+		if(expected_number_of_substitutions>=import_divergence) b = expected_number_of_substitutions;
+		if(b!=b || b<min_branch_length) b = min_branch_length;
+		return b;
+	}
+};
+
 class ClonalFrameApproxBranchLengthFunction : public PowellFunction {
 public:
 	// References to non-member variables

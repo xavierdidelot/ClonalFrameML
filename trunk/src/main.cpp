@@ -89,6 +89,7 @@ int main (const int argc, const char* argv[]) {
 	bool IGNORE_INCOMPLETE_SITES		= string_to_bool(ignore_incomplete_sites,		"ignore_incomplete_sites");
 	bool RECONSTRUCT_INVARIANT_SITES	= string_to_bool(reconstruct_invariant_sites,	"reconstruct_invariant_sites");
 	bool USE_INCOMPATIBLE_SITES			= string_to_bool(use_incompatible_sites,		"use_incompatible_sites");
+	bool OLD_JOINT_BRANCH_PARAM			= false;
 	bool JOINT_BRANCH_PARAM				= string_to_bool(joint_branch_param,			"joint_branch_param");
 	bool RHO_PER_BRANCH					= string_to_bool(rho_per_branch,				"rho_per_branch");
 	bool RHO_PER_BRANCH_NO_LRT			= string_to_bool(rho_per_branch_no_LRT,			"rho_per_branch_no_lrt");
@@ -285,7 +286,7 @@ int main (const int argc, const char* argv[]) {
 		cout << "Empirical nucleotide frequencies:   A " << round(1000*empirical_nucleotide_frequencies[Adenine])/10 << "%   C " << round(1000*empirical_nucleotide_frequencies[Cytosine])/10;
 		cout << "%   G " << round(1000*empirical_nucleotide_frequencies[Guanine])/10 << "%   T " << round(1000*empirical_nucleotide_frequencies[Thymine])/10 << "%" << endl;
 		
-		if(JOINT_BRANCH_PARAM) {
+		if(OLD_JOINT_BRANCH_PARAM) {
 			// Prepare to correct branch lengths
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
 			const double initial_rho_over_theta = 0.1;
@@ -316,6 +317,37 @@ int main (const int argc, const char* argv[]) {
 
 			// Output the importation status
 			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			cout << "Wrote inferred importation status to " << import_out_file << endl;
+		} else if(JOINT_BRANCH_PARAM) {
+			// Prepare to correct branch lengths
+			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
+			const double initial_rho_over_theta = 0.1;
+			const double initial_mean_import_length = 500.0;
+			const double initial_import_divergence = 0.01;
+			ClonalFrameFunctionJoint cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD);
+			vector<double> param(3);
+			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
+			
+			// Maximize the likelihood of the parameters
+			Powell Pow(cff);
+			Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
+			Pow.TOL = brent_tolerance;
+			param = Pow.minimize(param,powell_tolerance);
+			// Ensure importation status is updated correctly
+			cff.f(param);
+			
+			cout << "Maximum log-likelihood of " << -Pow.function_minimum << " found in " << cff.neval << " iterations" << endl;
+			cout << "rho/theta         = " << pow(10.,param[0]) << endl;
+			cout << "Import length     = " << pow(10.,param[1]) << endl;
+			cout << "Import divergence = " << pow(10.,param[2]) << endl;
+//			for(i=0;i<ctree.size-2;i++) {
+//				cout << "Branch length " << ctree_node_labels[i] << " = " << pow(10.,param[3+i]) << endl;
+//				// Note this is unsafe in general because the corresponding node times are not adjusted
+//				ctree.node[i].edge_time = pow(10.,param[3+i]);
+//			}
+			
+			// Output the importation status
+//			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(RHO_PER_BRANCH_NO_LRT) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
