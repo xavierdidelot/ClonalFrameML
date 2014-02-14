@@ -319,15 +319,37 @@ int main (const int argc, const char* argv[]) {
 			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(JOINT_BRANCH_PARAM) {
+			cout << "Beginning parameter estimation" << endl;
+			vector< vector<ImportationState> > is_imported(ctree.size-2);
+			// Calculate the expected number of substitutions per branch according to the ancestral state reconstruction
+			vector<double> substitutions_per_branch(ctree.size-2,0);
+			for(i=0;i<ctree.size-2;i++) {
+				double pd = 1.0, pd_den = 2.0;
+				const int dec_id = ctree.node[i].id;
+				const int anc_id = ctree.node[i].ancestor->id;
+				int j,k;
+				for(j=0,k=0;j<isBLC.size();j++) {
+					if(isBLC[j]) {
+						Nucleotide dec = node_nuc[dec_id][ipat[k]];
+						Nucleotide anc = node_nuc[anc_id][ipat[k]];
+						if(dec!=anc) ++pd;
+						++pd_den;
+						++k;
+					}
+				}
+				substitutions_per_branch[i] = pd/pd_den;
+			}
 			// Prepare to correct branch lengths
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
 			const double initial_rho_over_theta = 0.1;
 			const double initial_mean_import_length = 500.0;
 			const double initial_import_divergence = 0.01;
-			ClonalFrameFunctionJoint cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD);
+			// Minimum branch length
+			const double min_branch_length = 1.0e-7;
+			const bool USE_VITERBI = false;
+			ClonalFrameFunctionJoint cff(USE_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,is_imported,substitutions_per_branch,min_branch_length,SHOW_PROGRESS,brent_tolerance,powell_tolerance);
 			vector<double> param(3);
 			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
-			
 			// Maximize the likelihood of the parameters
 			Powell Pow(cff);
 			Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
@@ -340,11 +362,11 @@ int main (const int argc, const char* argv[]) {
 			cout << "rho/theta         = " << pow(10.,param[0]) << endl;
 			cout << "Import length     = " << pow(10.,param[1]) << endl;
 			cout << "Import divergence = " << pow(10.,param[2]) << endl;
-//			for(i=0;i<ctree.size-2;i++) {
-//				cout << "Branch length " << ctree_node_labels[i] << " = " << pow(10.,param[3+i]) << endl;
-//				// Note this is unsafe in general because the corresponding node times are not adjusted
-//				ctree.node[i].edge_time = pow(10.,param[3+i]);
-//			}
+			for(i=0;i<ctree.size-2;i++) {
+				cout << "Branch length " << ctree_node_labels[i] << " = " << pow(10.,cff.branch_length[i]) << endl;
+				// Note this is unsafe in general because the corresponding node times are not adjusted
+				ctree.node[i].edge_time = pow(10.,param[3+i]);
+			}
 			
 			// Output the importation status
 //			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
