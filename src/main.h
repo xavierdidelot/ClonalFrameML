@@ -248,7 +248,7 @@ public:
 		const int dec_id = node.id;
 		const int anc_id = node.ancestor->id;
 		const double branch_length = pow(10.,x[0]);
-/*****/	cout << "Need to check next line\n";
+		// NB:- in this joint model, excess divergence is additive
 		const double final_import_divergence = (excess_divergence_model) ? branch_length + import_divergence : import_divergence;
 		if(use_viterbi) {
 			ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence,is_imported).LOG();
@@ -301,11 +301,7 @@ public:
 		int i;
 		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood (will be 1)
 		for(i=0;i<ctree.size-2;i++) {
-//			const double branch_length = pow(10.,x[3+i]); // !!!!!!!!!!!!!!!!!
-//			const double import_divergence = (excess_divergence_model) ? import_divergence_base + branch_length : import_divergence_base;
 			const mt_node &node = ctree.node[i];
-//			const int dec_id = node.id;
-//			const int anc_id = node.ancestor->id;
 			ClonalFrameJointBranchLengthFunction cfb(use_viterbi,node,node_nuc,iscompat,ipat,kappa,pi,excess_divergence_model,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
 			// Maximize the branch-specific likelihood with respect to the branch length
 			Powell Pow(cfb);
@@ -315,8 +311,8 @@ public:
 			param = Pow.minimize(param,powell_tolerance);
 			ML[i] = -Pow.function_minimum;
 			branch_length[i] = pow(10.,param[0]);
-			// Ensure importation status is updated correctly (implement within the loop here ?)
-			//		cff.f(param);
+			// Ensure importation status is updated correctly
+			cfb.f(param);
 		}
 		double treeML = 0.0;
 		for(i=0;i<ctree.size-2;i++) {
@@ -335,22 +331,32 @@ public:
 		return pow(10.,x[2]);
 	}
 	double get_branch_length(const double expected_number_of_substitutions, const vector<double>& x) {
-		if(excess_divergence_model) error("ClonalFrameSingleRho::f(): excess_divergence_model not implemented");
-		// Borrowed from ClonalFrameSingleRho
-		// Constrain EACH BRANCH so that the expected number of substitutions matches the ancestral state reconstruction
+		// Start each branch length so that the expected number of substitutions matches the ancestral state reconstruction
 		// SUBJECT to a minimum (positive) branch length
-		// Standard model of divergence: equal for every branch
-		// Pr(import) = (rho*tau*T/2)/(1+rho*tau*T/2) = (branch_length*rho/theta*tau)/(1+branch_length*rho/theta*tau)
-		// where tau = mean import length
-		// E(# substitutions) = pr(no import) * E(# mutations) + pr(import) * import_divergence
-		//                    = branch_length * (1 + rho/theta*tau*import_divergence)/(1+branch_length*rho/theta*tau)
-		// so   branch_length = E(# substitutions)/(1 + rho/theta*tau*(import_divergence-E(# substitutions)))
 		const double rho_over_theta = get_rho_over_theta(x);
 		const double mean_import_length = get_mean_import_length(x);
 		const double import_divergence = get_import_divergence(x);
-		double b = expected_number_of_substitutions/(1.0+rho_over_theta*mean_import_length*(import_divergence-expected_number_of_substitutions));
-		if(expected_number_of_substitutions>=import_divergence) b = expected_number_of_substitutions;
-		if(b!=b || b<min_branch_length) b = min_branch_length;
+		double b;
+		if(excess_divergence_model) {
+			// Additive model of excess divergence:
+			// Pr(import) = (rho*tau*T/2)/(1+rho*tau*T/2) = (branch_length*rho/theta*tau)/(1+branch_length*rho/theta*tau)
+			// where tau = mean import length
+			// E(# substitutions) = E(# mutations) + pr(import) * import_divergence
+			//                    = branch_length * [1 + (rho/theta*tau*import_divergence)/(1+branch_length*rho/theta*tau)]
+			// so   branch_length =approx= E(# substitutions)/(1 + rho/theta*tau*import_divergence)
+			b = expected_number_of_substitutions/(1.0+rho_over_theta*mean_import_length*import_divergence);
+			if(b!=b || b<min_branch_length) b = min_branch_length;
+		} else {
+			// Standard model of divergence: equal for every branch
+			// Pr(import) = (rho*tau*T/2)/(1+rho*tau*T/2) = (branch_length*rho/theta*tau)/(1+branch_length*rho/theta*tau)
+			// where tau = mean import length
+			// E(# substitutions) = pr(no import) * E(# mutations) + pr(import) * import_divergence
+			//                    = branch_length * (1 + rho/theta*tau*import_divergence)/(1+branch_length*rho/theta*tau)
+			// so   branch_length = E(# substitutions)/(1 + rho/theta*tau*(import_divergence-E(# substitutions)))
+			b = expected_number_of_substitutions/(1.0+rho_over_theta*mean_import_length*(import_divergence-expected_number_of_substitutions));
+			if(expected_number_of_substitutions>=import_divergence) b = expected_number_of_substitutions;
+			if(b!=b || b<min_branch_length) b = min_branch_length;
+		}
 		return b;
 	}
 };

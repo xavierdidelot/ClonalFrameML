@@ -346,7 +346,7 @@ int main (const int argc, const char* argv[]) {
 			const double initial_import_divergence = 0.01;
 			// Minimum branch length
 			const double min_branch_length = 1.0e-7;
-			const bool USE_VITERBI = false;
+			const bool USE_VITERBI = true;
 			ClonalFrameFunctionJoint cff(USE_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,is_imported,substitutions_per_branch,min_branch_length,SHOW_PROGRESS,brent_tolerance,powell_tolerance);
 			vector<double> param(3);
 			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
@@ -369,7 +369,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			
 			// Output the importation status
-//			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(RHO_PER_BRANCH_NO_LRT) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
