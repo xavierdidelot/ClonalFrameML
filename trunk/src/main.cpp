@@ -184,7 +184,7 @@ int main (const int argc, const char* argv[]) {
 	// Open the Newick file and convert to internal rooted tree format, outputting the names of the tips and internal nodes
 	NewickTree newick = read_Newick(newick_file);
 	vector<string> ctree_node_labels;
-	marginal_tree ctree = convert_unrooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels);
+	marginal_tree ctree = (newick.root.dec.size()==2) ? convert_rooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels) : convert_unrooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels);
 	// Open the list of sites to ignore
 	vector<bool> ignore_site(fa.lseq,false);
 	if(ignore_user_sites!="") {
