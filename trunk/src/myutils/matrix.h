@@ -76,8 +76,8 @@ public:
 	T **element;
 
 protected:
-	int protected_nrows;
-	int protected_ncols;
+	unsigned long int protected_nrows;
+	unsigned long int protected_ncols;
 	int initialized;
 
 public:
@@ -93,7 +93,7 @@ public:
 	/*Constructor*/			Matrix(int nrows, int ncols, T value)
 	{
 		initialize(nrows,ncols);
-		int i,j;
+		unsigned long int i,j;
 		for(i=0;i<nrows;i++)
 			for(j=0;j<ncols;j++)
 				element[i][j]=value;
@@ -105,44 +105,46 @@ public:
 	}
 	Matrix<T>& initialize(int nrows, int ncols)
 	{
-		int i;
-		array = new T[nrows*ncols];
+		unsigned long int i;
+		const unsigned long int newsize = (unsigned long int)(nrows)*(unsigned long int)(ncols);
+		array = new T[newsize];
 		if (!array) error("array allocation failure in Matrix::initialize()");
 
-		element = new T*[nrows];
+		element = new T*[(unsigned long int)nrows];
 		if (!element) error("element allocation failure in Matrix::initialize()");
-		for(i=0;i<nrows;i++) element[i] = &(array[i*ncols+0]);
+		for(i=0;i<nrows;i++) element[i] = &(array[i*(unsigned long int)ncols+0]);
 
-		protected_nrows=nrows;
-		protected_ncols=ncols;
+		protected_nrows=(unsigned long int)nrows;
+		protected_ncols=(unsigned long int)ncols;
 		initialized=1;
 		return *this;
 	}
 	/*All current data is lost when the Matrix is resized*/
 	Matrix<T>& resize(int nrows, int ncols)
 	{
-		int i;
+		unsigned long int i;
 		if (!initialized) return initialize(nrows,ncols);
 		if((nrows==protected_nrows)&&(ncols==protected_ncols))return *this;
 		
 		delete[] array;
 		delete[] element;
 
-		array = new T[nrows*ncols];
+		const unsigned long int newsize = (unsigned long int)(nrows)*(unsigned long int)(ncols);
+		array = new T[newsize];
 		if (!array) error("array allocation failure in Matrix::resize()");
 		
-		element = new T*[nrows];
+		element = new T*[(unsigned long int)nrows];
 		if (!element) error("element allocation failure in Matrix::resize()");
-		for(i=0;i<nrows;i++) element[i] = &(array[i*ncols+0]);
+		for(i=0;i<nrows;i++) element[i] = &(array[i*(unsigned long int)ncols+0]);
 
-		protected_nrows=nrows;
-		protected_ncols=ncols;
+		protected_nrows=(unsigned long int)nrows;
+		protected_ncols=(unsigned long int)ncols;
 		return *this;
 	}
-	int nrows(){return protected_nrows;}
-	int ncols(){return protected_ncols;}
-	int nrows() const {return protected_nrows;}
-	int ncols() const {return protected_ncols;}
+	int nrows(){return (int)protected_nrows;}
+	int ncols(){return (int)protected_ncols;}
+	int nrows() const {return (int)protected_nrows;}
+	int ncols() const {return (int)protected_ncols;}
 /*	void error(char* error_text)
 	{
 		printf("Run-time error in Matrix::");
@@ -156,7 +158,7 @@ public:
 			Matrix mat2=mat;
 		and when Matrix is returned from a function	*/
 	{
-		initialize(mat.protected_nrows,mat.protected_ncols);
+	  initialize((int)mat.protected_nrows,(int)mat.protected_ncols);
 		int i;
 		for(i=0;i<protected_nrows*protected_ncols;i++)
 			array[i] = mat.array[i];
@@ -171,21 +173,21 @@ public:
 		return *this;
 	}
 #ifdef _MYUTILS_DEBUG
-	/*DEBUG Subscript operator*/inline safeArray< T > operator[](int pos){
+	/*DEBUG Subscript operator*/inline safeArray< T > operator[](unsigned long int pos){
 		if(pos<0) error("Matrix::operator[](int row): row<0");
 		if(pos>=protected_nrows) error("Matrix::operator[](int row): row>=nrows()");
 		//return element[pos];
 		return safeArray< T >(element[pos],0,protected_ncols);
 	};
-	/*DEBUG Subscript operator*/inline const safeArray< T > operator[](int pos) const {
+	/*DEBUG Subscript operator*/inline const safeArray< T > operator[](unsigned long int pos) const {
 		if(pos<0) error("Matrix::operator[](int row): row<0");
 		if(pos>=protected_nrows) error("Matrix::operator[](int row): row>=nrows()");
 		//return element[pos];
 		return const safeArray< T >(element[pos],0,protected_ncols);
 	};
 #else
-	/*Subscript operator*/inline T* operator[](int pos){return element[pos];};
-	/*Subscript operator*/inline const T* operator[](int pos) const {return element[pos];};
+	/*Subscript operator*/inline T* operator[](unsigned long int pos){return element[pos];};
+	/*Subscript operator*/inline const T* operator[](unsigned long int pos) const {return element[pos];};
 #endif
 
 	/*Matrix multiplication*/
@@ -214,10 +216,10 @@ public:
 	/*apply a function to every element of the matrix*/
 	Matrix<T> map(T (* f)(T))
 	{
-		Matrix<T> result(protected_nrows,protected_ncols);
+	  Matrix<T> result((int)protected_nrows,(int)protected_ncols);
 		int i,j;
-		for(i=0;i<protected_nrows;i++)
-			for(j=0;j<protected_ncols;j++)
+		for(i=0;i<(int)protected_nrows;i++)
+		  for(j=0;j<(int)protected_ncols;j++)
 				result[i][j] = f(element[i][j]);
 		return result;
 	}
