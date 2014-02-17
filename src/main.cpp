@@ -45,6 +45,9 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-multithread                   true or false (default)   Enable OpenMP parallel code. Overhead may cancel out gains." << endl;
 		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
 		errTxt << "-compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file." << endl;
+		errTxt << "-initial_rho_over_theta        value > 0 (default 0.1)   Initial value of rho/theta used in the search." << endl;
+		errTxt << "-initial_import_divergence     value > 0 (default 0.1)   Initial value of import divergence used in the search." << endl;
+		errTxt << "-initial_mean_import_length    value > 1 (default 500)   Initial value of mean import length used in the search." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -62,7 +65,7 @@ int main (const int argc, const char* argv[]) {
 	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true";
-	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3;
+	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
 	arg.add_item("correct_branch_lengths",		TP_STRING, &correct_branch_lengths);
@@ -82,6 +85,9 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("multithread",			        TP_STRING, &multithread);
 	arg.add_item("show_progress",				TP_STRING, &show_progress);
 	arg.add_item("compress_reconstructed_sites",TP_STRING, &compress_reconstructed_sites);	
+	arg.add_item("initial_rho_over_theta",		TP_DOUBLE, &initial_rho_over_theta);	
+	arg.add_item("initial_mean_import_length",	TP_DOUBLE, &initial_mean_import_length);	
+	arg.add_item("initial_import_divergence",	TP_DOUBLE, &initial_import_divergence);	
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -133,6 +139,12 @@ int main (const int argc, const char* argv[]) {
 	if(MULTITHREAD) {
 		cout << "WARNING: multithreaded version not implemented, ignoring." << endl;
 	}
+	if(initial_mean_import_length<1) {
+		stringstream errTxt;
+		errTxt << "initial_mean_import_length must be greater than 1";
+		error(errTxt.str().c_str());
+	}
+	
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -289,9 +301,6 @@ int main (const int argc, const char* argv[]) {
 		if(OLD_JOINT_BRANCH_PARAM) {
 			// Prepare to correct branch lengths
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			const double initial_rho_over_theta = 0.1;
-			const double initial_mean_import_length = 500.0;
-			const double initial_import_divergence = 0.01;
 			ClonalFrameFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD);
 			vector<double> param(3+ctree.size-2);
 			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
@@ -341,9 +350,6 @@ int main (const int argc, const char* argv[]) {
 			}
 			// Prepare to correct branch lengths
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			const double initial_rho_over_theta = 0.1;
-			const double initial_mean_import_length = 500.0;
-			const double initial_import_divergence = 0.01;
 			// Minimum branch length
 			const double min_branch_length = 1.0e-7;
 			const bool USE_VITERBI = false;
@@ -401,9 +407,7 @@ int main (const int argc, const char* argv[]) {
 				}
 				const double initial_branch_length = pd/pd_den;
 				// Initial values for the other parameters
-				const double initial_rho_over_theta = 0.1;
-				const double initial_import_ratio = 0.1;			// constrained to be less than 1
-				const double initial_import_divergence = 0.1;		// multiplicative excess (excess model is mandatory), so subst_rate = mut_rate * (2+import_divergence)
+				const double initial_import_ratio = 1.0/initial_mean_import_length;			// constrained to be less than 1
 				// Minimum branch length
 				const double min_branch_length = 1.0e-7;
 				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],initial_branch_length,min_branch_length);
@@ -511,9 +515,7 @@ int main (const int argc, const char* argv[]) {
 				}
 				const double initial_branch_length = pd/pd_den;
 				// Initial values for the other parameters
-				const double initial_rho_over_theta = 0.1;
-				const double initial_import_ratio = 0.1;			// constrained to be less than 1
-				const double initial_import_divergence = 0.1;		// multiplicative excess (excess model is mandatory), so subst_rate = mut_rate * (2+import_divergence)
+				const double initial_import_ratio = 1.0/initial_mean_import_length;			// constrained to be less than 1
 				// Minimum branch length
 				const double min_branch_length = 1.0e-7;
 				// Object for the no-recombination model
@@ -588,10 +590,6 @@ int main (const int argc, const char* argv[]) {
 				substitutions_per_branch[i] = pd/pd_den;
 			}
 			// Jointly estimate the recombination parameters across branches, subject to the fixed expected number of substitutions per branch
-			// Initial values for the recombination parameters
-			const double initial_rho_over_theta = 0.1;
-			const double initial_mean_import_length = 1000.0;
-			const double initial_import_divergence = 0.01;
 			// Minimum branch length
 			const double min_branch_length = 1.0e-7;
 			ClonalFrameSingleRho cff(SINGLE_RHO_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported,substitutions_per_branch,min_branch_length);
@@ -630,9 +628,6 @@ int main (const int argc, const char* argv[]) {
 		} else {
 			// Estimate parameters with branch lengths fixed
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			const double initial_rho_over_theta = 0.1;
-			const double initial_mean_import_length = 500.0;
-			const double initial_import_divergence = 0.01;
 			ClonalFrameParameterFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD);
 			vector<double> param(3);
 			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
