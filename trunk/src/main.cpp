@@ -369,9 +369,9 @@ int main (const int argc, const char* argv[]) {
 			cout << "Import length     = " << pow(10.,param[1]) << endl;
 			cout << "Import divergence = " << pow(10.,param[2]) << endl;
 			for(i=0;i<ctree.size-2;i++) {
-				cout << "Branch length " << ctree_node_labels[i] << " = " << pow(10.,cff.branch_length[i]) << endl;
+				cout << "Branch length " << ctree_node_labels[i] << " = " << cff.branch_length[i] << endl;
 				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = pow(10.,param[3+i]);
+				ctree.node[i].edge_time = cff.branch_length[i];
 			}
 			
 			// Output the importation status
