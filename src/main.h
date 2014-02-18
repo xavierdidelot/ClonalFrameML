@@ -311,8 +311,11 @@ public:
 			param = Pow.minimize(param,powell_tolerance);
 			ML[i] = -Pow.function_minimum;
 			branch_length[i] = pow(10.,param[0]);
-			// Ensure importation status is updated correctly
+			// Ensure importation status is updated correctly (force use of viterbi algorithm)
+			const bool old_use_viterbi = cfb.use_viterbi;
+			cfb.use_viterbi = true;
 			cfb.f(param);
+			cfb.use_viterbi = old_use_viterbi;
 		}
 		double treeML = 0.0;
 		for(i=0;i<ctree.size-2;i++) {
