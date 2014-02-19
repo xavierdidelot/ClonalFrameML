@@ -196,7 +196,9 @@ int main (const int argc, const char* argv[]) {
 	// Open the Newick file and convert to internal rooted tree format, outputting the names of the tips and internal nodes
 	NewickTree newick = read_Newick(newick_file);
 	vector<string> ctree_node_labels;
-	marginal_tree ctree = (newick.root.dec.size()==2) ? convert_rooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels) : convert_unrooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels);
+	const bool is_rooted = (newick.root.dec.size()==2);
+	marginal_tree ctree = (is_rooted) ? convert_rooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels) : convert_unrooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels);
+	const int root_node = (is_rooted) ? ctree.size-1 : ctree.size-2;
 	// Open the list of sites to ignore
 	vector<bool> ignore_site(fa.lseq,false);
 	if(ignore_user_sites!="") {
@@ -301,10 +303,10 @@ int main (const int argc, const char* argv[]) {
 		if(OLD_JOINT_BRANCH_PARAM) {
 			// Prepare to correct branch lengths
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			ClonalFrameFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD);
-			vector<double> param(3+ctree.size-2);
+			ClonalFrameFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,root_node);
+			vector<double> param(3+root_node);
 			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
-			for(i=0;i<ctree.size-2;i++) param[3+i] = log10(ctree.node[i].edge_time); 
+			for(i=0;i<root_node;i++) param[3+i] = log10(ctree.node[i].edge_time); 
 			
 			// Maximize the likelihood of the parameters
 			Powell Pow(cff);
@@ -318,7 +320,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "rho/theta         = " << pow(10.,param[0]) << endl;
 			cout << "Import length     = " << pow(10.,param[1]) << endl;
 			cout << "Import divergence = " << pow(10.,param[2]) << endl;
-			for(i=0;i<ctree.size-2;i++) {
+			for(i=0;i<root_node;i++) {
 				cout << "Branch length " << ctree_node_labels[i] << " = " << pow(10.,param[3+i]) << endl;
 				// Note this is unsafe in general because the corresponding node times are not adjusted
 				ctree.node[i].edge_time = pow(10.,param[3+i]);
@@ -329,10 +331,10 @@ int main (const int argc, const char* argv[]) {
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(JOINT_BRANCH_PARAM) {
 			cout << "Beginning parameter estimation" << endl;
-			vector< vector<ImportationState> > is_imported(ctree.size-2);
+			vector< vector<ImportationState> > is_imported(root_node);
 			// Calculate the expected number of substitutions per branch according to the ancestral state reconstruction
-			vector<double> substitutions_per_branch(ctree.size-2,0);
-			for(i=0;i<ctree.size-2;i++) {
+			vector<double> substitutions_per_branch(root_node,0);
+			for(i=0;i<root_node;i++) {
 				double pd = 1.0, pd_den = 2.0;
 				const int dec_id = ctree.node[i].id;
 				const int anc_id = ctree.node[i].ancestor->id;
@@ -353,7 +355,7 @@ int main (const int argc, const char* argv[]) {
 			// Minimum branch length
 			const double min_branch_length = 1.0e-7;
 			const bool USE_VITERBI = false;
-			ClonalFrameFunctionJoint cff(USE_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,is_imported,substitutions_per_branch,min_branch_length,SHOW_PROGRESS,brent_tolerance,powell_tolerance);
+			ClonalFrameFunctionJoint cff(USE_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,is_imported,substitutions_per_branch,min_branch_length,SHOW_PROGRESS,brent_tolerance,powell_tolerance,root_node);
 			vector<double> param(3);
 			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
 			// Maximize the likelihood of the parameters
@@ -368,7 +370,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "rho/theta         = " << pow(10.,param[0]) << endl;
 			cout << "Import length     = " << pow(10.,param[1]) << endl;
 			cout << "Import divergence = " << pow(10.,param[2]) << endl;
-			for(i=0;i<ctree.size-2;i++) {
+			for(i=0;i<root_node;i++) {
 				double blen = cff.branch_length[i];
 				if(blen<min_branch_length) blen = min_branch_length;
 				cout << "Branch length " << ctree_node_labels[i] << " = " << blen << endl;
@@ -391,8 +393,8 @@ int main (const int argc, const char* argv[]) {
 			cout << "F   ratio of imported versus unimported sites                (0-1)" << endl;
 			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
 			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(ctree.size-2);
-			for(i=0;i<ctree.size-2;i++) {
+			vector< vector<ImportationState> > is_imported(root_node);
+			for(i=0;i<root_node;i++) {
 				// Crudely re-estimate branch length
 				double pd = 1.0, pd_den = 2.0;
 				const int dec_id = ctree.node[i].id;
@@ -451,7 +453,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "L   maximum log-likelihood per branch" << endl;
 			cout << "M   corrected branch length/expected number of mutations     (> 0)" << endl;
 			double ML = 0.0;
-			for(i=0;i<ctree.size-2;i++) {
+			for(i=0;i<root_node;i++) {
 				// Crudely re-estimate branch length
 				double pd = 1.0, pd_den = 2.0;
 				const int dec_id = ctree.node[i].id;
@@ -501,8 +503,8 @@ int main (const int argc, const char* argv[]) {
 			cout << "F   ratio of imported versus unimported sites                (0-1)" << endl;
 			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
 			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(ctree.size-2);
-			for(i=0;i<ctree.size-2;i++) {
+			vector< vector<ImportationState> > is_imported(root_node);
+			for(i=0;i<root_node;i++) {
 				// Crudely re-estimate branch length
 				double pd = 1.0, pd_den = 2.0;
 				const int dec_id = ctree.node[i].id;
@@ -575,10 +577,10 @@ int main (const int argc, const char* argv[]) {
 			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
 			// For computational efficiency, branch lengths are set equal to the number of substitutions implied by the ancestral state reconstruction
 			cout << "Beginning parameter estimation" << endl;
-			vector< vector<ImportationState> > is_imported(ctree.size-2);
+			vector< vector<ImportationState> > is_imported(root_node);
 			// Constrain the expected number of substitutions per branch according to the ancestral state reconstruction
-			vector<double> substitutions_per_branch(ctree.size-2,0);
-			for(i=0;i<ctree.size-2;i++) {
+			vector<double> substitutions_per_branch(root_node,0);
+			for(i=0;i<root_node;i++) {
 				double pd = 1.0, pd_den = 2.0;
 				const int dec_id = ctree.node[i].id;
 				const int anc_id = ctree.node[i].ancestor->id;
@@ -597,7 +599,7 @@ int main (const int argc, const char* argv[]) {
 			// Jointly estimate the recombination parameters across branches, subject to the fixed expected number of substitutions per branch
 			// Minimum branch length
 			const double min_branch_length = 1.0e-7;
-			ClonalFrameSingleRho cff(SINGLE_RHO_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported,substitutions_per_branch,min_branch_length);
+			ClonalFrameSingleRho cff(SINGLE_RHO_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported,substitutions_per_branch,min_branch_length,root_node);
 			// Setup optimization function
 			Powell Pow(cff);
 			Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
@@ -617,7 +619,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "mean import length     = " << final_mean_import_length << endl;
 			cout << "mean import divergence = " << final_import_divergence << endl;			
 			// Ensure importation status is updated correctly
-			for(i=0;i<ctree.size-2;i++) {
+			for(i=0;i<root_node;i++) {
 				const int dec_id = ctree.node[i].id;
 				const int anc_id = ctree.node[i].ancestor->id;
 				double final_branch_length = cff.get_branch_length(substitutions_per_branch[i],param);
@@ -634,7 +636,7 @@ int main (const int argc, const char* argv[]) {
 		} else {
 			// Estimate parameters with branch lengths fixed
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			ClonalFrameParameterFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD);
+			ClonalFrameParameterFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,root_node);
 			vector<double> param(3);
 			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
 			
@@ -656,7 +658,7 @@ int main (const int argc, const char* argv[]) {
 			
 			// Now estimate branch lengths
 			cout << "Beginning branch optimization:" << endl;
-			for(i=0;i<ctree.size-2;i++) {
+			for(i=0;i<root_node;i++) {
 				ClonalFrameBranchLengthFunction cfblf(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,rho_over_theta,mean_import_length,import_divergence,MULTITHREAD);
 				vector<double> paramBL(1,log10(ctree.node[i].edge_time));
 				Powell PowBL(cfblf);

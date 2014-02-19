@@ -180,11 +180,12 @@ public:
 	bool excess_divergence_model;
 	clock_t last_update;
 	const bool multithread;
+	const int root_node;
 public:
 	ClonalFrameFunction(const marginal_tree &_ctree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-							  const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread) : 
-	ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), is_imported(_ctree.size-2), ML(_ctree.size-2), neval(0), 
-	excess_divergence_model(_excess_divergence_model), last_update(clock()), multithread(_multithread) {};
+							  const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, const int _root_node) : 
+	ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), is_imported(_root_node), ML(_root_node), neval(0), 
+	excess_divergence_model(_excess_divergence_model), last_update(clock()), multithread(_multithread), root_node(_root_node) {};
 	double f(const vector<double>& x) {
 		++neval;
 		if((clock()-last_update)/CLOCKS_PER_SEC>60.0) {
@@ -192,7 +193,7 @@ public:
 			last_update = clock();
 		}
 		// Process parameters
-		const int nparam = ctree.size-2+3;
+		const int nparam = root_node+3;
 		if(x.size()!=nparam) {
 			stringstream errTxt;
 			errTxt << "ClonalFrameFunction::f(): " << nparam << " arguments required";
@@ -203,7 +204,7 @@ public:
 		const double import_divergence_base = pow(10.,x[2]);
 		// Calculate likelihood
 		int i;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			const double branch_length = pow(10.,x[3+i]);
 			const double import_divergence = (excess_divergence_model) ? import_divergence_base + branch_length : import_divergence_base;
 			const mt_node &node = ctree.node[i];
@@ -213,10 +214,10 @@ public:
 		}
 		// Separate: not included in the parallelizable code
 		mydouble treeML = 1.0;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			treeML *= ML[i];
 		}
-		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood (will be 1)
+		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood if it is a root node (will be 1)
 		// Return minus log-likelihood
 		return -treeML.LOG();
 	}
@@ -282,11 +283,12 @@ public:
 	bool coutput;
 	double brent_tolerance;
 	double powell_tolerance;
+	const int root_node;
 public:
 	ClonalFrameFunctionJoint(const bool _use_viterbi, const marginal_tree &_ctree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-						const vector<double> &_pi, bool _excess_divergence_model, vector< vector<ImportationState> > &_is_imported, vector<double> &_substitutions_per_branch, const double _min_branch_length, const bool _coutput, const double _brent_tolerance, const double _powell_tolerance) : 
-	use_viterbi(_use_viterbi), ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), ML(_ctree.size-2), branch_length(_ctree.size-2), neval(0), 
-	excess_divergence_model(_excess_divergence_model), last_update(clock()), is_imported(_is_imported), substitutions_per_branch(_substitutions_per_branch), min_branch_length(_min_branch_length), coutput(_coutput), brent_tolerance(_brent_tolerance), powell_tolerance(_powell_tolerance) {};
+						const vector<double> &_pi, bool _excess_divergence_model, vector< vector<ImportationState> > &_is_imported, vector<double> &_substitutions_per_branch, const double _min_branch_length, const bool _coutput, const double _brent_tolerance, const double _powell_tolerance, const int _root_node) : 
+	use_viterbi(_use_viterbi), ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), ML(_root_node), branch_length(_root_node), neval(0), 
+	excess_divergence_model(_excess_divergence_model), last_update(clock()), is_imported(_is_imported), substitutions_per_branch(_substitutions_per_branch), min_branch_length(_min_branch_length), coutput(_coutput), brent_tolerance(_brent_tolerance), powell_tolerance(_powell_tolerance), root_node(_root_node) {};
 	double f(const vector<double>& x) {
 		++neval;
 		if(coutput && (clock()-last_update)/CLOCKS_PER_SEC>60.0) {
@@ -300,8 +302,8 @@ public:
 		const double import_divergence = get_import_divergence(x);
 		// Calculate likelihood
 		int i;
-		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood (will be 1)
-		for(i=0;i<ctree.size-2;i++) {
+		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood if a root node (will be 1)
+		for(i=0;i<root_node;i++) {
 			const mt_node &node = ctree.node[i];
 			ClonalFrameJointBranchLengthFunction cfb(use_viterbi,node,node_nuc,iscompat,ipat,kappa,pi,excess_divergence_model,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
 			// Maximize the branch-specific likelihood with respect to the branch length
@@ -319,7 +321,7 @@ public:
 			cfb.use_viterbi = old_use_viterbi;
 		}
 		double treeML = 0.0;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			treeML += ML[i];
 		}
 		// Return minus log-likelihood
@@ -383,13 +385,14 @@ public:
 	vector<double> adjusted_pmut;
 	const double min_branch_length;
 	vector<double> branch_length_hat;
+	const int root_node;
 public:
 	ClonalFrameApproxBranchLengthFunction(const marginal_tree &_ctree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-						const vector<double> &_pi, bool _excess_divergence_model, const double _min_branch_length=0.0000001) : 
-	ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), is_imported(_ctree.size-2), ML(_ctree.size-2), neval(0), 
-	excess_divergence_model(_excess_divergence_model), last_update(clock()), adjusted_pmut(_ctree.size-2), min_branch_length(_min_branch_length), branch_length_hat(_ctree.size-2) {
+						const vector<double> &_pi, bool _excess_divergence_model, const int _root_node, const double _min_branch_length=0.0000001) : 
+	ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), is_imported(_root_node), ML(_root_node), neval(0), 
+	excess_divergence_model(_excess_divergence_model), last_update(clock()), adjusted_pmut(_root_node), min_branch_length(_min_branch_length), root_node(_root_node), branch_length_hat(_root_node) {
 		int i,j;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			const int dec = i;
 			const int anc = ctree.node[i].ancestor->id;
 			vector<double> n(4,0.0);
@@ -425,7 +428,7 @@ public:
 		const double import_divergence_base = pow(10.,x[2]);
 		// Calculate likelihood
 		int i;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			// Fast approximate estimate of branch length
 			branch_length_hat[i] = (1/mean_import_length*adjusted_pmut[i])/(1/mean_import_length+rho_over_theta*(import_divergence_base-adjusted_pmut[i]));
 			if(branch_length_hat[i]<min_branch_length) branch_length_hat[i]=min_branch_length;
@@ -436,7 +439,7 @@ public:
 		}
 		// Separate: not included in the parallelizable code
 		mydouble treeML = 1.0;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			treeML *= ML[i];
 		}
 		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood (will be 1)
@@ -462,11 +465,12 @@ public:
 	bool excess_divergence_model;
 	clock_t last_update;
 	bool multithread;
+	const int root_node;
 public:
 	ClonalFrameParameterFunction(const marginal_tree &_ctree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-								 const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread) : 
-	ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), is_imported(_ctree.size-2), ML(_ctree.size-2), neval(0), 
-	excess_divergence_model(_excess_divergence_model), last_update(clock()), multithread(_multithread) {};
+								 const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, const int _root_node) : 
+	ctree(_ctree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), is_imported(_root_node), ML(_root_node), neval(0), 
+	excess_divergence_model(_excess_divergence_model), last_update(clock()), multithread(_multithread), root_node(_root_node) {};
 	double f(const vector<double>& x) {
 		++neval;
 		if((clock()-last_update)/CLOCKS_PER_SEC>60.0) {
@@ -485,7 +489,7 @@ public:
 		const double import_divergence_base = pow(10.,x[2]);
 		// Calculate likelihood
 		int i;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			const mt_node &node = ctree.node[i];
 			const double branch_length = node.edge_time;
 			const double import_divergence = (excess_divergence_model) ? import_divergence_base + branch_length : import_divergence_base;
@@ -495,10 +499,10 @@ public:
 		}
 		// Separate: not included in the parallelizable code
 		mydouble treeML = 1.0;
-		for(i=0;i<ctree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			treeML *= ML[i];
 		}
-		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood (will be 1)
+		// The penultimate node (i==ctree.size-2) is a special case: do not try to optimize its branch length nor calculate its likelihood if a root node (will be 1)
 		// Return minus log-likelihood
 		return -treeML.LOG();
 	}
@@ -643,11 +647,12 @@ public:
 	const bool multithread;
 	vector<double> &substitutions_per_branch;
 	double min_branch_length;
+	const int root_node;
 public:
 	ClonalFrameSingleRho(const bool _use_viterbi, const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-									const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, vector< vector<ImportationState> > &_is_imported, vector<double> &_substitutions_per_branch, const double _min_branch_length) : 
+									const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, vector< vector<ImportationState> > &_is_imported, vector<double> &_substitutions_per_branch, const double _min_branch_length, const int _root_node) : 
 	use_viterbi(_use_viterbi), tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), neval(0),
-	excess_divergence_model(_excess_divergence_model), multithread(_multithread), is_imported(_is_imported), substitutions_per_branch(_substitutions_per_branch), min_branch_length(_min_branch_length) {
+	excess_divergence_model(_excess_divergence_model), multithread(_multithread), is_imported(_is_imported), substitutions_per_branch(_substitutions_per_branch), min_branch_length(_min_branch_length), root_node(_root_node) {
 		if(excess_divergence_model) error("ClonalFrameSingleRho::f(): excess_divergence_model not implemented");	
 	};
 	double f(const vector<double>& x) {
@@ -659,7 +664,7 @@ public:
 		const double import_divergence = get_import_divergence(x);
 		ML = 0.0;
 		int i;
-		for(i=0;i<tree.size-2;i++) {
+		for(i=0;i<root_node;i++) {
 			const mt_node &node = tree.node[i];
 			const double branch_length = get_branch_length(substitutions_per_branch[i],x);
 			const int dec_id = node.id;
