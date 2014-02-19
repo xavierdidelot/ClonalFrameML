@@ -369,9 +369,11 @@ int main (const int argc, const char* argv[]) {
 			cout << "Import length     = " << pow(10.,param[1]) << endl;
 			cout << "Import divergence = " << pow(10.,param[2]) << endl;
 			for(i=0;i<ctree.size-2;i++) {
-				cout << "Branch length " << ctree_node_labels[i] << " = " << cff.branch_length[i] << endl;
+				double blen = cff.branch_length[i];
+				if(blen<min_branch_length) blen = min_branch_length;
+				cout << "Branch length " << ctree_node_labels[i] << " = " << blen << endl;
 				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = cff.branch_length[i];
+				ctree.node[i].edge_time = blen;
 			}
 			
 			// Output the importation status
@@ -425,7 +427,8 @@ int main (const int argc, const char* argv[]) {
 				param.push_back(log10(initial_branch_length/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
 				param = Pow.minimize(param,powell_tolerance);
 				// Ensure importation status is updated correctly
-				const double final_branch_length = pow(10.,param[3]);
+				double final_branch_length = pow(10.,param[3]);
+				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
 				const double final_rho_over_theta = pow(10.,param[0]);
 				const double final_mean_import_length = (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta;
 				const double final_import_divergence = final_branch_length*(2.0+pow(10.,param[2]));
@@ -474,7 +477,8 @@ int main (const int argc, const char* argv[]) {
 				// Estimate parameter
 				vector<double> param(1,log10(initial_branch_length));
 				param = Pow.minimize(param,powell_tolerance);
-				const double final_branch_length = pow(10.,param[0]);
+				double final_branch_length = pow(10.,param[0]);
+				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
 				// Update branch length in the tree
 				// Note this is unsafe in general because the corresponding node times are not adjusted
 				ctree.node[i].edge_time = final_branch_length;
@@ -544,7 +548,8 @@ int main (const int argc, const char* argv[]) {
 				// Test if the recombination model is a significant improvement (2 log-likelihoods per additional parameter)
 				const bool LRT_pass = (-Pow.function_minimum>-Pow0.function_minimum+6.0);
 				// Ensure importation status is updated correctly
-				const double final_branch_length = (LRT_pass) ? pow(10.,param[3]) : pow(10.,param0[0]);
+				double final_branch_length = (LRT_pass) ? pow(10.,param[3]) : pow(10.,param0[0]);
+				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
 				const double final_rho_over_theta = (LRT_pass) ? pow(10.,param[0]) : 1e-20;
 				const double final_mean_import_length = (LRT_pass) ? (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta : 1e20;
 				const double final_import_divergence = (LRT_pass) ? final_branch_length*(2.0+pow(10.,param[2])) : 1e20;
@@ -615,7 +620,8 @@ int main (const int argc, const char* argv[]) {
 			for(i=0;i<ctree.size-2;i++) {
 				const int dec_id = ctree.node[i].id;
 				const int anc_id = ctree.node[i].ancestor->id;
-				const double final_branch_length = cff.get_branch_length(substitutions_per_branch[i],param);
+				double final_branch_length = cff.get_branch_length(substitutions_per_branch[i],param);
+				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
 				// This part of the algorithm always uses the Viterbi algorithm
 				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
 				// Update branch length in the tree - this will set it equal to the number of substitutions implied by the ancestral state reconstruction
@@ -2138,6 +2144,9 @@ mydouble maximum_likelihood_ClonalFrame_branch(const int dec_id, const int anc_i
 }
 
 double marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence) {
+	// Force the mydouble version of the function to be used (defined below)
+	mydouble ret = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence);
+	return ret.LOG();
 	// Store the positions of compatible sites
 	vector<double> position(0);
 	int i,npos=0;
@@ -2186,6 +2195,54 @@ double marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id
 	// Output
 	const double loglik = log(a[0]+a[1])+sumlogsuma-(double)npos*log(ftr);
 	return loglik;
+}
+
+mydouble mydouble_marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence) {
+	// Store the positions of compatible sites
+	vector<double> position(0);
+	int i,npos=0;
+	for(i=0;i<iscompat.size();i++) {
+		if(iscompat[i]) {
+			position.push_back((double)i);
+			++npos;
+		}
+	}
+	// Define an HKY85 emission probability matrix for Unimported sites
+	static Matrix<mydouble> pemisUnimported;
+	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
+	// Define an HKY85 emission probability matrix for Imported sites
+	static Matrix<mydouble> pemisImported;
+	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
+	// Recombination parameters
+	const double recrate = rho_over_theta*branch_length;
+	const double endrecrate = 1.0/mean_import_length;
+	const double totrecrate = recrate+endrecrate;	
+	// Storage
+	mydouble aprev[2];
+	mydouble a[2];
+	// Equilibrium frequency of unimported and imported sites respectively
+	const mydouble pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
+	// Beginning at the first variable site, calculate the subsequence marginal likelihood
+	for(i=0;i<npos;i++) {
+		Nucleotide dec = node_nuc[dec_id][ipat[i]];
+		Nucleotide anc = node_nuc[anc_id][ipat[i]];
+		if(i==0) {
+			a[0] = pi[0]*pemisUnimported[anc][dec];
+			a[1] = pi[1]*  pemisImported[anc][dec];
+		} else {
+			aprev[0] = a[0];
+			aprev[1] = a[1];
+			const mydouble sumaprev = aprev[0]+aprev[1];
+			mydouble prnotrans;
+			prnotrans.setlog(-totrecrate*(position[i]-position[i-1]));
+			const mydouble prtrans = mydouble(1.0)-prnotrans;
+			a[0] = (aprev[0]*prnotrans+sumaprev*pi[0]*prtrans)*pemisUnimported[anc][dec];
+			a[1] = (aprev[1]*prnotrans+sumaprev*pi[1]*prtrans)*  pemisImported[anc][dec];
+		}
+	}
+	// Output
+	const mydouble ML = (a[0]+a[1]);
+	return ML;
 }
 
 mydouble likelihood_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<int> &pat1, const vector<int> &cpat, const double kappa, const vector<double> &pinuc, const double branch_length) {
