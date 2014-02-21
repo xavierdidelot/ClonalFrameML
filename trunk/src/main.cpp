@@ -327,7 +327,7 @@ int main (const int argc, const char* argv[]) {
 			}
 
 			// Output the importation status
-			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);	
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(JOINT_BRANCH_PARAM) {
 			cout << "Beginning parameter estimation" << endl;
@@ -379,7 +379,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			
 			// Output the importation status
-			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(RHO_PER_BRANCH_NO_LRT) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
@@ -444,7 +444,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "Log-likelihood after branch optimization is " << ML << endl;
 						
 			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(RESCALE_NO_RECOMBINATION) {
 			// Rescale the branch lengths using given sites without a model of recombination
@@ -570,7 +570,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "Log-likelihood after branch optimization is " << ML << endl;
 			
 			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
@@ -631,7 +631,7 @@ int main (const int argc, const char* argv[]) {
 				ctree.node[i].edge_time = substitutions_per_branch[i];
 			}
 			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else {
 			// Estimate parameters with branch lengths fixed
@@ -673,7 +673,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "Log-likelihood after branch optimization is " << -cff.f(param) << endl;
 			
 			// Output the importation status
-			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str());	
+			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} 
 	}
@@ -2275,30 +2275,35 @@ bool string_to_bool(const string s, const string label) {
 	return false;
 }
 
-void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name) {
+void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node) {
 	ofstream fout(file_name);
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_importation_status(): could not open file " << file_name << " for writing";
 		error(errTxt.str().c_str());
 	}
-	write_importation_status(imported,all_node_names,isBLC,compat,fout);
+	write_importation_status(imported,all_node_names,isBLC,compat,fout,root_node);
 	fout.close();
 }
 
-void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout) {
+void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node) {
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_importation_status(): could not open file stream for writing";
 		error(errTxt.str().c_str());
 	}
-	if(imported.size()!=all_node_names.size()-2) {
+	if(imported.size()!=root_node) {
 		stringstream errTxt;
-		errTxt << "write_importation_status(): number of lineages (" << imported.size() << ") does not equal the number of node labels (" << all_node_names.size() << ") minus two";
+		errTxt << "write_importation_status(): number of lineages (" << imported.size() << ") does not equal the number of non-root node labels (" << root_node << ")";
+		error(errTxt.str().c_str());
+	}
+	if(all_node_names.size()<root_node) {
+		stringstream errTxt;
+		errTxt << "write_importation_status(): number of non-root lineages (" << root_node << ") exceeds the number of node labels (" << all_node_names.size() << ")";
 		error(errTxt.str().c_str());
 	}
 	int i,pos;
-	for(i=0;i<imported.size();i++) {
+	for(i=0;i<root_node;i++) {
 		fout << ">" << all_node_names[i] << endl;
 		int k = 0;
 		for(pos=0;pos<isBLC.size();pos++) {
@@ -2319,32 +2324,37 @@ void write_importation_status(vector< vector<ImportationState> > &imported, vect
 	}	
 }
 
-void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name) {
+void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node) {
 	ofstream fout(file_name);
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_importation_status_intervals(): could not open file " << file_name << " for writing";
 		error(errTxt.str().c_str());
 	}
-	write_importation_status_intervals(imported,all_node_names,isBLC,compat,fout);
+	write_importation_status_intervals(imported,all_node_names,isBLC,compat,fout,root_node);
 	fout.close();
 }
 
-void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout) {
+void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node) {
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_importation_status_intervals(): could not open file stream for writing";
 		error(errTxt.str().c_str());
 	}
-	if(imported.size()!=all_node_names.size()-2) {
+	if(imported.size()!=root_node) {
 		stringstream errTxt;
-		errTxt << "write_importation_status_intervals(): number of lineages (" << imported.size() << ") does not equal the number of node labels (" << all_node_names.size() << ") minus two";
+		errTxt << "write_importation_status_intervals(): number of lineages (" << imported.size() << ") does not equal the number of non-root node labels (" << root_node << ")";
+		error(errTxt.str().c_str());
+	}
+	if(all_node_names.size()<root_node) {
+		stringstream errTxt;
+		errTxt << "write_importation_status_intervals(): number of non-root lineages (" << root_node << ") exceeds the number of node labels (" << all_node_names.size() << ")";
 		error(errTxt.str().c_str());
 	}
 	const char tab = '\t';
 	fout << "Node" << tab << "Beg" << tab << "End" << endl;
 	int i,pos;
-	for(i=0;i<imported.size();i++) {
+	for(i=0;i<root_node;i++) {
 		// Identify intervals
 		bool in_interval = (imported[i][0]==Imported);
 		int interval_beg = 0;
