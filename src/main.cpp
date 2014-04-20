@@ -49,6 +49,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-initial_import_divergence     value > 0 (default 0.1)   Initial value of import divergence used in the search." << endl;
 		errTxt << "-initial_mean_import_length    value > 1 (default 500)   Initial value of mean import length used in the search." << endl;
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
+		errTxt << "-laplace_approx                true or false (default)   In rho_per_branch model approximate the joint posterior." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -60,12 +61,13 @@ int main (const int argc, const char* argv[]) {
 	string fasta_out_file = string(out_file) + ".ML_sequence.fasta";
 	string xref_out_file = string(out_file) + ".position_cross_reference.txt";
 	string import_out_file = string(out_file) + ".importation_status.txt";
+	string laplace_out_file = string(out_file) + ".laplace.txt";
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
 	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
-	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true";
+	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
@@ -90,6 +92,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("initial_mean_import_length",	TP_DOUBLE, &initial_mean_import_length);	
 	arg.add_item("initial_import_divergence",	TP_DOUBLE, &initial_import_divergence);	
 	arg.add_item("min_branch_length",			TP_DOUBLE, &global_min_branch_length);
+	arg.add_item("laplace_approx",				TP_STRING, &laplace_approx);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -107,6 +110,7 @@ int main (const int argc, const char* argv[]) {
 	bool MULTITHREAD					= string_to_bool(multithread,					"multithread");
 	bool SHOW_PROGRESS					= string_to_bool(show_progress,					"show_progress");
 	bool COMPRESS_RECONSTRUCTED_SITES	= string_to_bool(compress_reconstructed_sites,	"compress_reconstructed_sites");
+	bool LAPLACE_APPROX					= string_to_bool(laplace_approx,				"laplace_approx");
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -148,6 +152,9 @@ int main (const int argc, const char* argv[]) {
 	}
 	if(global_min_branch_length<=0.0) {
 		error("Minimum branch length must be positive");
+	}
+	if(LAPLACE_APPROX && !(RHO_PER_BRANCH)) {
+		error("Laplace approximation only applied under rho per branch model");
 	}
 	
 	
@@ -509,6 +516,12 @@ int main (const int argc, const char* argv[]) {
 			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
 			double ML = 0.0;
 			vector< vector<ImportationState> > is_imported(root_node);
+			vector< vector<double> > laplaceMLE(0);
+			vector< Matrix<double> > laplaceQ(0);
+			if(LAPLACE_APPROX) {
+				laplaceMLE = vector< vector<double> >(root_node,vector<double>(4));
+				laplaceQ = vector< Matrix<double> >(root_node,Matrix<double>(4,4));
+			}
 			for(i=0;i<root_node;i++) {
 				// Crudely re-estimate branch length
 				double pd = 1.0, pd_den = 2.0;
@@ -552,6 +565,35 @@ int main (const int argc, const char* argv[]) {
 				const double import_divergence = pow(10.,param[2]);
 				param.push_back(log10(pow(10.,param0[0])/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
 				param = Pow.minimize(param,powell_tolerance);
+				// Approximate the likelihood by a multivariate Gaussian
+				if(LAPLACE_APPROX) {
+					laplaceMLE[i] = param;
+					// Interval over which to numerically compute second derivatives
+					const double h = 1.0e-9;
+					vector<double> paramQ;
+					double calcQ;
+					int k;
+					for(j=0;j<4;j++) {
+						for(k=0;k<j;k++) {
+							paramQ = param; paramQ[j] += h; paramQ[k] += h;
+							calcQ = cff.f(paramQ);
+							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+							calcQ -= cff.f(paramQ);
+							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
+							calcQ -= cff.f(paramQ);
+							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
+							calcQ += cff.f(paramQ);
+							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+						}
+						paramQ = param; paramQ[j] += 2.0*h;
+						calcQ = cff.f(paramQ);
+						paramQ = param; paramQ[j] -= 2.0*h;
+						calcQ += cff.f(paramQ);
+						paramQ = param;
+						calcQ -= 2.0*cff.f(paramQ);
+						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
+					}
+				}
 				// Test if the recombination model is a significant improvement (2 log-likelihoods per additional parameter)
 				const bool LRT_pass = (-Pow.function_minimum>-Pow0.function_minimum+6.0);
 				// Ensure importation status is updated correctly
@@ -577,6 +619,31 @@ int main (const int argc, const char* argv[]) {
 			// Output the importation status
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
+			// Output the Laplace approximation
+			if(LAPLACE_APPROX) {
+				int j,k;
+				ofstream lout(laplace_out_file.c_str());
+				lout << "Branch";
+				for(j=0;j<4;j++) lout << "\t" << "P" << j;
+				for(j=0;j<4;j++) {
+					for(k=0;k<4;k++) {
+						lout << "\t" << "Q" << j << k;
+					}
+				}
+				lout << endl;
+				for(i=0;i<root_node;i++) {
+					lout << ctree_node_labels[i];
+					for(j=0;j<4;j++) lout << "\t" << laplaceMLE[i][j];
+					for(j=0;j<4;j++) {
+						for(k=0;k<4;k++) {
+							lout << "\t" << laplaceQ[i][j][k];
+						}
+					}
+					lout << endl;
+				}
+				lout.close();
+				cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
+			}
 		} else if(SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
 			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
