@@ -569,28 +569,30 @@ int main (const int argc, const char* argv[]) {
 				if(LAPLACE_APPROX) {
 					laplaceMLE[i] = param;
 					// Interval over which to numerically compute second derivatives
-					const double h = 1.0e-9;
+					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
+					const double h = 0.1;
 					vector<double> paramQ;
 					double calcQ;
+					// The maximum log-likelihood
+					const double calcQ0 = -cff.f(param);
 					int k;
 					for(j=0;j<4;j++) {
 						for(k=0;k<j;k++) {
 							paramQ = param; paramQ[j] += h; paramQ[k] += h;
-							calcQ = cff.f(paramQ);
-							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-							calcQ -= cff.f(paramQ);
+							calcQ = -cff.f(paramQ);
+							paramQ = -param; paramQ[j] += h; paramQ[k] -= h;
+							calcQ -= -cff.f(paramQ);
 							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-							calcQ -= cff.f(paramQ);
+							calcQ -= -cff.f(paramQ);
 							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-							calcQ += cff.f(paramQ);
+							calcQ += -cff.f(paramQ);
 							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
 						}
 						paramQ = param; paramQ[j] += 2.0*h;
-						calcQ = cff.f(paramQ);
+						calcQ = -cff.f(paramQ);
 						paramQ = param; paramQ[j] -= 2.0*h;
-						calcQ += cff.f(paramQ);
-						paramQ = param;
-						calcQ -= 2.0*cff.f(paramQ);
+						calcQ += -cff.f(paramQ);
+						calcQ -= 2.0*calcQ0;
 						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 					}
 				}
