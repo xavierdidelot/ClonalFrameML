@@ -580,7 +580,7 @@ int main (const int argc, const char* argv[]) {
 						for(k=0;k<j;k++) {
 							paramQ = param; paramQ[j] += h; paramQ[k] += h;
 							calcQ = -cff.f(paramQ);
-							paramQ = -param; paramQ[j] += h; paramQ[k] -= h;
+							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
 							calcQ -= -cff.f(paramQ);
 							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
 							calcQ -= -cff.f(paramQ);
