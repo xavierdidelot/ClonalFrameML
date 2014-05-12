@@ -150,6 +150,12 @@ int main (const int argc, const char* argv[]) {
 		warning(wrnTxt.str().c_str());
 		EXCESS_DIVERGENCE_MODEL = true;
 	}
+	if(!EXCESS_DIVERGENCE_MODEL && MCMC_PER_BRANCH) {
+		stringstream wrnTxt;
+		wrnTxt << "mcmc_per_branch implies excess_divergence_model";
+		warning(wrnTxt.str().c_str());
+		EXCESS_DIVERGENCE_MODEL = true;
+	}
 	if(EXCESS_DIVERGENCE_MODEL && (SINGLE_RHO_FORWARD || SINGLE_RHO_VITERBI)) {
 		stringstream errTxt;
 		errTxt << "single_rho not implemented under excess_divergence_model";
