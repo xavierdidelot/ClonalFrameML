@@ -50,6 +50,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-initial_mean_import_length    value > 1 (default 500)   Initial value of mean import length used in the search." << endl;
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-laplace_approx                true or false (default)   In rho_per_branch model approximate the joint posterior." << endl;
+		errTxt << "-mcmc_per_branch               true or false (default)   Estimate by MCMC recombination parameters for each branch." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -62,12 +63,22 @@ int main (const int argc, const char* argv[]) {
 	string xref_out_file = string(out_file) + ".position_cross_reference.txt";
 	string import_out_file = string(out_file) + ".importation_status.txt";
 	string laplace_out_file = string(out_file) + ".laplace.txt";
+	string mcmc0_out_file = string(out_file) + ".mcmc0.txt";
+	string mcmc1_out_file = string(out_file) + ".mcmc1.txt";
+	string mcmc2_out_file = string(out_file) + ".mcmc2.txt";
+	string mcmc3_out_file = string(out_file) + ".mcmc3.txt";
+	string prop0_out_file = string(out_file) + ".prop0.txt";
+	string prop1_out_file = string(out_file) + ".prop1.txt";
+	string prop2_out_file = string(out_file) + ".prop2.txt";
+	string prop3_out_file = string(out_file) + ".prop3.txt";
+	string loglik_out_file = string(out_file) + ".loglik.txt";
+	string loglik_prop_out_file = string(out_file) + ".loglik_prop.txt";
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
 	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
-	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false";
+	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
@@ -93,6 +104,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("initial_import_divergence",	TP_DOUBLE, &initial_import_divergence);	
 	arg.add_item("min_branch_length",			TP_DOUBLE, &global_min_branch_length);
 	arg.add_item("laplace_approx",				TP_STRING, &laplace_approx);
+	arg.add_item("mcmc_per_branch",				TP_STRING, &mcmc_per_branch);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -111,6 +123,7 @@ int main (const int argc, const char* argv[]) {
 	bool SHOW_PROGRESS					= string_to_bool(show_progress,					"show_progress");
 	bool COMPRESS_RECONSTRUCTED_SITES	= string_to_bool(compress_reconstructed_sites,	"compress_reconstructed_sites");
 	bool LAPLACE_APPROX					= string_to_bool(laplace_approx,				"laplace_approx");
+	bool MCMC_PER_BRANCH				= string_to_bool(mcmc_per_branch,				"mcmc_per_branch");
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -121,12 +134,12 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "powell_tolerance value out of range (0,0.1], default 0.001";
 		error(errTxt.str().c_str());
 	}
-	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION) + (int)SINGLE_RHO_VITERBI + (int)SINGLE_RHO_FORWARD>1) {
+	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION) + (int)SINGLE_RHO_VITERBI + (int)SINGLE_RHO_FORWARD + (int)MCMC_PER_BRANCH>1) {
 		stringstream errTxt;
-		errTxt << "joint_branch_param, rho_per_branch, rho_per_branch_no_lrt, rescale_no_recombination, single_rho_viterbi and single_rho_forward are mutually incompatible";
+		errTxt << "joint_branch_param, rho_per_branch, rho_per_branch_no_lrt, rescale_no_recombination, single_rho_viterbi, single_rho_forward and mcmc_per_branch are mutually incompatible";
 		error(errTxt.str().c_str());
 	}
-	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION || SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD) && !CORRECT_BRANCH_LENGTHS) {
+	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION || SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD || MCMC_PER_BRANCH) && !CORRECT_BRANCH_LENGTHS) {
 		stringstream wrnTxt;
 		wrnTxt << "branch correction options will be ignored because correct_branch_lengths=false";
 		warning(wrnTxt.str().c_str());
@@ -646,6 +659,132 @@ int main (const int argc, const char* argv[]) {
 				lout.close();
 				cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
 			}
+		} else if(MCMC_PER_BRANCH) {
+			// For a given branch, infer by MCMC importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
+			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
+			cout << "B   uncorrected branch length" << endl;
+			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
+			cout << "R   expected number of recombination imports per branch      (> 0)" << endl;
+			cout << "F   ratio of imported versus unimported sites                (0-1)" << endl;
+			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
+			double ML = 0.0;
+			vector< vector<ImportationState> > is_imported(root_node);
+			// Open files for writing
+			vector<ofstream*> mout(4,NULL);
+			vector<ofstream*> pout(4,NULL);
+			mout[0] = new ofstream(mcmc0_out_file.c_str());
+			mout[1] = new ofstream(mcmc1_out_file.c_str());
+			mout[2] = new ofstream(mcmc2_out_file.c_str());
+			mout[3] = new ofstream(mcmc3_out_file.c_str());
+			pout[0] = new ofstream(prop0_out_file.c_str());
+			pout[1] = new ofstream(prop1_out_file.c_str());
+			pout[2] = new ofstream(prop2_out_file.c_str());
+			pout[3] = new ofstream(prop3_out_file.c_str());
+			ofstream lout(loglik_out_file.c_str());
+			ofstream lpout(loglik_prop_out_file.c_str());
+			// For each branch
+			int j,k;
+			for(i=0;i<root_node;i++) {
+				// Crudely re-estimate branch length
+				double pd = 1.0, pd_den = 2.0;
+				const int dec_id = ctree.node[i].id;
+				const int anc_id = ctree.node[i].ancestor->id;
+				for(j=0,k=0;j<isBLC.size();j++) {
+					if(isBLC[j]) {
+						Nucleotide dec = node_nuc[dec_id][ipat[k]];
+						Nucleotide anc = node_nuc[anc_id][ipat[k]];
+						if(dec!=anc) ++pd;
+						++pd_den;
+						++k;
+					}
+				}
+				const double initial_branch_length = pd/pd_den;
+				// Initial values for the other parameters
+				const double initial_import_ratio = 1.0/initial_mean_import_length;			// constrained to be less than 1
+				// Minimum branch length
+				const double min_branch_length = global_min_branch_length;
+				// Object for the per-branch recombination model
+				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],initial_branch_length,min_branch_length);
+				vector<double> param;
+				param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio)); param[2] = log10(initial_import_divergence);
+				const double import_ratio = 1.0/(1.0+pow(10.,-param[1]));
+				const double import_divergence = pow(10.,param[2]);
+				param.push_back(initial_branch_length/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence)));
+				// Output preamble
+				for(j=0;j<4;j++) *mout[j] << ctree.node[i].id;
+				for(j=0;j<4;j++) *pout[j] << ctree.node[i].id;
+				lout << ctree.node[i].id;
+				lpout << ctree.node[i].id;
+				// Do MCMC
+				int iter;
+				const int niter = 1000;
+				double loglik = cff.f(param);
+				double proposal_sd[4] = {0.5,0.5,0.5,0.5};
+				for(iter=0;iter<niter;iter++) {
+					for(j=0;j<4;j++) {
+						vector<double> new_param = param;
+						new_param[j] += ran.normal(0,proposal_sd[j]);
+						const double new_loglik = cff.f(new_param);
+						const double alpha = new_loglik-loglik;
+						const bool accept = alpha>=0.0 || alpha>=log(ran.U());
+						if(accept) {
+							// Accept
+							param = new_param;
+							loglik = new_loglik;
+						} else {
+							// Reject (do nothing)
+						}
+						// Record
+						if(iter>=0 && (iter%1)==0) {
+							*mout[j] << "\t" << param[j];
+							*pout[j] << "\t" << new_param[j];
+							lout << "\t" << loglik;
+							lpout << "\t" << new_loglik;
+						}
+					}
+				}
+				// End of line
+				for(j=0;j<4;j++) *mout[j] << endl;
+				for(j=0;j<4;j++) *pout[j] << endl;
+				lout << endl;
+				lpout << endl;
+				
+/*				// NOT YET IMPLEMENTED
+				// Ensure importation status is updated correctly
+				double final_branch_length = (LRT_pass) ? pow(10.,param[3]) : pow(10.,param0[0]);
+				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
+				const double final_rho_over_theta = (LRT_pass) ? pow(10.,param[0]) : 1e-20;
+				const double final_mean_import_length = (LRT_pass) ? (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta : 1e20;
+				const double final_import_divergence = (LRT_pass) ? final_branch_length*(2.0+pow(10.,param[2])) : 1e20;
+				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
+				// Update branch length in the tree
+				// Note this is unsafe in general because the corresponding node times are not adjusted
+				ctree.node[i].edge_time = final_branch_length;
+				if(LRT_pass) {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "  L = " << -Pow.function_minimum << "* M = " << final_branch_length << " R = " << pow(10.,param[0]+param[3]) << " F = " << 1.0/(1.0+pow(10.,-param[1])) << " E = " << final_branch_length*(1.0+pow(10.,param[2])) << endl;
+					ML += -Pow.function_minimum;
+				} else {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "* L = " << -Pow.function_minimum << "  M = " << final_branch_length << endl;
+					ML += -Pow0.function_minimum;
+				}
+*/
+			}
+			cout << "Log-likelihood after branch optimization is " << ML << endl;
+			// Close files
+			for(j=0;j<4;j++) {
+				mout[j]->close();
+				delete mout[j];
+				pout[j]->close();
+				delete pout[j];
+			}
+			lout.close();
+			lpout.close();
+			
+			// NOT YET IMPLEMENTED
+/*			// Output the importation status
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
+			cout << "Wrote inferred importation status to " << import_out_file << endl;
+ */
 		} else if(SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
 			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence

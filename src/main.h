@@ -34,6 +34,7 @@
 #include <argumentwizard.h>
 #include <time.h>
 #include <omp.h>
+#include <random.h>
 
 using std::cout;
 using myutils::NewickTree;
@@ -41,6 +42,9 @@ using std::stringstream;
 using myutils::error;
 using myutils::ArgumentWizard;
 using myutils::DATA_TYPE;
+
+// Global definition of random number generator
+Random ran;
 
 enum Nucleotide {Adenine=0, Guanine, Cytosine, Thymine, N_ambiguous};
 enum ImportationState {Unimported=0, Imported};
@@ -593,13 +597,13 @@ public:
 		ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
 		// 120514: Hard-coded prior
 		// Mean of (-1, 3, 0.05), precision of 1*I_3. Only compute up to normalizing constant:
-		double logprior = 0.0;
-		double prior_mean[3] = {-1.0, 3.0, 0.05};
-		int i,j;
-		for(i=0;i<3;i++) {
-			logprior -= 0.5*pow(prior_mean[i]-x[i],2.0)*1.0;
-		}
-		ML += logprior;
+		//double logprior = 0.0;
+		//double prior_mean[3] = {-1.0, 3.0, 0.05};
+		//int i,j;
+		//for(i=0;i<3;i++) {
+		//	logprior -= 0.5*pow(prior_mean[i]-x[i],2.0)*1.0;
+		//}
+		//ML += logprior;
 		return -ML;
 	}
 };
