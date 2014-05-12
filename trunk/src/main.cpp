@@ -711,11 +711,11 @@ int main (const int argc, const char* argv[]) {
 				const double min_branch_length = global_min_branch_length;
 				// Object for the per-branch recombination model
 				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],initial_branch_length,min_branch_length);
-				vector<double> param;
+				vector<double> param(4);
 				param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio)); param[2] = log10(initial_import_divergence);
 				const double import_ratio = 1.0/(1.0+pow(10.,-param[1]));
 				const double import_divergence = pow(10.,param[2]);
-				param.push_back(initial_branch_length/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence)));
+				param[3] = (initial_branch_length/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence)));
 				// Output preamble
 				for(j=0;j<4;j++) *mout[j] << ctree.node[i].id;
 				for(j=0;j<4;j++) *pout[j] << ctree.node[i].id;
@@ -724,13 +724,13 @@ int main (const int argc, const char* argv[]) {
 				// Do MCMC
 				int iter;
 				const int niter = 1000;
-				double loglik = cff.f(param);
+				double loglik = -cff.f(param);
 				double proposal_sd[4] = {0.5,0.5,0.5,0.5};
 				for(iter=0;iter<niter;iter++) {
 					for(j=0;j<4;j++) {
 						vector<double> new_param = param;
 						new_param[j] += ran.normal(0,proposal_sd[j]);
-						const double new_loglik = cff.f(new_param);
+						const double new_loglik = -cff.f(new_param);
 						const double alpha = new_loglik-loglik;
 						const bool accept = alpha>=0.0 || alpha>=log(ran.U());
 						if(accept) {
