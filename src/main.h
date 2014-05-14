@@ -595,16 +595,67 @@ public:
 		//ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence,is_imported);
 		//return -ML.LOG();
 		ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
-		// 120514: Hard-coded prior
-		// Mean of (-1, 3, 0.05), precision of 1*I_3. Only compute up to normalizing constant:
-		//double logprior = 0.0;
-		//double prior_mean[3] = {-1.0, 3.0, 0.05};
-		//int i,j;
-		//for(i=0;i<3;i++) {
-		//	logprior -= 0.5*pow(prior_mean[i]-x[i],2.0)*1.0;
-		//}
-		//ML += logprior;
 		return -ML;
+	}
+};
+
+// Based on ClonalFrameRhoPerBranchFunction this class implements the posterior density function for a single branch under the ClonalFrame model
+// A parameterization is implemented that helps impose the original ClonalFrame constraint that the parameters are the same over branches
+// (except the branch length which is different for every branch).
+//			x[0]	=	log10{ rho/theta (need to check this is exactly the same as in ClonalFrame) }
+//			x[1]	=	log10{ import_length (aka 1/delta) }
+//			x[2]	=	log10{ import_divergence (aka nu) }
+//			x[3]	=	log10{ branch_length }
+// In this class, a "driving prior" is implemented. The idea is that this helps with the maximization, which is started from the mode of the driving
+// prior, and that post hoc the effect of the prior can be removed to obtain a Normal (Laplace) approximation to the likelihood. The prior used is a multi-
+// variate normal distribution with specified mean and precision matrix.
+class ClonalFrameLaplacePerBranchFunction : public PowellFunction {
+public:
+	// References to non-member variables
+	const mt_node &node;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector<ImportationState> &is_imported;
+	// True member variable
+	double ML;
+	double PR;
+	int neval;
+	const bool multithread;
+	const vector<double> prior_mean;
+	const vector<double> prior_precision;
+public:
+	ClonalFrameLaplacePerBranchFunction(const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+									const vector<double> &_pi, const bool _multithread, vector<ImportationState> &_is_imported, 
+									const vector<double> &_prior_mean, const vector<double> &_prior_precision) : 
+	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+	pi(_pi), neval(0), multithread(_multithread), is_imported(_is_imported),
+	prior_mean(_prior_mean), prior_precision(_prior_precision) {
+		if(prior_mean.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior mean must have length 4");
+		if(prior_precision.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior precision must have length 4");
+	};
+	double f(const vector<double>& x) {
+		++neval;
+		// Process parameters
+		if(x.size()!=4) error("ClonalFrameLaplacePerBranchFunction::f(): 4 arguments required");
+		const double rho_over_theta = pow(10.,x[0]);
+		const double mean_import_length = pow(10.,x[1]);
+		const double final_import_divergence = pow(10.,x[2]);
+		const double branch_length = pow(10.,x[3]);
+		const int dec_id = node.id;
+		const int anc_id = node.ancestor->id;
+		// The following constraint may be important to avoid inverting the signal of recombinant and non-recombinant sites, but for consistency with the original CF parameterization is not applied
+		//const double final_import_divergence = (excess_divergence_model) ? branch_length*(2.0 + import_divergence) : import_divergence;
+		// Calculate likelihood
+		ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+		// Calculate prior (note that this is only calculated up to a normalizing constant)
+		PR = 0.0;
+		int i;
+		for(i=0;i<4;i++) PR -= 0.5*pow(prior_mean[i]-x[i],2.0)*prior_precision[i];
+		// The optimization routine is assumed to be a minimization routine, hence minus the posterior density is returned
+		return -(ML+PR);
 	}
 };
 
