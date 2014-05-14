@@ -81,8 +81,8 @@ int main (const int argc, const char* argv[]) {
 	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
+	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
-	vector<double> driving_prior_mean(4,0.0), driving_prior_precision(4,0.0);
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
 	arg.add_item("correct_branch_lengths",		TP_STRING, &correct_branch_lengths);
@@ -108,8 +108,8 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("min_branch_length",			TP_DOUBLE, &global_min_branch_length);
 	arg.add_item("mcmc_per_branch",				TP_STRING, &mcmc_per_branch);
 	arg.add_item("laplace_approx",				TP_STRING, &laplace_approx);
-	arg.add_item("driving_prior_mean",			TP_VEC_DOUBLE, &driving_prior_mean);
-	arg.add_item("driving_prior_precision",		TP_VEC_DOUBLE, &driving_prior_precision);
+	arg.add_item("driving_prior_mean",			TP_STRING, &string_driving_prior_mean);
+	arg.add_item("driving_prior_precision",		TP_STRING, &string_driving_prior_precision);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -186,6 +186,28 @@ int main (const int argc, const char* argv[]) {
 //	if(LAPLACE_APPROX && !(RHO_PER_BRANCH)) {
 //		error("Laplace approximation only applied under rho per branch model");
 //	}
+	// Process the driving prior mean and precision
+	vector<double> driving_prior_mean(0), driving_prior_precision(0);
+	stringstream sstream_driving_prior_mean;
+	sstream_driving_prior_mean << string_driving_prior_mean;
+	int i;
+	for(i=0;i<1000;i++) {
+		if(sstream_driving_prior_mean.eof()) break;
+		double driving_prior_mean_elem;
+		sstream_driving_prior_mean >> driving_prior_mean_elem;
+		if(sstream_driving_prior_mean.fail()) error("Could not interpret value specified by driving_prior_mean");
+		driving_prior_mean.push_back(driving_prior_mean_elem);
+	}
+	if(i==1000) error("Maximum length of vector exceeded by driving_prior_mean");
+	stringstream sstream_driving_prior_precision;
+	sstream_driving_prior_precision << string_driving_prior_precision;
+	for(i=0;i<1000;i++) {
+		if(sstream_driving_prior_precision.eof()) break;
+		double driving_prior_precision_elem;
+		sstream_driving_prior_precision >> driving_prior_precision_elem;
+		if(sstream_driving_prior_precision.fail()) error("Could not interpret value specified by driving_prior_precision");
+		driving_prior_precision.push_back(driving_prior_precision_elem);
+	}
 	if(driving_prior_mean.size()!=4) error("driving_prior_mean must have 4 values separated by spaces");
 	if(driving_prior_precision.size()!=4) error("driving_prior_precision must have 4 values separated by spaces");
 	
@@ -264,7 +286,6 @@ int main (const int argc, const char* argv[]) {
 	// Key to results: -1: invariant, 0: compatible biallelic (including singletons), 1: incompatible biallelic, 2: more than two alleles
 	vector<bool> anyN;
 	vector<int> compat = compute_compatibility(fa,ctree,anyN,false);
-	int i;
 	if(IGNORE_INCOMPLETE_SITES) {
 		for(i=0;i<fa.lseq;i++) {
 			if(anyN[i]) ignore_site[i] = true;
