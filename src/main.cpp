@@ -51,8 +51,8 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-mcmc_per_branch               true or false (default)   Estimate by MCMC recombination parameters for each branch." << endl;
 		errTxt << "-laplace_approx                true or false (default)   rho_per_branch model with approximation of the joint posterior." << endl;
-		errTxt << "-driving_prior_mean            4 values (def. 0 0 0 0)   Mean of the driving prior used by the Laplace approximation." << endl;
-		errTxt << "-driving_prior_precision       4 values (def. 1 1 1 1)   Precision of the driving prior used by the Laplace approximation." << endl;
+		errTxt << "-driving_prior_mean            4 values (df \"0 0 0 0\")   Mean of the driving prior used by the Laplace approximation." << endl;
+		errTxt << "-driving_prior_precision       4 values (df \"1 1 1 1\")   Precision of the driving prior used by the Laplace approximation." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -778,7 +778,7 @@ int main (const int argc, const char* argv[]) {
 				// Note this is unsafe in general because the corresponding node times are not adjusted
 				ctree.node[i].edge_time = final_branch_length;
 				// Output results to screen
-				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " R = " << pow(10.,param[0]) << " I = " << pow(10.,param[1]) << " D = " << pow(10.,param[2]) << " M = " << pow(10.,param[3]) << final_branch_length << endl;
+				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " R = " << final_rho_over_theta << " I = " << final_mean_import_length << " D = " << final_import_divergence << " M = " << final_branch_length << endl;
 				ML += -Pow.function_minimum;
 			}
 			cout << "Unnormalized log-posterior after branch optimization is " << ML << endl;
