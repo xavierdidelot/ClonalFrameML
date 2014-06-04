@@ -740,8 +740,9 @@ int main (const int argc, const char* argv[]) {
 				BFGS Pow(cff);
 				Pow.coutput = SHOW_PROGRESS;
 //				Pow.STPMX = 2.0;
-				// Now estimate parameters for the recombination model starting at the mean of the prior
+				// Now estimate parameters for the recombination model starting at the mean of the prior, except the branch length
 				vector<double> param = driving_prior_mean;
+				param[3] = log10(initial_branch_length);
 				param = Pow.minimize(param,powell_tolerance);
 				// Get the approximate inverse Hessian
 				laplaceQ[i] = Pow.hessin;
