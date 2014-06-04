@@ -772,7 +772,9 @@ int main (const int argc, const char* argv[]) {
 				const double final_rho_over_theta = pow(10.,param[0]);
 				const double final_mean_import_length = pow(10.,param[1]);
 				const double final_import_divergence = pow(10.,param[2]);
-				const double final_branch_length = pow(10.,param[3]);
+				// Reparameterization 4/6/14
+				//const double final_branch_length = pow(10.,param[3]);
+				const double final_branch_length = pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3])));
 				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
 				// Update branch length in the tree
 				// Note this is unsafe in general because the corresponding node times are not adjusted
