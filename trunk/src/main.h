@@ -35,6 +35,7 @@
 #include <time.h>
 #include <omp.h>
 #include <random.h>
+#include <limits>
 
 using std::cout;
 using myutils::NewickTree;
@@ -643,7 +644,10 @@ public:
 		const double rho_over_theta = pow(10.,x[0]);
 		const double mean_import_length = pow(10.,x[1]);
 		const double final_import_divergence = pow(10.,x[2]);
-		const double branch_length = pow(10.,x[3]);
+// 4/6/14 new parameterization (with hard constraint that the branch length be positive)
+//		const double branch_length = pow(10.,x[3]);
+		const double branch_length = pow(10.,x[3])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3])));
+		if(branch_length<=0.0) return numeric_limits<double>::max();
 		const int dec_id = node.id;
 		const int anc_id = node.ancestor->id;
 		// The following constraint may be important to avoid inverting the signal of recombinant and non-recombinant sites, but for consistency with the original CF parameterization is not applied
