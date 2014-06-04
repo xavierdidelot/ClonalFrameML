@@ -33,7 +33,7 @@ public:
 		int j;
 		for(j=0;j<n;j++) {
 			double temp = x[j];
-			double h = EPS*abs(temp);
+			double h = EPS*fabs(temp);
 			if(h==0.0) h = EPS;
 			xh[j] = temp + h;										// Trick to reduce finite-precision error
 			h = xh[j] - temp;
@@ -135,7 +135,7 @@ protected:
 			}
 			test = 0.0;												// Test for convergence on delta_x
 			for(i=0;i<n;i++) {
-				temp = abs(xi[i])/MAX(abs(p[i]),1.0);
+				temp = fabs(xi[i])/MAX(fabs(p[i]),1.0);
 				if(temp>test) test = temp;
 			}
 			if(test<TOLX) {
@@ -146,9 +146,9 @@ protected:
 			}
 			BFGSFunc.df(p,g);										// and get the new gradient
 			test = 0.0;												// Test for convergence on zero gradient
-			den = MAX(abs(fret),1.0);
+			den = MAX(fabs(fret),1.0);
 			for(i=0;i<n;i++) {
-				temp = abs(g[i])*MAX(abs(p[i]),1.0)/den;
+				temp = fabs(g[i])*MAX(fabs(p[i]),1.0)/den;
 				if(temp>test) test = temp;
 			}
 			if(test<gtol) {
@@ -222,7 +222,7 @@ protected:
 		if(slope>=0.0) error("lnsrch: Roundoff problem");
 		test = 0.0;													// Compute lambda_min
 		for(i=0;i<n;i++) {
-			temp = abs(p[i])/MAX(abs(xold[i]),1.0);
+			temp = fabs(p[i])/MAX(fabs(xold[i]),1.0);
 			if(temp>test) test = temp;
 		}
 		alamin = TOLX/test;
