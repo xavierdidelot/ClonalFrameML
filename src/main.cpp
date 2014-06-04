@@ -858,9 +858,9 @@ int main (const int argc, const char* argv[]) {
 				lpout << ctree.node[i].id;
 				// Do MCMC
 				int iter;
-				const int niter = 10000;
+				const int niter = 1000;
 				double loglik = -cff.f(param);
-				double proposal_sd[4] = {0.2,0.2,0.05,0.2};
+				double proposal_sd[4] = {0.5,0.5,0.5,0.1};
 				for(iter=0;iter<niter;iter++) {
 					for(j=0;j<4;j++) {
 						vector<double> new_param = param;
