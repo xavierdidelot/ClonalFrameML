@@ -61,6 +61,7 @@ public:
 	double gtol;				// tolerance
 	int n_iterations;			// number of iterations taken to find function_minimum
 	double function_minimum;	// value of BFGSFunc.f() at its minimum
+	double STPMX;				// limits the maximum step size to avoid bad areas
 	
 //	vector<double> dg,g,hdg,pnew,xi;
 								// storage for temporary vectors: could save some time on memory allocation
@@ -71,7 +72,7 @@ public:
 	bool fail;
 	
 public:
-	BFGS(BFGSFunction &BFGSFunc_in) : BFGSFunc(BFGSFunc_in), coutput(false), n_iterations(0), gtol(1.0e-8) {}
+	BFGS(BFGSFunction &BFGSFunc_in) : BFGSFunc(BFGSFunc_in), coutput(false), n_iterations(0), gtol(1.0e-8), STPMX(100.0) {}
 	
 	const vector<double>& minimize(const vector<double>& parameters, const double tol) {
 		fail = false;
@@ -101,7 +102,7 @@ protected:
 	void dfpmin(vector<double> &p, const double gtol, int &iter, double &fret) {
 		const int ITMAX = 200;
 		const double EPS = numeric_limits<double>::epsilon();
-		const double TOLX = 4.0*EPS, STPMX = 100.0;
+		const double TOLX = 4.0*EPS;
 		// Here ITMAX is the maximum allowed number of iterations, EPS is the machine precision,
 		// TOLX is the convergence criterion on x values, and STPMX is the scaled maximum step length
 		// allowed in line searches.
