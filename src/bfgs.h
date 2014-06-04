@@ -264,7 +264,8 @@ protected:
 			}
 			alam2 = alam;
 			f2 = f;
-			alam = MAX(tmplam,0.1*alam);							// lambda >= 0.1 lambda_1
+			// Introduce sanity check to make sure tmplam is valid before using it
+			alam = (tmplam==tmplam) ? MAX(tmplam,0.1*alam) : 0.1*alam;	// lambda >= 0.1 lambda_1
 		}
 	}
 };
