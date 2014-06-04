@@ -182,14 +182,13 @@ protected:
 						hessin[j][i] = hessin[i][j];
 					}
 				}
-				for(i=0;i<n;i++) {									// Now calculate the next direction to go
-					xi[i] = 0.0;
-					for(j=0;j<n;j++) xi[i] -= hessin[i][j]*g[j];
-				}
 			}
-			error("dfpmin(): too many iterations");
+			for(i=0;i<n;i++) {										// Now calculate the next direction to go
+				xi[i] = 0.0;
+				for(j=0;j<n;j++) xi[i] -= hessin[i][j]*g[j];
+			}
 		}
-			
+		error("dfpmin(): too many iterations");			
 	}
 	/*
 	 Given an n-dimensional point xold[0..n-1] the value of the function and gradient there, fold
@@ -261,10 +260,10 @@ protected:
 						tmplam = 0.5*alam;							// lambda <= 0.5 lambda_1
 					}
 				}
-				alam2 = alam;
-				f2 = f;
-				alam = MAX(tmplam,0.1*alam);						// lambda >= 0.1 lambda_1
-			}														// Try again
+			}
+			alam2 = alam;
+			f2 = f;
+			alam = MAX(tmplam,0.1*alam);							// lambda >= 0.1 lambda_1
 		}
 	}
 };
