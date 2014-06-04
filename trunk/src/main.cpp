@@ -850,7 +850,9 @@ int main (const int argc, const char* argv[]) {
 				const double initial_branch_length = pd/pd_den;
 				// Object for the per-branch recombination model
 				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
+				// 4/6/14: start MCMC at prior mean except 4th element which is now the branch length (not expected divergence at unimported sites)
 				vector<double> param = driving_prior_mean;
+				param[3] = log10(initial_branch_length);
 				// Output preamble
 				for(j=0;j<4;j++) *mout[j] << ctree.node[i].id;
 				for(j=0;j<4;j++) *pout[j] << ctree.node[i].id;
@@ -860,7 +862,7 @@ int main (const int argc, const char* argv[]) {
 				int iter;
 				const int niter = 1000;
 				double loglik = -cff.f(param);
-				double proposal_sd[4] = {0.5,0.5,0.5,0.1};
+				double proposal_sd[4] = {0.5,0.5,0.5,0.02};
 				for(iter=0;iter<niter;iter++) {
 					for(j=0;j<4;j++) {
 						vector<double> new_param = param;
