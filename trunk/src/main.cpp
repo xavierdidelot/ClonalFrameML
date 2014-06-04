@@ -739,7 +739,7 @@ int main (const int argc, const char* argv[]) {
 //				Pow.TOL = brent_tolerance;
 				BFGS Pow(cff);
 				Pow.coutput = SHOW_PROGRESS;
-				Pow.STPMX = 2.0;
+//				Pow.STPMX = 2.0;
 				// Now estimate parameters for the recombination model starting at the mean of the prior
 				vector<double> param = driving_prior_mean;
 				param = Pow.minimize(param,powell_tolerance);
