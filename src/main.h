@@ -648,6 +648,8 @@ public:
 //		const double branch_length = pow(10.,x[3]);
 		const double branch_length = pow(10.,x[3])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3])));
 		if(branch_length<=0.0) return numeric_limits<double>::max();
+// 4/6/14 new constraint: branch_length*rho_over_theta*mean_import_length <= 1. This ensures that the majority of sites are unimported for every branch
+		if(branch_length*rho_over_theta*mean_import_length>1.0) return numeric_limits<double>::max();
 		const int dec_id = node.id;
 		const int anc_id = node.ancestor->id;
 		// The following constraint may be important to avoid inverting the signal of recombinant and non-recombinant sites, but for consistency with the original CF parameterization is not applied
