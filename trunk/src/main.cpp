@@ -734,17 +734,21 @@ int main (const int argc, const char* argv[]) {
 				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
 				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
 				// Setup optimization function
-				Powell Pow(cff);
-				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-				Pow.TOL = brent_tolerance;
+//				Powell Pow(cff);
+//				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
+//				Pow.TOL = brent_tolerance;
+				BFGS Pow(cff);
+				Pow.coutput = SHOW_PROGRESS;
 				// Now estimate parameters for the recombination model starting at the mean of the prior
 				vector<double> param = driving_prior_mean;
 				param = Pow.minimize(param,powell_tolerance);
+				// Get the approximate inverse Hessian
+				laplaceQ[i] = Pow.hessin;
 				// Approximate the likelihood by a multivariate Gaussian
 				laplaceMLE[i] = param;
 				// Interval over which to numerically compute second derivatives
 				// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-				const double h = 0.1;
+/*				const double h = 0.1;
 				vector<double> paramQ;
 				double calcQ;
 				// The maximum log-likelihood
@@ -768,7 +772,7 @@ int main (const int argc, const char* argv[]) {
 					calcQ -= 2.0*calcQ0;
 					laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 				}
-				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
+*/				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
 				const double final_rho_over_theta = pow(10.,param[0]);
 				const double final_mean_import_length = pow(10.,param[1]);
 				const double final_import_divergence = pow(10.,param[2]);
