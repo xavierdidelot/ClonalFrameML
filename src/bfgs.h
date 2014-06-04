@@ -58,7 +58,6 @@ public:
 	BFGSFunction &BFGSFunc;
 	bool coutput;
 	
-	double gtol;				// tolerance
 	int n_iterations;			// number of iterations taken to find function_minimum
 	double function_minimum;	// value of BFGSFunc.f() at its minimum
 	double STPMX;				// limits the maximum step size to avoid bad areas
@@ -72,9 +71,9 @@ public:
 	bool fail;
 	
 public:
-	BFGS(BFGSFunction &BFGSFunc_in) : BFGSFunc(BFGSFunc_in), coutput(false), n_iterations(0), gtol(1.0e-8), STPMX(100.0) {}
+	BFGS(BFGSFunction &BFGSFunc_in) : BFGSFunc(BFGSFunc_in), coutput(false), n_iterations(0), STPMX(100.0) {}
 	
-	const vector<double>& minimize(const vector<double>& parameters, const double tol) {
+	const vector<double>& minimize(const vector<double>& parameters, const double gtol) {
 		fail = false;
 		p = parameters;
 

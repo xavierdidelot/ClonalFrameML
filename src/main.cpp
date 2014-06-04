@@ -734,18 +734,20 @@ int main (const int argc, const char* argv[]) {
 				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
 				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
 				// Setup optimization function
-//				Powell Pow(cff);
-//				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-//				Pow.TOL = brent_tolerance;
-				BFGS Pow(cff);
-				Pow.coutput = SHOW_PROGRESS;
-//				Pow.STPMX = 2.0;
+				Powell Pow(cff);
+				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
+				Pow.TOL = brent_tolerance;
 				// Now estimate parameters for the recombination model starting at the mean of the prior, except the branch length
 				vector<double> param = driving_prior_mean;
 				param[3] = log10(initial_branch_length);
 				param = Pow.minimize(param,powell_tolerance);
+				// Attempt to refine using BFGS
+				BFGS bfgs(cff);
+				bfgs.coutput = SHOW_PROGRESS;
+				//bfgs.STPMX = 2.0;
+				bfgs.minimize(param,powell_tolerance);
 				// Get the approximate inverse Hessian
-				laplaceQ[i] = Pow.hessin;
+				laplaceQ[i] = bfgs.hessin;
 				// Approximate the likelihood by a multivariate Gaussian
 				laplaceMLE[i] = param;
 				// Interval over which to numerically compute second derivatives
