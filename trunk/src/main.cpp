@@ -740,16 +740,18 @@ int main (const int argc, const char* argv[]) {
 				// Now estimate parameters for the recombination model starting at the mean of the prior, except the branch length
 				vector<double> param = driving_prior_mean;
 				param[3] = log10(initial_branch_length);
+				clock_t pow_start_time = clock();
 				param = Pow.minimize(param,powell_tolerance);
-				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << Pow.function_minimum << endl;
+				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s" << endl;
 				// Attempt to refine using BFGS
 				param = driving_prior_mean;
 				param[3] = log10(initial_branch_length);
 				BFGS bfgs(cff);
 				bfgs.coutput = SHOW_PROGRESS;
 				//bfgs.STPMX = 2.0;
+				clock_t bfgs_start_time = clock();
 				bfgs.minimize(param,powell_tolerance);
-				cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << bfgs.function_minimum << endl;
+				cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s" << endl;
 				// Get the approximate inverse Hessian
 				laplaceQ[i] = bfgs.hessin;
 				// Approximate the likelihood by a multivariate Gaussian
