@@ -750,10 +750,11 @@ int main (const int argc, const char* argv[]) {
 				bfgs.coutput = SHOW_PROGRESS;
 				//bfgs.STPMX = 2.0;
 				clock_t bfgs_start_time = clock();
-				bfgs.minimize(param,powell_tolerance);
+				param = bfgs.minimize(param,powell_tolerance);
 				cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s" << endl;
 				// Get the approximate inverse Hessian
 				laplaceQ[i] = bfgs.hessin;
+				cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
 				// Approximate the likelihood by a multivariate Gaussian
 				laplaceMLE[i] = param;
 				// Interval over which to numerically compute second derivatives
