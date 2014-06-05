@@ -662,7 +662,7 @@ public:
 		int i;
 		for(i=0;i<4;i++) PR -= 0.5*pow(prior_mean[i]-x[i],2.0)*prior_precision[i];
 		// The optimization routine is assumed to be a minimization routine, hence minus the posterior density is returned
-		cout << "Node " << dec_id << " params " << x[0] << " " << x[1] << " " << x[2] << " " << x[3] << " gave lik " << ML << " prior " << PR << " total " << ML+PR << endl;
+//		cout << "Node " << dec_id << " params " << x[0] << " " << x[1] << " " << x[2] << " " << x[3] << " gave lik " << ML << " prior " << PR << " total " << ML+PR << endl;
 		const double ret = -(ML+PR);
 		if(ret!=ret) return numeric_limits<double>::max();
 		return ret;

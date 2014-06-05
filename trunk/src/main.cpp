@@ -741,11 +741,15 @@ int main (const int argc, const char* argv[]) {
 				vector<double> param = driving_prior_mean;
 				param[3] = log10(initial_branch_length);
 				param = Pow.minimize(param,powell_tolerance);
+				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << Pow.function_minimum << endl;
 				// Attempt to refine using BFGS
+				param = driving_prior_mean;
+				param[3] = log10(initial_branch_length);
 				BFGS bfgs(cff);
 				bfgs.coutput = SHOW_PROGRESS;
 				//bfgs.STPMX = 2.0;
 				bfgs.minimize(param,powell_tolerance);
+				cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << bfgs.function_minimum << endl;
 				// Get the approximate inverse Hessian
 				laplaceQ[i] = bfgs.hessin;
 				// Approximate the likelihood by a multivariate Gaussian
