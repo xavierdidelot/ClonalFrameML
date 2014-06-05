@@ -53,7 +53,7 @@ public:
 	BFGSFunction() : EPS(1.0e-8) {}
 };
 
-class BFGS /*: public BrentFunction*/ {
+class BFGS {
 public:
 	BFGSFunction &BFGSFunc;
 	bool coutput;

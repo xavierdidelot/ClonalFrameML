@@ -747,6 +747,8 @@ int main (const int argc, const char* argv[]) {
 				param = driving_prior_mean;
 				param[3] = log10(initial_branch_length);
 				BFGS bfgs(cff);
+				// Attempt to get better estimates of gradients
+				cff.EPS = 0.1;
 				bfgs.coutput = SHOW_PROGRESS;
 				//bfgs.STPMX = 2.0;
 				clock_t bfgs_start_time = clock();
