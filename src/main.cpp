@@ -741,27 +741,26 @@ int main (const int argc, const char* argv[]) {
 				vector<double> param = driving_prior_mean;
 				param[3] = log10(initial_branch_length);
 				clock_t pow_start_time = clock();
+				int neval = cff.neval;
 				param = Pow.minimize(param,powell_tolerance);
-				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s" << endl;
+				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
 				// Attempt to refine using BFGS
 				param = driving_prior_mean;
 				param[3] = log10(initial_branch_length);
 				BFGS bfgs(cff);
-				// Attempt to get better estimates of gradients
-				cff.EPS = 0.01;
 				bfgs.coutput = SHOW_PROGRESS;
-				//bfgs.STPMX = 2.0;
 				clock_t bfgs_start_time = clock();
+				neval = cff.neval;
 				param = bfgs.minimize(param,powell_tolerance);
-				cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s" << endl;
+				cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
 				// Get the approximate inverse Hessian
-				laplaceQ[i] = bfgs.hessin;
+//				laplaceQ[i] = bfgs.hessin;
 				cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
 				// Approximate the likelihood by a multivariate Gaussian
 				laplaceMLE[i] = param;
 				// Interval over which to numerically compute second derivatives
 				// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-/*				const double h = 0.1;
+				const double h = 0.1;
 				vector<double> paramQ;
 				double calcQ;
 				// The maximum log-likelihood
@@ -785,7 +784,7 @@ int main (const int argc, const char* argv[]) {
 					calcQ -= 2.0*calcQ0;
 					laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 				}
-*/				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
+				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
 				const double final_rho_over_theta = pow(10.,param[0]);
 				const double final_mean_import_length = pow(10.,param[1]);
 				const double final_import_divergence = pow(10.,param[2]);
