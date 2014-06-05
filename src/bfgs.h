@@ -170,7 +170,7 @@ protected:
 				sumdg += dg[i]*dg[i];
 				sumxi += xi[i]*xi[i];
 			}
-//			if(fac>sqrt(EPS*sumdg*sumxi)) {							// Skip update if fac not sufficiently positive
+			if(fac>sqrt(EPS*sumdg*sumxi)) {							// Skip update if fac not sufficiently positive
 				fac = 1.0/fac;
 				fad = 1.0/fae;
 				// The vector that makes BFGS different from DFP:
@@ -182,7 +182,7 @@ protected:
 						hessin[j][i] = hessin[i][j];
 					}
 				}
-//			}
+			}
 			for(i=0;i<n;i++) {										// Now calculate the next direction to go
 				xi[i] = 0.0;
 				for(j=0;j<n;j++) xi[i] -= hessin[i][j]*g[j];
