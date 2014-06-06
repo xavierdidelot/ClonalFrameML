@@ -53,6 +53,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-laplace_approx                true or false (default)   rho_per_branch model with approximation of the joint posterior." << endl;
 		errTxt << "-driving_prior_mean            4 values (df \"0 0 0 0\")   Mean of the driving prior used by the Laplace approximation." << endl;
 		errTxt << "-driving_prior_precision       4 values (df \"1 1 1 1\")   Precision of the driving prior used by the Laplace approximation." << endl;
+		errTxt << "-grid_approx                   value 0/2+  (default 0)   Number of points for grid approximation (0 = off)." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -83,6 +84,7 @@ int main (const int argc, const char* argv[]) {
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
 	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
+	double grid_approx = 0.0;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
 	arg.add_item("correct_branch_lengths",		TP_STRING, &correct_branch_lengths);
@@ -110,6 +112,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("laplace_approx",				TP_STRING, &laplace_approx);
 	arg.add_item("driving_prior_mean",			TP_STRING, &string_driving_prior_mean);
 	arg.add_item("driving_prior_precision",		TP_STRING, &string_driving_prior_precision);
+	arg.add_item("grid_approx",					TP_DOUBLE, &grid_approx);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -129,6 +132,7 @@ int main (const int argc, const char* argv[]) {
 	bool COMPRESS_RECONSTRUCTED_SITES	= string_to_bool(compress_reconstructed_sites,	"compress_reconstructed_sites");
 	bool MCMC_PER_BRANCH				= string_to_bool(mcmc_per_branch,				"mcmc_per_branch");
 	bool LAPLACE_APPROX					= string_to_bool(laplace_approx,				"laplace_approx");
+	bool GRID_APPROX = (grid_approx != 0.0);
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -139,12 +143,12 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "powell_tolerance value out of range (0,0.1], default 0.001";
 		error(errTxt.str().c_str());
 	}
-	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION) + (int)SINGLE_RHO_VITERBI + (int)SINGLE_RHO_FORWARD + (int)MCMC_PER_BRANCH + (int)LAPLACE_APPROX>1) {
+	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION) + (int)SINGLE_RHO_VITERBI + (int)SINGLE_RHO_FORWARD + (int)MCMC_PER_BRANCH + (int)LAPLACE_APPROX + (int)GRID_APPROX>1) {
 		stringstream errTxt;
 		errTxt << "joint_branch_param, rho_per_branch, rho_per_branch_no_lrt, rescale_no_recombination, single_rho_viterbi, single_rho_forward and mcmc_per_branch are mutually incompatible";
 		error(errTxt.str().c_str());
 	}
-	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION || SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD || MCMC_PER_BRANCH || LAPLACE_APPROX) && !CORRECT_BRANCH_LENGTHS) {
+	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION || SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD || MCMC_PER_BRANCH || LAPLACE_APPROX || GRID_APPROX) && !CORRECT_BRANCH_LENGTHS) {
 		stringstream wrnTxt;
 		wrnTxt << "branch correction options will be ignored because correct_branch_lengths=false";
 		warning(wrnTxt.str().c_str());
@@ -210,7 +214,8 @@ int main (const int argc, const char* argv[]) {
 	}
 	if(driving_prior_mean.size()!=4) error("driving_prior_mean must have 4 values separated by spaces");
 	if(driving_prior_precision.size()!=4) error("driving_prior_precision must have 4 values separated by spaces");
-	
+	if(fabs(grid_approx-(double)(int)(grid_approx))>1.0e-12) error("grid_approx must have an integer value");
+	if(GRID_APPROX && grid_approx<2.0) error("grid_approx must be 0 (off) or 2 or more");
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -569,12 +574,6 @@ int main (const int argc, const char* argv[]) {
 			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
 			double ML = 0.0;
 			vector< vector<ImportationState> > is_imported(root_node);
-//			vector< vector<double> > laplaceMLE(0);
-//			vector< Matrix<double> > laplaceQ(0);
-//			if(LAPLACE_APPROX) {
-//				laplaceMLE = vector< vector<double> >(root_node,vector<double>(4));
-//				laplaceQ = vector< Matrix<double> >(root_node,Matrix<double>(4,4));
-//			}
 			for(i=0;i<root_node;i++) {
 				// Crudely re-estimate branch length
 				double pd = 1.0, pd_den = 2.0;
@@ -618,37 +617,6 @@ int main (const int argc, const char* argv[]) {
 				const double import_divergence = pow(10.,param[2]);
 				param.push_back(log10(pow(10.,param0[0])/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
 				param = Pow.minimize(param,powell_tolerance);
-				// Approximate the likelihood by a multivariate Gaussian
-//				if(LAPLACE_APPROX) {
-//					laplaceMLE[i] = param;
-//					// Interval over which to numerically compute second derivatives
-//					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-//					const double h = 0.1;
-//					vector<double> paramQ;
-//					double calcQ;
-//					// The maximum log-likelihood
-//					const double calcQ0 = -cff.f(param);
-//					int k;
-//					for(j=0;j<4;j++) {
-//						for(k=0;k<j;k++) {
-//							paramQ = param; paramQ[j] += h; paramQ[k] += h;
-//							calcQ = -cff.f(paramQ);
-//							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-//							calcQ -= -cff.f(paramQ);
-//							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-//							calcQ -= -cff.f(paramQ);
-//							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-//							calcQ += -cff.f(paramQ);
-//							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
-//						}
-//						paramQ = param; paramQ[j] += 2.0*h;
-//						calcQ = -cff.f(paramQ);
-//						paramQ = param; paramQ[j] -= 2.0*h;
-//						calcQ += -cff.f(paramQ);
-//						calcQ -= 2.0*calcQ0;
-//						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
-//					}
-//				}
 				// Test if the recombination model is a significant improvement (2 log-likelihoods per additional parameter)
 				const bool LRT_pass = (-Pow.function_minimum>-Pow0.function_minimum+6.0);
 				// Ensure importation status is updated correctly
@@ -674,31 +642,6 @@ int main (const int argc, const char* argv[]) {
 			// Output the importation status
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
-			// Output the Laplace approximation
-//			if(LAPLACE_APPROX) {
-//				int j,k;
-//				ofstream lout(laplace_out_file.c_str());
-//				lout << "Branch";
-//				for(j=0;j<4;j++) lout << "\t" << "P" << j;
-//				for(j=0;j<4;j++) {
-//					for(k=0;k<4;k++) {
-//						lout << "\t" << "Q" << j << k;
-//					}
-//				}
-//				lout << endl;
-//				for(i=0;i<root_node;i++) {
-//					lout << ctree_node_labels[i];
-//					for(j=0;j<4;j++) lout << "\t" << laplaceMLE[i][j];
-//					for(j=0;j<4;j++) {
-//						for(k=0;k<4;k++) {
-//							lout << "\t" << laplaceQ[i][j][k];
-//						}
-//					}
-//					lout << endl;
-//				}
-//				lout.close();
-//				cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
-//			}
 		} else if(LAPLACE_APPROX) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
 			// using the Laplace approximation to the likelihood and a "driving prior" to assist with the optimization (this ensures a proper posterior)
@@ -946,6 +889,142 @@ int main (const int argc, const char* argv[]) {
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
  */
+		} else if(GRID_APPROX) {
+			// For a given branch, approximate the mean and covariance matrix of the posterior distribution by evaluating over a grid of points
+			// using the driving prior
+			const int nparam = 4;
+			const int ngrid = (int)grid_approx;
+			Matrix<double> grid(nparam,ngrid);
+			int i,j,k,l,m;
+			for(i=0;i<nparam;i++) {
+				// Create a uniform grid within the marginal 95% prior quantiles of each parameter
+				const double grid_beg = driving_prior_mean[i]-2.0/sqrt(driving_prior_precision[i]);
+				const double grid_end = driving_prior_mean[i]+2.0/sqrt(driving_prior_precision[i]);
+				const double grid_inc = (grid_end-grid_beg)/((double)ngrid-1.0);
+				for(j=0;j<ngrid;j++) {
+					grid[i][j] = grid_beg + ((double)j)*grid_inc;
+				}
+			}
+			cout << "Beginning grid approximation. Key to parameters (and constraints):" << endl;
+			cout << "B   uncorrected branch length" << endl;
+			cout << "L   maximum unnormalized log-posterior per branch" << endl;
+			cout << "R   rho/theta per branch                                     (> 0)" << endl;
+			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
+			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
+			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
+			vector< vector<ImportationState> > is_imported(root_node);
+			vector< vector<double> > Egrid(0);
+			vector< Matrix<double> > Vgrid(0);
+			Egrid = vector< vector<double> >(root_node,vector<double>(nparam,0.0));
+			Vgrid = vector< Matrix<double> >(root_node,Matrix<double>(nparam,nparam,0.0));
+			// Cycle over branches
+			for(i=0;i<root_node;i++) {
+				// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
+				double pd = 1.0, pd_den = 2.0;
+				const int dec_id = ctree.node[i].id;
+				const int anc_id = ctree.node[i].ancestor->id;
+				for(j=0,k=0;j<isBLC.size();j++) {
+					if(isBLC[j]) {
+						Nucleotide dec = node_nuc[dec_id][ipat[k]];
+						Nucleotide anc = node_nuc[anc_id][ipat[k]];
+						if(dec!=anc) ++pd;
+						++pd_den;
+						++k;
+					}
+				}
+				const double initial_branch_length = pd/pd_den;
+				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
+				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
+				// Force parameterization 1
+				cff.parameterization = 1;
+				// Evaluate the grid
+				vector< mydouble > evalpost(ngrid*ngrid*ngrid*ngrid);
+				mydouble denom = 0.0;
+				vector<double> param(4);
+				ofstream gout;
+				if(i==0) gout.open("/Users/wilson/temp/grid.txt");
+				char tab = '\t';
+				int ctr = 0;
+				for(j=0;j<ngrid;j++) {
+					param[0] = grid[0][j];
+					for(k=0;k<ngrid;k++) {
+						param[1] = grid[1][k];
+						for(l=0;l<ngrid;l++) {
+							param[2] = grid[2][l];
+							for(m=0;m<ngrid;m++,ctr++) {
+								param[3] = grid[3][m];
+								// Evaluate the unnormalized posterior at the grid point
+								evalpost[ctr].setlog(-cff.f(param));
+								// Update the running total
+								denom += evalpost[ctr];
+								if(i==0) gout << param[0] << tab << param[1] << tab << param[2] << tab << param[3] << tab << evalpost[ctr].LOG() << endl;
+							}
+						}
+					}
+				}
+				if(i==0) gout.close();
+				// Approximately normalize the posterior density evaluations
+				for(ctr=0;ctr<evalpost.size();ctr++) evalpost[ctr] /= denom;
+				// Calculate the mean and variance-covariance matrix for the branch				
+				ctr = 0;		
+				for(j=0;j<ngrid;j++) {
+					param[0] = grid[0][j];
+					for(k=0;k<ngrid;k++) {
+						param[1] = grid[1][k];
+						for(l=0;l<ngrid;l++) {
+							param[2] = grid[2][l];
+							for(m=0;m<ngrid;m++,ctr++) {
+								param[3] = grid[3][m];
+								// Cycle through the elements of the mean and covariance matrix
+								int ii,jj;
+								double unlog_evalpost = evalpost[ctr].todouble();
+								for(ii=0;ii<nparam;ii++) {
+									for(jj=ii+1;jj<nparam;jj++) {
+										double tmp = param[ii]*param[jj]*unlog_evalpost;
+										Vgrid[i][ii][jj] += tmp;
+										Vgrid[i][jj][ii] += tmp;
+									}
+									Vgrid[i][ii][ii] += param[ii]*param[ii]*unlog_evalpost;
+									Egrid[i][ii] += param[ii]*unlog_evalpost;
+								}
+							}
+						}
+					}
+				}
+				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
+				//cff.f(Egrid[i]);
+				// Update branch length in the tree
+				// Note this is unsafe in general because the corresponding node times are not adjusted
+				//ctree.node[i].edge_time = final_branch_length;
+				// Output results to screen
+				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " R = " << Egrid[i][0] << " I = " << Egrid[i][1] << " D = " << Egrid[i][2] << " M = " << Egrid[i][3] << endl;
+			}
+			
+			// Output the importation status
+			//write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
+			//cout << "Wrote inferred importation status to " << import_out_file << endl;
+			// Output the grid approximation
+			ofstream lout(laplace_out_file.c_str());
+			lout << "Branch";
+			for(j=0;j<4;j++) lout << "\t" << "E" << j;
+			for(j=0;j<4;j++) {
+				for(k=0;k<4;k++) {
+					lout << "\t" << "V" << j << k;
+				}
+			}
+			lout << endl;
+			for(i=0;i<root_node;i++) {
+				lout << ctree_node_labels[i];
+				for(j=0;j<4;j++) lout << "\t" << Egrid[i][j];
+				for(j=0;j<4;j++) {
+					for(k=0;k<4;k++) {
+						lout << "\t" << Vgrid[i][j][k];
+					}
+				}
+				lout << endl;
+			}
+			lout.close();
+			cout << "Wrote grid approximation information to " << laplace_out_file << endl;
 		} else if(SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
 			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence

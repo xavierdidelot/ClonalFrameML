@@ -628,43 +628,78 @@ public:
 	const bool multithread;
 	const vector<double> prior_mean;
 	const vector<double> prior_precision;
+	int parameterization;
 public:
 	ClonalFrameLaplacePerBranchFunction(const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
 									const vector<double> &_pi, const bool _multithread, vector<ImportationState> &_is_imported, 
 									const vector<double> &_prior_mean, const vector<double> &_prior_precision) : 
 	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
 	pi(_pi), neval(0), multithread(_multithread), is_imported(_is_imported),
-	prior_mean(_prior_mean), prior_precision(_prior_precision) {
+	prior_mean(_prior_mean), prior_precision(_prior_precision), parameterization(1) {
 		if(prior_mean.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior mean must have length 4");
 		if(prior_precision.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior precision must have length 4");
 	};
+	// Return function to be minimized
 	double f(const vector<double>& x) {
 		++neval;
 		// Process parameters
 		if(x.size()!=4) error("ClonalFrameLaplacePerBranchFunction::f(): 4 arguments required");
-		const double rho_over_theta = pow(10.,x[0]);
-		const double mean_import_length = pow(10.,x[1]);
-		const double final_import_divergence = pow(10.,x[2]);
-// 4/6/14 new parameterization (with hard constraint that the branch length be positive)
-//		const double branch_length = pow(10.,x[3]);
-		const double branch_length = pow(10.,x[3])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3])));
-		if(branch_length<=0.0) return numeric_limits<double>::max();
-// 4/6/14 new constraint: branch_length*rho_over_theta*mean_import_length <= 1. This ensures that the majority of sites are unimported for every branch
-		if(branch_length*rho_over_theta*mean_import_length>1.0) return numeric_limits<double>::max();
+		double rho_over_theta, mean_import_length, final_import_divergence, branch_length;
+		if(parameterization==0) {
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+			branch_length = pow(10.,x[3]);
+			// The following constraint may be important to avoid inverting the signal of recombinant and non-recombinant sites, but for consistency with the original CF parameterization is not applied
+			// final_import_divergence = (excess_divergence_model) ? branch_length*(2.0 + import_divergence) : import_divergence;
+		} else if(parameterization==1) {
+			// 4/6/14 new parameterization (with hard constraint that the branch length be positive)
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+			branch_length = pow(10.,x[3])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3])));
+			if(branch_length<=0.0) return numeric_limits<double>::max();
+			// 4/6/14 new constraint: branch_length*rho_over_theta*mean_import_length <= 1. This ensures that the majority of sites are unimported for every branch
+			if(branch_length*rho_over_theta*mean_import_length>1.0) return numeric_limits<double>::max();
+		} else if(parameterization==2) {
+			// 6/6/14 new parameterization informed by mixture distribution with mixing proportion pUnimported and divergences branch_length and final_import_length
+			// 10^x[0] = rho*mean_import_length. pUnimported = 1/(1+rho*mean_import_length)
+			// 10^x[1] = mean_import_length
+			// 10^x[2] = final_import_divergence
+			// 10^x[3] = pUnimported*branch_length + (1-pUnimported)*final_import_divergence
+			const double pUnimported = 1.0/(1.0+pow(10.,x[0]));
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+			branch_length = (pow(10.,x[3])-(1.0-pUnimported)*final_import_divergence)/pUnimported;
+			if(branch_length<=0.0) return numeric_limits<double>::max();
+			rho_over_theta = 1.0/branch_length/mean_import_length/pUnimported;
+			if(rho_over_theta<=0.0) return numeric_limits<double>::max();
+		} else {
+			error("ClonalFrameLaplacePerBranchFunction::f(): parameterization code not recognized");
+		}
+		// Test for NaNs
+		if(rho_over_theta!=rho_over_theta || mean_import_length!=mean_import_length || final_import_divergence!=final_import_divergence || branch_length!=branch_length) return numeric_limits<double>::max();
+		// Identify the nodes
 		const int dec_id = node.id;
 		const int anc_id = node.ancestor->id;
-		// The following constraint may be important to avoid inverting the signal of recombinant and non-recombinant sites, but for consistency with the original CF parameterization is not applied
-		//const double final_import_divergence = (excess_divergence_model) ? branch_length*(2.0 + import_divergence) : import_divergence;
 		// Calculate likelihood
 		ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
 		// Calculate prior (note that this is only calculated up to a normalizing constant)
-		PR = 0.0;
-		int i;
-		for(i=0;i<4;i++) PR -= 0.5*pow(prior_mean[i]-x[i],2.0)*prior_precision[i];
+		PR = log_prior(x);
+		// Print results to screen
+		// cout << "Node " << dec_id << " params " << x[0] << " " << x[1] << " " << x[2] << " " << x[3] << " gave lik " << ML << " prior " << PR << " total " << ML+PR << endl;
 		// The optimization routine is assumed to be a minimization routine, hence minus the posterior density is returned
-//		cout << "Node " << dec_id << " params " << x[0] << " " << x[1] << " " << x[2] << " " << x[3] << " gave lik " << ML << " prior " << PR << " total " << ML+PR << endl;
 		const double ret = -(ML+PR);
+		// Test for NaNs
 		if(ret!=ret) return numeric_limits<double>::max();
+		return ret;
+	}
+	double log_prior(const vector<double>& x) {
+		double ret = 0.0;
+		int i;
+		for(i=0;i<4;i++) {
+			ret -= 0.5*pow(prior_mean[i]-x[i],2.0)*prior_precision[i];
+		}
 		return ret;
 	}
 };
