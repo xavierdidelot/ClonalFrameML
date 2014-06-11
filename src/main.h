@@ -598,6 +598,7 @@ public:
 		//ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence,is_imported);
 		//return -ML.LOG();
 		ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+		//cout << "l(" << branch_length << "," <<  rho_over_theta << "," <<  mean_import_length << "," <<  final_import_divergence << ") = " <<  ML << endl;
 		return -ML;
 	}
 };
