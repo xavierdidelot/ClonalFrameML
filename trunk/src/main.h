@@ -73,8 +73,10 @@ void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, c
 void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, ofstream &fout);
 mydouble maximum_likelihood_ClonalFrame_branch_allsites(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pi, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported);
 mydouble maximum_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pi, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported);
+mydouble maximum_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &which_compat, const vector<int> &ipat, const double kappa, const vector<double> &pi, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported);
 double marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pi, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence);
 mydouble mydouble_marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pi, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence);
+mydouble mydouble_marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &which_compat, const vector<int> &ipat, const double kappa, const vector<double> &pi, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence);
 mydouble likelihood_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<int> &pat1, const vector<int> &cpat, const double kappa, const vector<double> &pinuc, const double branch_length);
 bool string_to_bool(const string s, const string label="");
 void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node);
@@ -565,12 +567,21 @@ public:
 	const bool multithread;
 	double crude_branch_length;
 	double min_branch_length;
+	vector<double> which_compat;
 public:
 	ClonalFrameRhoPerBranchFunction(const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
 									const vector<double> &_pi, bool _excess_divergence_model, const bool _multithread, vector<ImportationState> &_is_imported, const double _crude_branch_length, const double _min_branch_length) : 
 	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), pi(_pi), neval(0),
 	excess_divergence_model(_excess_divergence_model), multithread(_multithread), is_imported(_is_imported), crude_branch_length(_crude_branch_length), min_branch_length(_min_branch_length) {
-		if(!excess_divergence_model) error("ClonalFrameRhoPerBranchFunction::f(): excess_divergence_model is mandatory");	
+		if(!excess_divergence_model) error("ClonalFrameRhoPerBranchFunction::f(): excess_divergence_model is mandatory");
+		// Precompute which sites are compatible
+		which_compat = vector<double>(0);
+		int i;
+		for(i=0;i<iscompat.size();i++) {
+			if(iscompat[i]) {
+				which_compat.push_back((double)i);
+			}
+		}		
 	};
 	double f(const vector<double>& x) {
 		++neval;
@@ -597,7 +608,8 @@ public:
 		// Calculate likelihood
 		//ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence,is_imported);
 		//return -ML.LOG();
-		ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+		//ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+		ML = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
 		//cout << "l(" << branch_length << "," <<  rho_over_theta << "," <<  mean_import_length << "," <<  final_import_divergence << ") = " <<  ML << endl;
 		return -ML;
 	}
@@ -631,6 +643,7 @@ public:
 	const vector<double> prior_mean;
 	const vector<double> prior_precision;
 	int parameterization;
+	vector<double> which_compat;
 public:
 	ClonalFrameLaplacePerBranchFunction(const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
 									const vector<double> &_pi, const bool _multithread, vector<ImportationState> &_is_imported, 
@@ -640,6 +653,14 @@ public:
 	prior_mean(_prior_mean), prior_precision(_prior_precision), parameterization(1) {
 		if(prior_mean.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior mean must have length 4");
 		if(prior_precision.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior precision must have length 4");
+		// Precompute which sites are compatible
+		which_compat = vector<double>(0);
+		int i;
+		for(i=0;i<iscompat.size();i++) {
+			if(iscompat[i]) {
+				which_compat.push_back((double)i);
+			}
+		}		
 	};
 	// Return function to be minimized
 	double f(const vector<double>& x) {
@@ -685,7 +706,8 @@ public:
 		const int dec_id = node.id;
 		const int anc_id = node.ancestor->id;
 		// Calculate likelihood
-		ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+		//ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
+		ML = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
 		// Calculate prior (note that this is only calculated up to a normalizing constant)
 		PR = log_prior(x);
 		// Print results to screen
@@ -703,6 +725,91 @@ public:
 			ret -= 0.5*pow(prior_mean[i]-x[i],2.0)*prior_precision[i];
 		}
 		return ret;
+	}
+};
+
+// Based on ClonalFrameLaplacePerBranchFunction this class implements the posterior density function for a single branch under the ClonalFrame model
+// A parameterization is implemented that helps impose the original ClonalFrame constraint that the parameters are the same over branches
+// (except the branch length which is different for every branch).
+//			x[0]	=	log10{ rho/theta (need to check this is exactly the same as in ClonalFrame) }
+//			x[1]	=	log10{ import_length (aka 1/delta) }
+//			x[2]	=	log10{ import_divergence (aka nu) }
+//			x[3]	=	log10{ branch_length }
+// In this class, a "driving prior" is implemented. The idea is that this helps with the maximization, which is started from the mode of the driving
+// prior, and that post hoc the effect of the prior can be removed to obtain a Normal (Laplace) approximation to the likelihood. The prior used is a multi-
+// variate normal distribution with specified mean and precision matrix.
+class ClonalFrameMCMCJointFunction {
+public:
+	// References to non-member variables
+	const mt_node *node;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector< vector<ImportationState> > &is_imported;
+	// True member variable
+	double ML;
+	double PR;
+	int neval;
+	const bool multithread;
+	const vector<double> prior_mean;
+	const vector<double> prior_precision;
+	int parameterization;
+	vector<double> which_compat;
+	bool improper_prior;
+	int root_node;
+public:
+	ClonalFrameMCMCJointFunction(const mt_node *_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+										const vector<double> &_pi, const bool _multithread, vector< vector<ImportationState> > &_is_imported, 
+										const vector<double> &_prior_mean, const vector<double> &_prior_precision, const bool _improper_prior, const int _root_node) : 
+	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+	pi(_pi), neval(0), multithread(_multithread), is_imported(_is_imported),
+	prior_mean(_prior_mean), prior_precision(_prior_precision), improper_prior(_improper_prior), root_node(_root_node), parameterization(0) {
+		if(prior_mean.size()!=4) error("ClonalFrameMCMCJointFunction: prior mean must have length 4");
+		if(prior_precision.size()!=4) error("ClonalFrameMCMCJointFunction: prior precision must have length 4");
+		// Precompute which sites are compatible
+		which_compat = vector<double>(0);
+		int i;
+		for(i=0;i<iscompat.size();i++) {
+			if(iscompat[i]) {
+				which_compat.push_back((double)i);
+			}
+		}		
+	};
+	// Return function to be minimized
+	double log_posterior(const vector<double>& x) {
+		++neval;
+		// Process parameters
+		if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments");
+		double rho_over_theta, mean_import_length, final_import_divergence, branch_length;
+		if(parameterization!=0) error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
+		rho_over_theta = pow(10.,x[0]);
+		mean_import_length = pow(10.,x[1]);
+		final_import_divergence = pow(10.,x[2]);
+
+		// Calculate likelihood
+		int i;
+		ML = 0.0;
+		for(i=0;i<root_node;i++) {
+			// Identify the nodes
+			const int dec_id = node[i].id;
+			const int anc_id = node[i].ancestor->id;
+			// Branch length
+			branch_length = pow(10.,x[3+i]);
+			ML += mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
+		}
+		// Calculate prior (note that this is only calculated up to a normalizing constant)
+		PR = log_prior(x);
+		const double ret = (ML+PR);
+		// Test for NaNs
+		if(ret!=ret) return numeric_limits<double>::min();
+		return ret;
+	}
+	double log_prior(const vector<double>& x) {
+		if(improper_prior) return 0.0;
+		error("ClonalFrameMCMCJointFunction::log_prior(): normal prior not yet implemented");
+		return 0.0;
 	}
 };
 
