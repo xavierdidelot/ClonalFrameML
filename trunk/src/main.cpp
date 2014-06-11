@@ -276,6 +276,7 @@ int main (const int argc, const char* argv[]) {
 	vector<bool> ignore_site(fa.lseq,false);
 	if(ignore_user_sites!="") {
 		ifstream user_sites(ignore_user_sites.c_str());
+		int debug_last_elem = -1;
 		while(!user_sites.eof()) {
 			int elem;
 			user_sites >> elem;
@@ -286,6 +287,7 @@ int main (const int argc, const char* argv[]) {
 				error(errTxt.str().c_str());
 			}
 			ignore_site[elem] = true;
+			debug_last_elem = elem;
 		}
 	}
 	
@@ -782,8 +784,8 @@ int main (const int argc, const char* argv[]) {
 			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
 			vector< vector<ImportationState> > is_imported(root_node);
 			// Open files for writing
-			vector<ofstream*> mout(4,NULL);
-			vector<ofstream*> pout(4,NULL);
+			vector< ofstream* > mout(4);
+			vector< ofstream* > pout(4);
 			mout[0] = new ofstream(mcmc0_out_file.c_str());
 			mout[1] = new ofstream(mcmc1_out_file.c_str());
 			mout[2] = new ofstream(mcmc2_out_file.c_str());
