@@ -948,6 +948,7 @@ int main (const int argc, const char* argv[]) {
 			vector<double> param(root_node+3), new_param;
 			for(i=0;i<3;i++) param[i] = driving_prior_mean[i];
 			for(i=0;i<root_node;i++) param[3+i] = log10(initial_branch_length[i]);
+			vector<double> partial_post(root_node), new_partial_post(root_node);
 			// Initialize the log likelihood class
 			ClonalFrameMCMCJointFunction cff(ctree.node,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported,driving_prior_mean,driving_prior_precision,true,root_node);
 			// Output preamble to files
@@ -955,7 +956,7 @@ int main (const int argc, const char* argv[]) {
 			*mout[1] << "import_length" << endl;
 			*mout[2] << "import_divergence" << endl;
 			for(i=0;i<root_node;i++) {
-				if(i>0) *mout[i] << "\t";
+				if(i>0) *mout[3] << "\t";
 				*mout[3] << ctree.node[i].id;
 			}
 			*mout[3] << endl;
@@ -963,7 +964,7 @@ int main (const int argc, const char* argv[]) {
 			*pout[1] << "import_length" << endl;
 			*pout[2] << "import_divergence" << endl;
 			for(i=0;i<root_node;i++) {
-				if(i>0) *pout[i] << "\t";
+				if(i>0) *pout[3] << "\t";
 				*pout[3] << ctree.node[i].id;
 			}
 			*pout[3] << endl;
@@ -972,19 +973,25 @@ int main (const int argc, const char* argv[]) {
 			// Do MCMC			
 			int iter;
 			const int niter = 1000;
-			double loglik = cff.log_posterior(param);
+			double loglik = cff.log_posterior(param,partial_post), new_loglik;
 			vector<double> proposal_sd(param.size(),0.1);
 			for(iter=0;iter<niter;iter++) {
 				for(j=0;j<param.size();j++) {
 					new_param = param;
 					new_param[j] += ran.normal(0,proposal_sd[j]);
-					const double new_loglik = cff.log_posterior(new_param);
+					if(j<3) {
+						new_loglik = cff.log_posterior(new_param,new_partial_post);
+					} else {
+						new_partial_post = partial_post;
+						new_loglik = cff.log_posterior(new_param,new_partial_post,j-3);
+					}
 					const double alpha = new_loglik-loglik;
 					const bool accept = alpha>=0.0 || alpha>=log(ran.U());
 					if(accept) {
 						// Accept
 						param = new_param;
 						loglik = new_loglik;
+						partial_post = new_partial_post;
 					} else {
 						// Reject (do nothing)
 					}
@@ -995,7 +1002,7 @@ int main (const int argc, const char* argv[]) {
 					*mout[1] << param[1] << endl;
 					*mout[2] << param[2] << endl;
 					for(i=0;i<root_node;i++) {
-						if(i>0) *mout[i] << "\t";
+						if(i>0) *mout[3] << "\t";
 						*mout[3] << param[3+i];
 					}
 					*mout[3] << endl;

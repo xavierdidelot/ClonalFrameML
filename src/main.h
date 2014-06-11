@@ -765,7 +765,8 @@ public:
 										const vector<double> &_prior_mean, const vector<double> &_prior_precision, const bool _improper_prior, const int _root_node) : 
 	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
 	pi(_pi), neval(0), multithread(_multithread), is_imported(_is_imported),
-	prior_mean(_prior_mean), prior_precision(_prior_precision), improper_prior(_improper_prior), root_node(_root_node), parameterization(0) {
+	prior_mean(_prior_mean), prior_precision(_prior_precision), improper_prior(_improper_prior), 
+	root_node(_root_node), parameterization(0) {
 		if(prior_mean.size()!=4) error("ClonalFrameMCMCJointFunction: prior mean must have length 4");
 		if(prior_precision.size()!=4) error("ClonalFrameMCMCJointFunction: prior precision must have length 4");
 		// Precompute which sites are compatible
@@ -775,7 +776,7 @@ public:
 			if(iscompat[i]) {
 				which_compat.push_back((double)i);
 			}
-		}		
+		}
 	};
 	// Return function to be minimized
 	double log_posterior(const vector<double>& x) {
@@ -798,6 +799,70 @@ public:
 			// Branch length
 			branch_length = pow(10.,x[3+i]);
 			ML += mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
+		}
+		// Calculate prior (note that this is only calculated up to a normalizing constant)
+		PR = log_prior(x);
+		const double ret = (ML+PR);
+		// Test for NaNs
+		if(ret!=ret) return numeric_limits<double>::min();
+		return ret;
+	}
+	// Return function to be minimized
+	double log_posterior(const vector<double>& x, vector<double> &partial_post) {
+		++neval;
+		// Process parameters
+		if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments");
+		double rho_over_theta, mean_import_length, final_import_divergence, branch_length;
+		if(parameterization!=0) error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
+		rho_over_theta = pow(10.,x[0]);
+		mean_import_length = pow(10.,x[1]);
+		final_import_divergence = pow(10.,x[2]);
+		
+		// Calculate likelihood
+		int i;
+		ML = 0.0;
+		for(i=0;i<root_node;i++) {
+			// Identify the nodes
+			const int dec_id = node[i].id;
+			const int anc_id = node[i].ancestor->id;
+			// Branch length
+			branch_length = pow(10.,x[3+i]);
+			partial_post[i] = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
+			ML += partial_post[i];
+		}
+		// Calculate prior (note that this is only calculated up to a normalizing constant)
+		PR = log_prior(x);
+		const double ret = (ML+PR);
+		// Test for NaNs
+		if(ret!=ret) return numeric_limits<double>::min();
+		return ret;
+	}
+	// Return function to be minimized
+	double log_posterior(const vector<double>& x, vector<double> &partial_post, const int branch_update) {
+		++neval;
+		// Process parameters
+		if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments");
+		double rho_over_theta, mean_import_length, final_import_divergence, branch_length;
+		if(parameterization!=0) error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
+		rho_over_theta = pow(10.,x[0]);
+		mean_import_length = pow(10.,x[1]);
+		final_import_divergence = pow(10.,x[2]);
+		
+		// Calculate likelihood
+		int i;
+		ML = 0.0;
+		for(i=0;i<root_node;i++) {
+			if(branch_update==i) {
+				// Identify the nodes
+				const int dec_id = node[i].id;
+				const int anc_id = node[i].ancestor->id;
+				// Branch length
+				branch_length = pow(10.,x[3+i]);
+				partial_post[i] = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
+				ML += partial_post[i];
+			} else {
+				ML += partial_post[i];
+			}
 		}
 		// Calculate prior (note that this is only calculated up to a normalizing constant)
 		PR = log_prior(x);
