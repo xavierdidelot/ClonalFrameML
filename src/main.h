@@ -37,6 +37,7 @@
 #include <random.h>
 #include <limits>
 #include <bfgs.h>
+#include <version.h>
 
 using std::cout;
 using myutils::NewickTree;
