@@ -21,6 +21,8 @@
 
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();
+	// Output version number
+	cout << "ClonalFrameML version 0." << ClonalFrameML_SVNRevision << endl;
 	// Process the command line arguments	
 	if(argc<5) {
 		stringstream errTxt;
