@@ -118,7 +118,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("driving_prior_precision",		TP_STRING, &string_driving_prior_precision);
 	arg.add_item("grid_approx",					TP_DOUBLE, &grid_approx);
 	arg.add_item("mcmc",						TP_STRING, &mcmc_joint);
-	arg.add_item("mcmc_infer_branch_lengths",	TP_STRING, &mcmc_joint);
+	arg.add_item("mcmc_infer_branch_lengths",	TP_STRING, &mcmc_infer_branch_lengths);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -140,7 +140,7 @@ int main (const int argc, const char* argv[]) {
 	bool LAPLACE_APPROX					= string_to_bool(laplace_approx,				"laplace_approx");
 	bool GRID_APPROX = (grid_approx != 0.0);
 	bool MCMC_JOINT						= string_to_bool(mcmc_joint,					"mcmc");
-	bool MCMC_INFER_BRANCH_LENGTHS		= string_to_bool(mcmc_infer_branch_lengths,					"mcmc_infer_branch_lengths");
+	bool MCMC_INFER_BRANCH_LENGTHS		= string_to_bool(mcmc_infer_branch_lengths,		"mcmc_infer_branch_lengths");
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
