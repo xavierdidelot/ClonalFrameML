@@ -57,6 +57,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-driving_prior_precision       4 values (df \"1 1 1 1\")   Precision of the driving prior used by the Laplace approximation." << endl;
 		errTxt << "-grid_approx                   value 0/2+  (default 0)   Number of points for grid approximation (0 = off)." << endl;
 		errTxt << "-mcmc                          true or false (default)   Estimate by MCMC recombination parameters for all branches." << endl;
+		errTxt << "-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -85,7 +86,7 @@ int main (const int argc, const char* argv[]) {
 	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
-	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false";
+	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false", mcmc_infer_branch_lengths = "false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	double grid_approx = 0.0;
 	// Process options
@@ -117,6 +118,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("driving_prior_precision",		TP_STRING, &string_driving_prior_precision);
 	arg.add_item("grid_approx",					TP_DOUBLE, &grid_approx);
 	arg.add_item("mcmc",						TP_STRING, &mcmc_joint);
+	arg.add_item("mcmc_infer_branch_lengths",	TP_STRING, &mcmc_joint);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -138,6 +140,7 @@ int main (const int argc, const char* argv[]) {
 	bool LAPLACE_APPROX					= string_to_bool(laplace_approx,				"laplace_approx");
 	bool GRID_APPROX = (grid_approx != 0.0);
 	bool MCMC_JOINT						= string_to_bool(mcmc_joint,					"mcmc");
+	bool MCMC_INFER_BRANCH_LENGTHS		= string_to_bool(mcmc_infer_branch_lengths,					"mcmc_infer_branch_lengths");
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -227,6 +230,7 @@ int main (const int argc, const char* argv[]) {
 	if(driving_prior_precision.size()!=4) error("driving_prior_precision must have 4 values separated by spaces");
 	if(fabs(grid_approx-(double)(int)(grid_approx))>1.0e-12) error("grid_approx must have an integer value");
 	if(GRID_APPROX && grid_approx<2.0) error("grid_approx must be 0 (off) or 2 or more");
+	if(!MCMC_JOINT & MCMC_INFER_BRANCH_LENGTHS) warning("mcmc_infer_branch_lengths will be ignored because -mcmc is false");
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -925,11 +929,13 @@ int main (const int argc, const char* argv[]) {
 			pout[3] = new ofstream(prop3_out_file.c_str());
 			ofstream lout(loglik_out_file.c_str());
 			ofstream lpout(loglik_prop_out_file.c_str());
+			// Minimum branch length
+			const double min_branch_length = global_min_branch_length;
 			// For each branch find good starting values for the branch lengths
 			int j,k;
 			vector<double> initial_branch_length(root_node);
 			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length
+				// Crudely re-estimate branch length (if !MCMC_INFER_BRANCH_LENGTHS these values will be fixed)
 				double pd = 1.0, pd_den = 2.0;
 				const int dec_id = ctree.node[i].id;
 				const int anc_id = ctree.node[i].ancestor->id;
@@ -950,7 +956,8 @@ int main (const int argc, const char* argv[]) {
 			for(i=0;i<root_node;i++) param[3+i] = log10(initial_branch_length[i]);
 			vector<double> partial_post(root_node), new_partial_post(root_node);
 			// Initialize the log likelihood class
-			ClonalFrameMCMCJointFunction cff(ctree.node,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported,driving_prior_mean,driving_prior_precision,true,root_node);
+			ClonalFrameMCMCJointFunction cff(ctree.node,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported,min_branch_length,driving_prior_mean,driving_prior_precision,true,root_node);
+			cff.parameterization = (MCMC_INFER_BRANCH_LENGTHS) ? 1 : 0;
 			// Output preamble to files
 			*mout[0] << "rho_over_theta" << endl;
 			*mout[1] << "import_length" << endl;
@@ -975,8 +982,9 @@ int main (const int argc, const char* argv[]) {
 			const int niter = 1000;
 			double loglik = cff.log_posterior(param,partial_post), new_loglik;
 			vector<double> proposal_sd(param.size(),0.1);
+			const int nmix_param = (MCMC_INFER_BRANCH_LENGTHS) ? param.size() : 3;
 			for(iter=0;iter<niter;iter++) {
-				for(j=0;j<param.size();j++) {
+				for(j=0;j<nmix_param;j++) {
 					new_param = param;
 					new_param[j] += ran.normal(0,proposal_sd[j]);
 					if(j<3) {

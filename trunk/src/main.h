@@ -753,6 +753,7 @@ public:
 	double PR;
 	int neval;
 	const bool multithread;
+	const double min_branch_length;
 	const vector<double> prior_mean;
 	const vector<double> prior_precision;
 	int parameterization;
@@ -761,10 +762,10 @@ public:
 	int root_node;
 public:
 	ClonalFrameMCMCJointFunction(const mt_node *_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-										const vector<double> &_pi, const bool _multithread, vector< vector<ImportationState> > &_is_imported, 
+										const vector<double> &_pi, const bool _multithread, vector< vector<ImportationState> > &_is_imported, const double _min_branch_length,
 										const vector<double> &_prior_mean, const vector<double> &_prior_precision, const bool _improper_prior, const int _root_node) : 
 	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
-	pi(_pi), neval(0), multithread(_multithread), is_imported(_is_imported),
+	pi(_pi), neval(0), multithread(_multithread), is_imported(_is_imported), min_branch_length(_min_branch_length),
 	prior_mean(_prior_mean), prior_precision(_prior_precision), improper_prior(_improper_prior), 
 	root_node(_root_node), parameterization(0) {
 		if(prior_mean.size()!=4) error("ClonalFrameMCMCJointFunction: prior mean must have length 4");
@@ -782,13 +783,24 @@ public:
 	double log_posterior(const vector<double>& x) {
 		++neval;
 		// Process parameters
-		if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments");
 		double rho_over_theta, mean_import_length, final_import_divergence, branch_length;
-		if(parameterization!=0) error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
-		rho_over_theta = pow(10.,x[0]);
-		mean_import_length = pow(10.,x[1]);
-		final_import_divergence = pow(10.,x[2]);
-
+		if(parameterization==0) {
+			if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments for parameterization 0");
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+		} else if(parameterization==1) {
+			if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments for parameterization 1");
+			// Automatic branch lengths
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+			// branch_length = pow(10.,x[3])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3])));
+			// if(branch_length<=min_branch_length) branch_length = min_branch_length;
+		} else {
+			error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
+		}
+				
 		// Calculate likelihood
 		int i;
 		ML = 0.0;
@@ -797,7 +809,8 @@ public:
 			const int dec_id = node[i].id;
 			const int anc_id = node[i].ancestor->id;
 			// Branch length
-			branch_length = pow(10.,x[3+i]);
+			branch_length = (parameterization==0) ? pow(10.,x[3+i]) : MAX(min_branch_length,pow(10.,x[3+i])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3+i]))));
+			// Update the likelihood
 			ML += mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
 		}
 		// Calculate prior (note that this is only calculated up to a normalizing constant)
@@ -811,12 +824,23 @@ public:
 	double log_posterior(const vector<double>& x, vector<double> &partial_post) {
 		++neval;
 		// Process parameters
-		if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments");
 		double rho_over_theta, mean_import_length, final_import_divergence, branch_length;
-		if(parameterization!=0) error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
-		rho_over_theta = pow(10.,x[0]);
-		mean_import_length = pow(10.,x[1]);
-		final_import_divergence = pow(10.,x[2]);
+		if(parameterization==0) {
+			if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments for parameterization 0");
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+		} else if(parameterization==1) {
+			if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments for parameterization 1");
+			// Automatic branch lengths
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+			// branch_length = pow(10.,x[3])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3])));
+			// if(branch_length<=min_branch_length) branch_length = min_branch_length;
+		} else {
+			error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
+		}
 		
 		// Calculate likelihood
 		int i;
@@ -826,7 +850,8 @@ public:
 			const int dec_id = node[i].id;
 			const int anc_id = node[i].ancestor->id;
 			// Branch length
-			branch_length = pow(10.,x[3+i]);
+			branch_length = (parameterization==0) ? pow(10.,x[3+i]) : MAX(min_branch_length,pow(10.,x[3+i])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3+i]))));
+			// Update the likelihood
 			partial_post[i] = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
 			ML += partial_post[i];
 		}
@@ -841,12 +866,23 @@ public:
 	double log_posterior(const vector<double>& x, vector<double> &partial_post, const int branch_update) {
 		++neval;
 		// Process parameters
-		if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments");
 		double rho_over_theta, mean_import_length, final_import_divergence, branch_length;
-		if(parameterization!=0) error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
-		rho_over_theta = pow(10.,x[0]);
-		mean_import_length = pow(10.,x[1]);
-		final_import_divergence = pow(10.,x[2]);
+		if(parameterization==0) {
+			if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments for parameterization 0");
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+		} else if(parameterization==1) {
+			if(x.size()!=3+root_node) error("ClonalFrameMCMCJointFunction::f(): wrong number of arguments for parameterization 1");
+			// Automatic branch lengths
+			rho_over_theta = pow(10.,x[0]);
+			mean_import_length = pow(10.,x[1]);
+			final_import_divergence = pow(10.,x[2]);
+			// branch_length = pow(10.,x[3])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3])));
+			// if(branch_length<=min_branch_length) branch_length = min_branch_length;
+		} else {
+			error("ClonalFrameMCMCJointFunction::f(): parameterization code not recognized");
+		}
 		
 		// Calculate likelihood
 		int i;
@@ -857,7 +893,8 @@ public:
 				const int dec_id = node[i].id;
 				const int anc_id = node[i].ancestor->id;
 				// Branch length
-				branch_length = pow(10.,x[3+i]);
+				branch_length = (parameterization==0) ? pow(10.,x[3+i]) : MAX(min_branch_length,pow(10.,x[3+i])/(1.0+rho_over_theta*mean_import_length*(final_import_divergence-pow(10.,x[3+i]))));
+				// Update the likelihood
 				partial_post[i] = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
 				ML += partial_post[i];
 			} else {
