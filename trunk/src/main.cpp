@@ -58,6 +58,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-grid_approx                   value 0/2+  (default 0)   Number of points for grid approximation (0 = off)." << endl;
 		errTxt << "-mcmc                          true or false (default)   Estimate by MCMC recombination parameters for all branches." << endl;
 		errTxt << "-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches." << endl;
+		errTxt << "-initial_values                3 values/empty (def \"\")   Initial values used by the Laplace approximation only." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -86,7 +87,7 @@ int main (const int argc, const char* argv[]) {
 	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
-	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false", mcmc_infer_branch_lengths = "false";
+	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false", mcmc_infer_branch_lengths = "false", string_initial_values = "";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	double grid_approx = 0.0;
 	// Process options
@@ -119,6 +120,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("grid_approx",					TP_DOUBLE, &grid_approx);
 	arg.add_item("mcmc",						TP_STRING, &mcmc_joint);
 	arg.add_item("mcmc_infer_branch_lengths",	TP_STRING, &mcmc_infer_branch_lengths);
+	arg.add_item("initial_values",				TP_STRING, &string_initial_values);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -231,6 +233,21 @@ int main (const int argc, const char* argv[]) {
 	if(fabs(grid_approx-(double)(int)(grid_approx))>1.0e-12) error("grid_approx must have an integer value");
 	if(GRID_APPROX && grid_approx<2.0) error("grid_approx must be 0 (off) or 2 or more");
 	if(!MCMC_JOINT & MCMC_INFER_BRANCH_LENGTHS) warning("mcmc_infer_branch_lengths will be ignored because -mcmc is false");
+	// Process the initial values for the Laplace approximation
+	vector<double> initial_values(0);
+	stringstream sstream_initial_values;
+	sstream_initial_values << string_initial_values;
+	for(i=0;i<1000;i++) {
+		if(sstream_initial_values.eof()) break;
+		double initial_values_elem;
+		sstream_initial_values >> initial_values_elem;
+		if(sstream_initial_values.fail()) error("Could not interpret value specified by initial_values");
+		initial_values.push_back(initial_values_elem);
+	}
+	if(i==1000) error("Maximum length of vector exceeded by initial_values");
+	if(!(initial_values.size()==0 || initial_values.size()==3)) error("initial values must have 0 or 3 values separated by spaces");
+	if(initial_values.size()>0 && !LAPLACE_APPROX) warning("-initial_values only used by -laplace_approx currently");
+
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -697,9 +714,15 @@ int main (const int argc, const char* argv[]) {
 				Powell Pow(cff);
 				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
 				Pow.TOL = brent_tolerance;
-				// Now estimate parameters for the recombination model starting at the mean of the prior, except the branch length
-				vector<double> param = driving_prior_mean;
-				param[3] = log10(initial_branch_length);
+				// Now estimate parameters for the recombination model starting at the mean of the prior (or initial values), except the branch length
+				vector<double> param;
+				if(initial_values.size()==0) {
+					param = driving_prior_mean;
+					param[3] = log10(initial_branch_length);
+				} else {
+					param = initial_values;
+					param.push_back(log10(initial_branch_length));
+				}
 				clock_t pow_start_time = clock();
 				int neval = cff.neval;
 				param = Pow.minimize(param,powell_tolerance);
