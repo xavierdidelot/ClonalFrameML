@@ -726,19 +726,21 @@ int main (const int argc, const char* argv[]) {
 				clock_t pow_start_time = clock();
 				int neval = cff.neval;
 				param = Pow.minimize(param,powell_tolerance);
-				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-				// Attempt to refine using BFGS
-				param = driving_prior_mean;
-				param[3] = log10(initial_branch_length);
-				BFGS bfgs(cff);
-				bfgs.coutput = SHOW_PROGRESS;
-				clock_t bfgs_start_time = clock();
-				neval = cff.neval;
-				param = bfgs.minimize(param,powell_tolerance);
-				cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-				// Get the approximate inverse Hessian
-//				laplaceQ[i] = bfgs.hessin;
-				cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
+				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
+				if(false) {
+					// Attempt to refine using BFGS
+					param = driving_prior_mean;
+					param[3] = log10(initial_branch_length);
+					BFGS bfgs(cff);
+					bfgs.coutput = SHOW_PROGRESS;
+					clock_t bfgs_start_time = clock();
+					neval = cff.neval;
+					param = bfgs.minimize(param,powell_tolerance);
+					cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
+					// Get the approximate inverse Hessian
+					// laplaceQ[i] = bfgs.hessin;
+					cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
+				}
 				// Approximate the likelihood by a multivariate Gaussian
 				laplaceMLE[i] = param;
 				// Interval over which to numerically compute second derivatives
