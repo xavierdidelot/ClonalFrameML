@@ -709,7 +709,9 @@ int main (const int argc, const char* argv[]) {
 				}
 				const double initial_branch_length = pd/pd_den;
 				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
+				const int PARAMETERIZATION = 3;
 				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
+				cff.parameterization = PARAMETERIZATION;
 				// Setup optimization function
 				Powell Pow(cff);
 				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
@@ -720,8 +722,18 @@ int main (const int argc, const char* argv[]) {
 					param = driving_prior_mean;
 					param[3] = log10(initial_branch_length);
 				} else {
-					param = initial_values;
-					param.push_back(log10(initial_branch_length));
+					if(PARAMETERIZATION==3) {
+						param = vector<double>(4);
+						param[0] = log10(initial_branch_length);
+						param[2] = initial_values[1];
+						param[3] = initial_values[0]+initial_values[1]+initial_values[2];
+						double M = initial_branch_length/(1.0-pow(10.,param[0]+param[1])*(initial_branch_length-pow(10.,param[2])));
+						if(M<global_min_branch_length) M = global_min_branch_length;
+						param[1] = initial_values[0]+initial_values[1]+log10(M);
+					} else {
+						param = initial_values;
+						param.push_back(log10(initial_branch_length));
+					}
 				}
 				clock_t pow_start_time = clock();
 				int neval = cff.neval;
