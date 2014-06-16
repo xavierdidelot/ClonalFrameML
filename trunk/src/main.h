@@ -697,6 +697,12 @@ public:
 			if(branch_length<=0.0) return numeric_limits<double>::max();
 			rho_over_theta = 1.0/branch_length/mean_import_length/pUnimported;
 			if(rho_over_theta<=0.0) return numeric_limits<double>::max();
+		} else if(parameterization==3) {
+			const double pUnimported = 1.0/(1.0+pow(10.,x[0]));
+			final_import_divergence = pow(10.,x[0])/(1.0-pUnimported)*pow(10.,x[3])/(1.0+pow(10.,x[3]));
+			branch_length = pow(10.,x[1])*final_import_divergence/pow(10.,x[3]);
+			mean_import_length = pow(10.,x[2]);
+			rho_over_theta = pow(10.,x[1])/mean_import_length/branch_length;
 		} else {
 			error("ClonalFrameLaplacePerBranchFunction::f(): parameterization code not recognized");
 		}
@@ -709,7 +715,16 @@ public:
 		//ML = marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence);
 		ML = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,final_import_divergence).LOG();
 		// Calculate prior (note that this is only calculated up to a normalizing constant)
-		PR = log_prior(x);
+		if(parameterization==3) {
+			vector<double> xx(4);
+			xx[0] = log10(rho_over_theta);
+			xx[1] = log10(mean_import_length);
+			xx[2] = log10(final_import_divergence);
+			xx[3] = log10(branch_length);
+			PR = log_prior(xx);
+		} else {
+			PR = log_prior(x);
+		}
 		// Print results to screen
 		// cout << "Node " << dec_id << " params " << x[0] << " " << x[1] << " " << x[2] << " " << x[3] << " gave lik " << ML << " prior " << PR << " total " << ML+PR << endl;
 		// The optimization routine is assumed to be a minimization routine, hence minus the posterior density is returned
