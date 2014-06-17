@@ -722,22 +722,21 @@ int main (const int argc, const char* argv[]) {
 					param = driving_prior_mean;
 					param[3] = log10(initial_branch_length);
 				} else {
-					if(PARAMETERIZATION==3) {
-						param = vector<double>(4);
-						param[0] = log10(initial_branch_length);
-						param[2] = initial_values[1];
-						param[3] = initial_values[0]+initial_values[1]+initial_values[2];
-						double M = initial_branch_length/(1.0-pow(10.,param[0]+param[1])*(initial_branch_length-pow(10.,param[2])));
-						if(M<global_min_branch_length) M = global_min_branch_length;
-						param[1] = initial_values[0]+initial_values[1]+log10(M);
+					if(PARAMETERIZATION!=3) {
+						param = initial_values;
+						param.push_back(log10(initial_branch_length));
 					} else {
 						param = initial_values;
 						param.push_back(log10(initial_branch_length));
-					}
+						param = cff.convert_parameterization_0_to_3(param,global_min_branch_length);
+					}						
 				}
 				clock_t pow_start_time = clock();
 				int neval = cff.neval;
 				param = Pow.minimize(param,powell_tolerance);
+				if(PARAMETERIZATION==3) {
+					param = cff.convert_parameterization_3_to_0(param);
+				}
 				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
 				if(false) {
 					// Attempt to refine using BFGS
@@ -762,24 +761,46 @@ int main (const int argc, const char* argv[]) {
 				double calcQ;
 				// The maximum log-likelihood
 				const double calcQ0 = -cff.f(param);
-				for(j=0;j<4;j++) {
-					for(k=0;k<j;k++) {
-						paramQ = param; paramQ[j] += h; paramQ[k] += h;
+				if(PARAMETERIZATION!=3) {
+					for(j=0;j<4;j++) {
+						for(k=0;k<j;k++) {
+							paramQ = param; paramQ[j] += h; paramQ[k] += h;
+							calcQ = -cff.f(paramQ);
+							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+							calcQ -= -cff.f(paramQ);
+							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
+							calcQ -= -cff.f(paramQ);
+							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
+							calcQ += -cff.f(paramQ);
+							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+						}
+						paramQ = param; paramQ[j] += 2.0*h;
 						calcQ = -cff.f(paramQ);
-						paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-						calcQ -= -cff.f(paramQ);
-						paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-						calcQ -= -cff.f(paramQ);
-						paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
+						paramQ = param; paramQ[j] -= 2.0*h;
 						calcQ += -cff.f(paramQ);
-						laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+						calcQ -= 2.0*calcQ0;
+						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 					}
-					paramQ = param; paramQ[j] += 2.0*h;
-					calcQ = -cff.f(paramQ);
-					paramQ = param; paramQ[j] -= 2.0*h;
-					calcQ += -cff.f(paramQ);
-					calcQ -= 2.0*calcQ0;
-					laplaceQ[i][j][j] = -calcQ/4.0/h/h;
+				} else {
+					for(j=0;j<4;j++) {
+						for(k=0;k<j;k++) {
+							paramQ = param; paramQ[j] += h; paramQ[k] += h;
+							calcQ = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+							calcQ -= -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
+							calcQ -= -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
+							calcQ += -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+						}
+						paramQ = param; paramQ[j] += 2.0*h;
+						calcQ = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+						paramQ = param; paramQ[j] -= 2.0*h;
+						calcQ += -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+						calcQ -= 2.0*calcQ0;
+						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
+					}
 				}
 				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
 				const double final_rho_over_theta = pow(10.,param[0]);
