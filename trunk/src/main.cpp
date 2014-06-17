@@ -708,137 +708,146 @@ int main (const int argc, const char* argv[]) {
 					}
 				}
 				const double initial_branch_length = pd/pd_den;
-				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
-				const int PARAMETERIZATION = 3;		// Do not let this take other values without reviewing code
-				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
-				cff.parameterization = PARAMETERIZATION;
-				// Setup optimization function
-				Powell Pow(cff);
-				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-				Pow.TOL = brent_tolerance;
-				// Now estimate parameters for the recombination model starting at the mean of the prior (or initial values), except the branch length
-				vector<double> param;
-				if(initial_values.size()==0) {
-					param = driving_prior_mean;
-					param[3] = log10(initial_branch_length);
-				} else {
-					param = initial_values;
-					param.push_back(log10(initial_branch_length));
-				}
-				if(PARAMETERIZATION==3) {
-					param = cff.convert_parameterization_1_to_3(param,global_min_branch_length);
-				}
-				clock_t pow_start_time = clock();
-				int neval = cff.neval;
-				param = Pow.minimize(param,powell_tolerance);
-				if(PARAMETERIZATION==3) {
-					param = cff.convert_parameterization_3_to_0(param);
-				}
-				cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-				if(false) {
-					// Attempt to refine using BFGS
-					param = driving_prior_mean;
-					param[3] = log10(initial_branch_length);
-					BFGS bfgs(cff);
-					bfgs.coutput = SHOW_PROGRESS;
-					clock_t bfgs_start_time = clock();
-					neval = cff.neval;
-					param = bfgs.minimize(param,powell_tolerance);
-					cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-					// Get the approximate inverse Hessian
-					// laplaceQ[i] = bfgs.hessin;
-					cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
-				}
-				// Approximate the likelihood by a multivariate Gaussian
-				laplaceMLE[i] = param;
-				// Interval over which to numerically compute second derivatives
-				// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-				const double h = 0.1;
-				vector<double> paramQ;
-				// The maximum log-likelihood
-				int n_calc_Hessian = 0;
-				// Label for a goto statement
-			calculate_Hessian:
-				++n_calc_Hessian;
-				if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
-				if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
-				if(n_calc_Hessian>1) {
-					// Re-optimize at adjusted parameter value
-					if(PARAMETERIZATION==3) param = cff.convert_parameterization_0_to_3(param, global_min_branch_length);
+				if(pd>=2.0) {
+					// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
+					const int PARAMETERIZATION = 3;		// Do not let this take other values without reviewing code
+					ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
+					cff.parameterization = PARAMETERIZATION;
+					// Setup optimization function
+					Powell Pow(cff);
+					Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
+					Pow.TOL = brent_tolerance;
+					// Now estimate parameters for the recombination model starting at the mean of the prior (or initial values), except the branch length
+					vector<double> param;
+					if(initial_values.size()==0) {
+						param = driving_prior_mean;
+						param[3] = log10(initial_branch_length);
+					} else {
+						param = initial_values;
+						param.push_back(log10(initial_branch_length));
+					}
+					if(PARAMETERIZATION==3) {
+						param = cff.convert_parameterization_1_to_3(param,global_min_branch_length);
+					}
+					clock_t pow_start_time = clock();
+					int neval = cff.neval;
 					param = Pow.minimize(param,powell_tolerance);
-					if(PARAMETERIZATION==3) param = cff.convert_parameterization_3_to_0(param);
-					cout << "Re-optimizing" << endl;
-					cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
-				}
-				if(PARAMETERIZATION!=3) {
-					const double calcQ0 = -cff.f(param);
-					for(j=0;j<4;j++) {
-						for(k=0;k<j;k++) {
-							paramQ = param; paramQ[j] += h; paramQ[k] += h;
+					if(PARAMETERIZATION==3) {
+						param = cff.convert_parameterization_3_to_0(param);
+					}
+					cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
+					if(false) {
+						// Attempt to refine using BFGS
+						param = driving_prior_mean;
+						param[3] = log10(initial_branch_length);
+						BFGS bfgs(cff);
+						bfgs.coutput = SHOW_PROGRESS;
+						clock_t bfgs_start_time = clock();
+						neval = cff.neval;
+						param = bfgs.minimize(param,powell_tolerance);
+						cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
+						// Get the approximate inverse Hessian
+						// laplaceQ[i] = bfgs.hessin;
+						cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
+					}
+					// Approximate the likelihood by a multivariate Gaussian
+					laplaceMLE[i] = param;
+					// Interval over which to numerically compute second derivatives
+					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
+					const double h = 0.1;
+					vector<double> paramQ;
+					// The maximum log-likelihood
+					int n_calc_Hessian = 0;
+					// Label for a goto statement
+				calculate_Hessian:
+					++n_calc_Hessian;
+					if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
+					if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
+					if(n_calc_Hessian>1) {
+						// Re-optimize at adjusted parameter value
+						cout << "Re-optimizing" << endl;
+						if(PARAMETERIZATION==3) param = cff.convert_parameterization_0_to_3(param, global_min_branch_length);
+						param = Pow.minimize(param,powell_tolerance);
+						if(PARAMETERIZATION==3) param = cff.convert_parameterization_3_to_0(param);
+						cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
+					}
+					if(PARAMETERIZATION!=3) {
+						const double calcQ0 = -cff.f(param);
+						for(j=0;j<4;j++) {
+							for(k=0;k<j;k++) {
+								paramQ = param; paramQ[j] += h; paramQ[k] += h;
+								const double calcQa = -cff.f(paramQ);
+								if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+								const double calcQb = -cff.f(paramQ);
+								if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								paramQ = param; paramQ[j] -= h; paramQ[k] += h;
+								const double calcQc = -cff.f(paramQ);
+								if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
+								const double calcQd = -cff.f(paramQ);
+								if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								const double calcQ = calcQa - calcQb - calcQc + calcQd;
+								laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+							}
+							paramQ = param; paramQ[j] += 2.0*h;
 							const double calcQa = -cff.f(paramQ);
 							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+							paramQ = param; paramQ[j] -= 2.0*h;
 							const double calcQb = -cff.f(paramQ);
 							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-							const double calcQc = -cff.f(paramQ);
-							if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-							const double calcQd = -cff.f(paramQ);
-							if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							const double calcQ = calcQa - calcQb - calcQc + calcQd;
-							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+							const double calcQ = calcQa + calcQb - 2.0*calcQ0;
+							laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 						}
-						paramQ = param; paramQ[j] += 2.0*h;
-						const double calcQa = -cff.f(paramQ);
-						if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-						paramQ = param; paramQ[j] -= 2.0*h;
-						const double calcQb = -cff.f(paramQ);
-						if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-						const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
-					}
-				} else {
-					const double calcQ0 = -cff.f(cff.convert_parameterization_0_to_3(param,global_min_branch_length));
-					for(j=0;j<4;j++) {
-						for(k=0;k<j;k++) {
-							paramQ = param; paramQ[j] += h; paramQ[k] += h;
+					} else {
+						const double calcQ0 = -cff.f(cff.convert_parameterization_0_to_3(param,global_min_branch_length));
+						for(j=0;j<4;j++) {
+							for(k=0;k<j;k++) {
+								paramQ = param; paramQ[j] += h; paramQ[k] += h;
+								const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+								if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+								const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+								if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								paramQ = param; paramQ[j] -= h; paramQ[k] += h;
+								const double calcQc = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+								if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
+								const double calcQd = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+								if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
+								const double calcQ = calcQa - calcQb - calcQc + calcQd;
+								laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+							}
+							paramQ = param; paramQ[j] += 2.0*h;
 							const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
 							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+							paramQ = param; paramQ[j] -= 2.0*h;
 							const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
 							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-							const double calcQc = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-							if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-							const double calcQd = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-							if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							const double calcQ = calcQa - calcQb - calcQc + calcQd;
-							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+							const double calcQ = calcQa + calcQb - 2.0*calcQ0;
+							laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 						}
-						paramQ = param; paramQ[j] += 2.0*h;
-						const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-						if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-						paramQ = param; paramQ[j] -= 2.0*h;
-						const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-						if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-						const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 					}
+					// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
+					const double final_rho_over_theta = pow(10.,param[0]);
+					const double final_mean_import_length = pow(10.,param[1]);
+					const double final_import_divergence = pow(10.,param[2]);
+					const double final_branch_length = (PARAMETERIZATION==1) ? pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))) : pow(10.,param[3]);
+					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
+					// Update branch length in the tree
+					// Note this is unsafe in general because the corresponding node times are not adjusted
+					ctree.node[i].edge_time = final_branch_length;
+					// Output results to screen
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " R = " << final_rho_over_theta << " I = " << final_mean_import_length << " D = " << final_import_divergence << " M = " << final_branch_length << endl;
+					ML += -Pow.function_minimum;
+				} else {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " was too short for inference" << endl;
+					vector< vector<double> > laplaceMLE(0);
+					vector< Matrix<double> > laplaceQ(0);
+					const double NaN = 1.0/0.0;
+					laplaceMLE[i] = vector<double>(4,NaN);
+					laplaceQ[i] = Matrix<double>(4,4,NaN);
 				}
-				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
-				const double final_rho_over_theta = pow(10.,param[0]);
-				const double final_mean_import_length = pow(10.,param[1]);
-				const double final_import_divergence = pow(10.,param[2]);
-				const double final_branch_length = (PARAMETERIZATION==1) ? pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))) : pow(10.,param[3]);
-				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-				// Update branch length in the tree
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = final_branch_length;
-				// Output results to screen
-				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " R = " << final_rho_over_theta << " I = " << final_mean_import_length << " D = " << final_import_divergence << " M = " << final_branch_length << endl;
-				ML += -Pow.function_minimum;
 			}
 			cout << "Unnormalized log-posterior after branch optimization is " << ML << endl;
 			
