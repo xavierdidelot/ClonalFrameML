@@ -3277,7 +3277,7 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 }
 
 // Given a path and ancestral states, calculate maximum likelihood estimates of M, nu, R and delta
-void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> MLE) {
+void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> &MLE) {
 	// Counters:
 	// Running total divergence at unimported, imported sites
 	double mutU=0.0, mutI=0.0;
