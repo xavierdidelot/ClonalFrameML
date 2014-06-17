@@ -755,27 +755,39 @@ int main (const int argc, const char* argv[]) {
 				// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
 				const double h = 0.1;
 				vector<double> paramQ;
-				double calcQ;
 				// The maximum log-likelihood
+				int n_calc_Hessian = 0;
+				// Label for a goto statement
+			calculate_Hessian:
+				++n_calc_Hessian;
+				if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
+				if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
 				if(PARAMETERIZATION!=3) {
 					const double calcQ0 = -cff.f(param);
 					for(j=0;j<4;j++) {
 						for(k=0;k<j;k++) {
 							paramQ = param; paramQ[j] += h; paramQ[k] += h;
-							calcQ = -cff.f(paramQ);
+							const double calcQa = -cff.f(paramQ);
+							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
 							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-							calcQ -= -cff.f(paramQ);
+							const double calcQb = -cff.f(paramQ);
+							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
 							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-							calcQ -= -cff.f(paramQ);
+							const double calcQc = -cff.f(paramQ);
+							if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
 							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-							calcQ += -cff.f(paramQ);
+							const double calcQd = -cff.f(paramQ);
+							if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
+							const double calcQ = calcQa - calcQb - calcQc + calcQd;
 							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
 						}
 						paramQ = param; paramQ[j] += 2.0*h;
-						calcQ = -cff.f(paramQ);
+						const double calcQa = -cff.f(paramQ);
+						if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
 						paramQ = param; paramQ[j] -= 2.0*h;
-						calcQ += -cff.f(paramQ);
-						calcQ -= 2.0*calcQ0;
+						const double calcQb = -cff.f(paramQ);
+						if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
+						const double calcQ = calcQa + calcQb - 2.0*calcQ0;
 						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 					}
 				} else {
@@ -783,20 +795,27 @@ int main (const int argc, const char* argv[]) {
 					for(j=0;j<4;j++) {
 						for(k=0;k<j;k++) {
 							paramQ = param; paramQ[j] += h; paramQ[k] += h;
-							calcQ = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
 							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-							calcQ -= -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
 							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-							calcQ -= -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							const double calcQc = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
 							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-							calcQ += -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							const double calcQd = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+							if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
+							const double calcQ = calcQa - calcQb - calcQc + calcQd;
 							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
 						}
 						paramQ = param; paramQ[j] += 2.0*h;
-						calcQ = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+						const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+						if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
 						paramQ = param; paramQ[j] -= 2.0*h;
-						calcQ += -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-						calcQ -= 2.0*calcQ0;
+						const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
+						if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
+						const double calcQ = calcQa + calcQb - 2.0*calcQ0;
 						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 					}
 				}
