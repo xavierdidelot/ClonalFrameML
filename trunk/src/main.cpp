@@ -751,7 +751,6 @@ int main (const int argc, const char* argv[]) {
 						cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
 					}
 					// Approximate the likelihood by a multivariate Gaussian
-					laplaceMLE[i] = param;
 					// Interval over which to numerically compute second derivatives
 					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
 					const double h = 0.1;
@@ -828,6 +827,8 @@ int main (const int argc, const char* argv[]) {
 							laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 						}
 					}
+					// Store the point estimates
+					laplaceMLE[i] = param;
 					// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
 					const double final_rho_over_theta = pow(10.,param[0]);
 					const double final_mean_import_length = pow(10.,param[1]);
@@ -847,6 +848,22 @@ int main (const int argc, const char* argv[]) {
 					const double NaN = 1.0/0.0;
 					laplaceMLE[i] = vector<double>(4,NaN);
 					laplaceQ[i] = Matrix<double>(4,4,NaN);
+					vector<double> param;
+					if(initial_values.size()==0) {
+						param = driving_prior_mean;
+						param[3] = log10(initial_branch_length);
+					} else {
+						param = initial_values;
+						param.push_back(log10(initial_branch_length));
+					}
+					const double final_rho_over_theta = pow(10.,param[0]);
+					const double final_mean_import_length = pow(10.,param[1]);
+					const double final_import_divergence = pow(10.,param[2]);
+					const double final_branch_length = MAX(global_min_branch_length,pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))));
+					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
+					// Update branch length in the tree
+					// Note this is unsafe in general because the corresponding node times are not adjusted
+					ctree.node[i].edge_time = final_branch_length;
 				}
 			}
 			cout << "Unnormalized log-posterior after branch optimization is " << ML << endl;
