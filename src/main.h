@@ -743,9 +743,10 @@ public:
 		}
 		return ret;
 	}
-	vector<double> convert_parameterization_0_to_3(vector<double> &initial_values, const double min_branch_length) {
+	vector<double> convert_parameterization_1_to_3(vector<double> &initial_values, const double min_branch_length) {
+		// Input parameters, log10-scaled, are rho_over_theta, mean_import_length, final_import_divergence, branch_length (expected divergence, B)
 		vector<double> param(4);
-		// Substitutions
+		// Expected divergence
 		param[0] = initial_values[3];
 		// Mean import length
 		param[2] = initial_values[1];
@@ -756,6 +757,22 @@ public:
 			M = min_branch_length;
 		}
 		param[1] = initial_values[0]+initial_values[1]+log10(M);
+		return param;
+	}
+	vector<double> convert_parameterization_0_to_3(vector<double> &initial_values, const double min_branch_length) {
+		// Input parameters, log10-scaled, are rho_over_theta, mean_import_length, final_import_divergence, branch_length (divergence at unimported sites, M)
+		vector<double> param(4);
+		const double nu = pow(10., initial_values[2]);
+		const double M = pow(10., initial_values[3]);
+		const double Rdelta = pow(10, initial_values[0]+initial_values[1]+initial_values[3]);
+		// Expected divergence
+		param[0] = log10(nu + (M-nu)/(1.0+Rdelta));
+		// Ratio of imported to unimported sites
+		param[1] = initial_values[0]+initial_values[1]+initial_values[3];
+		// Mean import length
+		param[2] = initial_values[1];
+		// r/m
+		param[3] = initial_values[0]+initial_values[1]+initial_values[2];
 		return param;
 	}
 	vector<double> convert_parameterization_3_to_0(vector<double> &x) {

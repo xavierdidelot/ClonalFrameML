@@ -709,7 +709,7 @@ int main (const int argc, const char* argv[]) {
 				}
 				const double initial_branch_length = pd/pd_den;
 				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
-				const int PARAMETERIZATION = 3;
+				const int PARAMETERIZATION = 3;		// Do not let this take other values without reviewing code
 				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
 				cff.parameterization = PARAMETERIZATION;
 				// Setup optimization function
@@ -722,14 +722,11 @@ int main (const int argc, const char* argv[]) {
 					param = driving_prior_mean;
 					param[3] = log10(initial_branch_length);
 				} else {
-					if(PARAMETERIZATION!=3) {
-						param = initial_values;
-						param.push_back(log10(initial_branch_length));
-					} else {
-						param = initial_values;
-						param.push_back(log10(initial_branch_length));
-						param = cff.convert_parameterization_0_to_3(param,global_min_branch_length);
-					}						
+					param = initial_values;
+					param.push_back(log10(initial_branch_length));
+				}
+				if(PARAMETERIZATION==3) {
+					param = cff.convert_parameterization_1_to_3(param,global_min_branch_length);
 				}
 				clock_t pow_start_time = clock();
 				int neval = cff.neval;
@@ -806,9 +803,7 @@ int main (const int argc, const char* argv[]) {
 				const double final_rho_over_theta = pow(10.,param[0]);
 				const double final_mean_import_length = pow(10.,param[1]);
 				const double final_import_divergence = pow(10.,param[2]);
-				// Reparameterization 4/6/14
-				//const double final_branch_length = pow(10.,param[3]);
-				const double final_branch_length = pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3])));
+				const double final_branch_length = (PARAMETERIZATION==1) ? pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))) : pow(10.,param[3]);
 				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
 				// Update branch length in the tree
 				// Note this is unsafe in general because the corresponding node times are not adjusted
