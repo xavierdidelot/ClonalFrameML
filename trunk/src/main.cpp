@@ -843,8 +843,6 @@ int main (const int argc, const char* argv[]) {
 					ML += -Pow.function_minimum;
 				} else {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " was too short for inference" << endl;
-					vector< vector<double> > laplaceMLE(0);
-					vector< Matrix<double> > laplaceQ(0);
 					const double NaN = 1.0/0.0;
 					laplaceMLE[i] = vector<double>(4,NaN);
 					laplaceQ[i] = Matrix<double>(4,4,NaN);
