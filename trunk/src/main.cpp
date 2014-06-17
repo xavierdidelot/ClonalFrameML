@@ -757,8 +757,8 @@ int main (const int argc, const char* argv[]) {
 				vector<double> paramQ;
 				double calcQ;
 				// The maximum log-likelihood
-				const double calcQ0 = -cff.f(param);
 				if(PARAMETERIZATION!=3) {
+					const double calcQ0 = -cff.f(param);
 					for(j=0;j<4;j++) {
 						for(k=0;k<j;k++) {
 							paramQ = param; paramQ[j] += h; paramQ[k] += h;
@@ -779,6 +779,7 @@ int main (const int argc, const char* argv[]) {
 						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
 					}
 				} else {
+					const double calcQ0 = -cff.f(cff.convert_parameterization_0_to_3(param,global_min_branch_length));
 					for(j=0;j<4;j++) {
 						for(k=0;k<j;k++) {
 							paramQ = param; paramQ[j] += h; paramQ[k] += h;
