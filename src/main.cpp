@@ -235,19 +235,21 @@ int main (const int argc, const char* argv[]) {
 	if(!MCMC_JOINT & MCMC_INFER_BRANCH_LENGTHS) warning("mcmc_infer_branch_lengths will be ignored because -mcmc is false");
 	// Process the initial values for the Laplace approximation
 	vector<double> initial_values(0);
-	stringstream sstream_initial_values;
-	sstream_initial_values << string_initial_values;
-	for(i=0;i<1000;i++) {
-		if(sstream_initial_values.eof()) break;
-		double initial_values_elem;
-		sstream_initial_values >> initial_values_elem;
-		if(sstream_initial_values.fail()) error("Could not interpret value specified by initial_values");
-		initial_values.push_back(initial_values_elem);
+	if(string_initial_values!="") {
+		stringstream sstream_initial_values;
+		sstream_initial_values << string_initial_values;
+		for(i=0;i<1000;i++) {
+			if(sstream_initial_values.eof()) break;
+			double initial_values_elem;
+			sstream_initial_values >> initial_values_elem;
+			if(sstream_initial_values.fail()) error("Could not interpret value specified by initial_values");
+			initial_values.push_back(initial_values_elem);
+		}
+		if(i==1000) error("Maximum length of vector exceeded by initial_values");
+		if(!(initial_values.size()==0 || initial_values.size()==3)) error("initial values must have 0 or 3 values separated by spaces");
+		if(initial_values.size()>0 && !LAPLACE_APPROX) warning("-initial_values only used by -laplace_approx currently");
 	}
-	if(i==1000) error("Maximum length of vector exceeded by initial_values");
-	if(!(initial_values.size()==0 || initial_values.size()==3)) error("initial values must have 0 or 3 values separated by spaces");
-	if(initial_values.size()>0 && !LAPLACE_APPROX) warning("-initial_values only used by -laplace_approx currently");
-
+	
 	
 	// Open the FASTA file(s)
 	DNA fa;
