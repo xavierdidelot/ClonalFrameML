@@ -762,6 +762,14 @@ int main (const int argc, const char* argv[]) {
 				++n_calc_Hessian;
 				if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
 				if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
+				if(n_calc_Hessian>1) {
+					// Re-optimize at adjusted parameter value
+					if(PARAMETERIZATION==3) param = cff.convert_parameterization_0_to_3(param, global_min_branch_length);
+					param = Pow.minimize(param,powell_tolerance);
+					if(PARAMETERIZATION==3) param = cff.convert_parameterization_3_to_0(param);
+					cout << "Re-optimizing" << endl;
+					cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
+				}
 				if(PARAMETERIZATION!=3) {
 					const double calcQ0 = -cff.f(param);
 					for(j=0;j<4;j++) {
