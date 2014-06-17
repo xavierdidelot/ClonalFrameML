@@ -698,11 +698,13 @@ public:
 			rho_over_theta = 1.0/branch_length/mean_import_length/pUnimported;
 			if(rho_over_theta<=0.0) return numeric_limits<double>::max();
 		} else if(parameterization==3) {
-			const double pUnimported = 1.0/(1.0+pow(10.,x[0]));
-			final_import_divergence = pow(10.,x[0])/(1.0-pUnimported)*pow(10.,x[3])/(1.0+pow(10.,x[3]));
-			branch_length = pow(10.,x[1])*final_import_divergence/pow(10.,x[3]);
+			// See "possible reparameterization.docx"
+			const double pUnimported = 1.0/(1.0+pow(10.,x[1]));
+			final_import_divergence = pow(10.,x[0]+x[3])/(1.0-pUnimported)/(1.0+pow(10.,x[3]));
+			branch_length = pow(10.,x[1]-x[3])*final_import_divergence;
 			mean_import_length = pow(10.,x[2]);
 			rho_over_theta = pow(10.,x[1])/mean_import_length/branch_length;
+			// = pow(10.,x[3]-x[2])/final_import_divergence;
 		} else {
 			error("ClonalFrameLaplacePerBranchFunction::f(): parameterization code not recognized");
 		}
@@ -740,6 +742,34 @@ public:
 			ret -= 0.5*pow(prior_mean[i]-x[i],2.0)*prior_precision[i];
 		}
 		return ret;
+	}
+	vector<double> convert_parameterization_0_to_3(vector<double> &initial_values, const double min_branch_length) {
+		vector<double> param(4);
+		// Substitutions
+		param[0] = initial_values[3];
+		// Mean import length
+		param[2] = initial_values[1];
+		// r/m
+		param[3] = initial_values[0]+initial_values[1]+initial_values[2];
+		double M = pow(10.,initial_values[3])/(1.0+pow(10.,param[0]+initial_values[1])*(pow(10.,initial_values[2])-pow(10.,initial_values[3])));
+		if(M<min_branch_length) {
+			M = min_branch_length;
+		}
+		param[1] = initial_values[0]+initial_values[1]+log10(M);
+		return param;
+	}
+	vector<double> convert_parameterization_3_to_0(vector<double> &x) {
+		const double pUnimported = 1.0/(1.0+pow(10.,x[1]));
+		const double final_import_divergence = pow(10.,x[0]+x[3])/(1.0-pUnimported)/(1.0+pow(10.,x[3]));
+		const double branch_length = pow(10.,x[1]-x[3])*final_import_divergence;
+		const double mean_import_length = pow(10.,x[2]);
+		const double rho_over_theta = pow(10.,x[1])/mean_import_length/branch_length;
+		vector<double> param(4);
+		param[0] = log10(rho_over_theta);
+		param[1] = log10(mean_import_length);
+		param[2] = log10(final_import_divergence);
+		param[3] = log10(branch_length);
+		return param;
 	}
 };
 
