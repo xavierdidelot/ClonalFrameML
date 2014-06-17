@@ -1355,7 +1355,7 @@ int main (const int argc, const char* argv[]) {
 					double rho_over_theta = pow(10.,param[0]);
 					double mean_import_length = pow(10.,param[1]);
 					double import_divergence = pow(10.,param[2]);
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and" << cff.neval << " evaluations" << endl;
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 					// Approximate the likelihood by a multivariate Gaussian
 					// Interval over which to numerically compute second derivatives
 					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
@@ -1377,7 +1377,7 @@ int main (const int argc, const char* argv[]) {
 						mean_import_length = pow(10.,param[1]);
 						import_divergence = pow(10.,param[2]);
 						ML = cff.ML;
-						cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and" << cff.neval << " evaluations" << endl;
+						cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 					}
 					const double calcQ0 = ML;
 					for(j=0;j<4;j++) {
@@ -3345,7 +3345,7 @@ void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id
 	}
 }
 
-double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported) {
+double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported, int &neval) {
 	// Store the positions of compatible sites
 	vector<double> position(0);
 	int i;
@@ -3356,6 +3356,7 @@ double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleot
 	}
 	// Calculate the maximum likelihood importation state vector by the Viterbi algorithm
 	double ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported).LOG();
+	++neval;
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
 	const double threshold = 1.0e-6;
@@ -3370,6 +3371,7 @@ double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleot
 		import_divergence = MLE[1];
 		// Update the likelihood
 		const double new_ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported).LOG();
+		++neval;
 		// Test for no further improvement
 		if((new_ML-ML)<threshold) {
 			break;
