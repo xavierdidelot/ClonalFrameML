@@ -84,7 +84,7 @@ void write_importation_status(vector< vector<ImportationState> > &imported, vect
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node);
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node);
 void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> MLE);
-void viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported);
+double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported);
 
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
@@ -1089,6 +1089,67 @@ public:
 		if(expected_number_of_substitutions>=import_divergence) b = expected_number_of_substitutions;
 		if(b!=b || b<min_branch_length) b = min_branch_length;
 		return b;
+	}
+};
+
+class ClonalFrameViterbiTrainingPerBranch {
+public:
+	// References to non-member variables
+	const mt_node &node;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector<ImportationState> &is_imported;
+	// True member variable
+	double ML;
+	double PR;
+	int neval;
+	const vector<double> prior_mean;
+	const vector<double> prior_precision;
+	vector<double> which_compat;
+public:
+	ClonalFrameViterbiTrainingPerBranch(const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+										const vector<double> &_pi, vector<ImportationState> &_is_imported, 
+										const vector<double> &_prior_mean, const vector<double> &_prior_precision) : 
+	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+	pi(_pi), neval(0), is_imported(_is_imported),
+	prior_mean(_prior_mean), prior_precision(_prior_precision) {
+		if(prior_mean.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior mean must have length 4");
+		if(prior_precision.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior precision must have length 4");
+		// Precompute which sites are compatible
+		which_compat = vector<double>(0);
+		int i;
+		for(i=0;i<iscompat.size();i++) {
+			if(iscompat[i]) {
+				which_compat.push_back((double)i);
+			}
+		}		
+	}
+	vector<double> maximize_likelihood(const vector<double> &param) {
+		const int dec_id = node.id;
+		const int anc_id = node.ancestor->id;
+		double branch_length = pow(10.,param[3]);
+		double rho_over_theta = pow(10.,param[0]);
+		double mean_import_length = pow(10.,param[1]);
+		double import_divergence = pow(10.,param[2]);
+		ML = Viterbi_training(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported);
+		vector<double> ret(4);
+		ret[0] = log10(rho_over_theta);
+		ret[1] = log10(mean_import_length);
+		ret[2] = log10(import_divergence);
+		ret[3] = log10(branch_length);
+		return(ret);
+	}
+	double log_likelihood(const vector<double> &param) {
+		const int dec_id = node.id;
+		const int anc_id = node.ancestor->id;
+		double branch_length = pow(10.,param[3]);
+		double rho_over_theta = pow(10.,param[0]);
+		double mean_import_length = pow(10.,param[1]);
+		double import_divergence = pow(10.,param[2]);
+		return maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported).LOG();
 	}
 };
 

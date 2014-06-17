@@ -1306,235 +1306,160 @@ int main (const int argc, const char* argv[]) {
 			lout.close();
 			cout << "Wrote grid approximation information to " << laplace_out_file << endl;
 		} else if(VITERBI_TRAINING) {
-//			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-//			// using the Laplace approximation to the likelihood and a "driving prior" to assist with the optimization (this ensures a proper posterior)
-//			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-//			cout << "B   uncorrected branch length" << endl;
-//			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-//			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-//			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-//			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-//			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-//			double ML = 0.0;
-//			vector< vector<ImportationState> > is_imported(root_node);
-//			vector< vector<double> > laplaceMLE(0);
-//			vector< Matrix<double> > laplaceQ(0);
-//			laplaceMLE = vector< vector<double> >(root_node,vector<double>(4));
-//			laplaceQ = vector< Matrix<double> >(root_node,Matrix<double>(4,4));
-//			int j,k;
-//			for(i=0;i<root_node;i++) {
-//				// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
-//				double pd = 1.0, pd_den = 2.0;
-//				const int dec_id = ctree.node[i].id;
-//				const int anc_id = ctree.node[i].ancestor->id;
-//				for(j=0,k=0;j<isBLC.size();j++) {
-//					if(isBLC[j]) {
-//						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-//						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-//						if(dec!=anc) ++pd;
-//						++pd_den;
-//						++k;
-//					}
-//				}
-//				const double initial_branch_length = pd/pd_den;
-//				if(pd>=2.0) {
-//					vector<double> param;
-//					if(initial_values.size()==0) {
-//						param = driving_prior_mean;
-//						param[3] = log10(initial_branch_length);
-//					} else {
-//						param = initial_values;
-//						param.push_back(log10(initial_branch_length));
-//					}
-//					double branch_length = pow(10.,param[3]);
-//					double rho_over_theta = pow(10.,param[0]);
-//					double mean_import_length = pow(10.,param[1]);
-//					double import_divergence = pow(10.,param[2]);
-//					Viterbi_training(dec_id,anc_id,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
-//				}
-//				
-//					// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
-//					const int PARAMETERIZATION = 3;		// Do not let this take other values without reviewing code
-//					ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
-//					cff.parameterization = PARAMETERIZATION;
-//					// Setup optimization function
-//					Powell Pow(cff);
-//					Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-//					Pow.TOL = brent_tolerance;
-//					// Now estimate parameters for the recombination model starting at the mean of the prior (or initial values), except the branch length
-//					vector<double> param;
-//					if(initial_values.size()==0) {
-//						param = driving_prior_mean;
-//						param[3] = log10(initial_branch_length);
-//					} else {
-//						param = initial_values;
-//						param.push_back(log10(initial_branch_length));
-//					}
-//					if(PARAMETERIZATION==3) {
-//						param = cff.convert_parameterization_1_to_3(param,global_min_branch_length);
-//					}
-//					clock_t pow_start_time = clock();
-//					int neval = cff.neval;
-//					param = Pow.minimize(param,powell_tolerance);
-//					if(PARAMETERIZATION==3) {
-//						param = cff.convert_parameterization_3_to_0(param);
-//					}
-//					cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-//					if(false) {
-//						// Attempt to refine using BFGS
-//						param = driving_prior_mean;
-//						param[3] = log10(initial_branch_length);
-//						BFGS bfgs(cff);
-//						bfgs.coutput = SHOW_PROGRESS;
-//						clock_t bfgs_start_time = clock();
-//						neval = cff.neval;
-//						param = bfgs.minimize(param,powell_tolerance);
-//						cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-//						// Get the approximate inverse Hessian
-//						// laplaceQ[i] = bfgs.hessin;
-//						cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
-//					}
-//					// Approximate the likelihood by a multivariate Gaussian
-//					// Interval over which to numerically compute second derivatives
-//					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-//					const double h = 0.1;
-//					vector<double> paramQ;
-//					// The maximum log-likelihood
-//					int n_calc_Hessian = 0;
-//					// Label for a goto statement
-//				calculate_Hessian:
-//					++n_calc_Hessian;
-//					if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
-//					if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
-//					if(n_calc_Hessian>1) {
-//						// Re-optimize at adjusted parameter value
-//						cout << "Re-optimizing" << endl;
-//						if(PARAMETERIZATION==3) param = cff.convert_parameterization_0_to_3(param, global_min_branch_length);
-//						param = Pow.minimize(param,powell_tolerance);
-//						if(PARAMETERIZATION==3) param = cff.convert_parameterization_3_to_0(param);
-//						cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
-//					}
-//					if(PARAMETERIZATION!=3) {
-//						const double calcQ0 = -cff.f(param);
-//						for(j=0;j<4;j++) {
-//							for(k=0;k<j;k++) {
-//								paramQ = param; paramQ[j] += h; paramQ[k] += h;
-//								const double calcQa = -cff.f(paramQ);
-//								if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-//								const double calcQb = -cff.f(paramQ);
-//								if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-//								const double calcQc = -cff.f(paramQ);
-//								if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-//								const double calcQd = -cff.f(paramQ);
-//								if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								const double calcQ = calcQa - calcQb - calcQc + calcQd;
-//								laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
-//							}
-//							paramQ = param; paramQ[j] += 2.0*h;
-//							const double calcQa = -cff.f(paramQ);
-//							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//							paramQ = param; paramQ[j] -= 2.0*h;
-//							const double calcQb = -cff.f(paramQ);
-//							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//							const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-//							laplaceQ[i][j][j] = -calcQ/4.0/h/h;
-//						}
-//					} else {
-//						const double calcQ0 = -cff.f(cff.convert_parameterization_0_to_3(param,global_min_branch_length));
-//						for(j=0;j<4;j++) {
-//							for(k=0;k<j;k++) {
-//								paramQ = param; paramQ[j] += h; paramQ[k] += h;
-//								const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-//								if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-//								const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-//								if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-//								const double calcQc = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-//								if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-//								const double calcQd = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-//								if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//								const double calcQ = calcQa - calcQb - calcQc + calcQd;
-//								laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
-//							}
-//							paramQ = param; paramQ[j] += 2.0*h;
-//							const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-//							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//							paramQ = param; paramQ[j] -= 2.0*h;
-//							const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-//							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-//							const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-//							laplaceQ[i][j][j] = -calcQ/4.0/h/h;
-//						}
-//					}
-//					// Store the point estimates
-//					laplaceMLE[i] = param;
-//					// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
-//					const double final_rho_over_theta = pow(10.,param[0]);
-//					const double final_mean_import_length = pow(10.,param[1]);
-//					const double final_import_divergence = pow(10.,param[2]);
-//					const double final_branch_length = (PARAMETERIZATION==1) ? pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))) : pow(10.,param[3]);
-//					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-//					// Update branch length in the tree
-//					// Note this is unsafe in general because the corresponding node times are not adjusted
-//					ctree.node[i].edge_time = final_branch_length;
-//					// Output results to screen
-//					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " R = " << final_rho_over_theta << " I = " << final_mean_import_length << " D = " << final_import_divergence << " M = " << final_branch_length << endl;
-//					ML += -Pow.function_minimum;					
-//				} else {
-//					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " was too short for inference" << endl;
-//					const double NaN = 1.0/0.0;
-//					laplaceMLE[i] = vector<double>(4,NaN);
-//					laplaceQ[i] = Matrix<double>(4,4,NaN);
-//					vector<double> param;
-//					if(initial_values.size()==0) {
-//						param = driving_prior_mean;
-//						param[3] = log10(initial_branch_length);
-//					} else {
-//						param = initial_values;
-//						param.push_back(log10(initial_branch_length));
-//					}
-//					const double final_rho_over_theta = pow(10.,param[0]);
-//					const double final_mean_import_length = pow(10.,param[1]);
-//					const double final_import_divergence = pow(10.,param[2]);
-//					const double final_branch_length = MAX(global_min_branch_length,pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))));
-//					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-//					// Update branch length in the tree
-//					// Note this is unsafe in general because the corresponding node times are not adjusted
-//					ctree.node[i].edge_time = final_branch_length;
-//				}
-//			}
-//			cout << "Unnormalized log-posterior after branch optimization is " << ML << endl;
-//			
-//			// Output the importation status
-//			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-//			cout << "Wrote inferred importation status to " << import_out_file << endl;
-//			// Output the Laplace approximation
-//			ofstream lout(laplace_out_file.c_str());
-//			lout << "Branch";
-//			for(j=0;j<4;j++) lout << "\t" << "P" << j;
-//			for(j=0;j<4;j++) {
-//				for(k=0;k<4;k++) {
-//					lout << "\t" << "Q" << j << k;
-//				}
-//			}
-//			lout << endl;
-//			for(i=0;i<root_node;i++) {
-//				lout << ctree_node_labels[i];
-//				for(j=0;j<4;j++) lout << "\t" << laplaceMLE[i][j];
-//				for(j=0;j<4;j++) {
-//					for(k=0;k<4;k++) {
-//						lout << "\t" << laplaceQ[i][j][k];
-//					}
-//				}
-//				lout << endl;
-//			}
-//			lout.close();
-//			cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
+			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
+			// using the Laplace approximation to the likelihood
+			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
+			cout << "B   uncorrected branch length" << endl;
+			cout << "L   maximum unnormalized log-posterior per branch" << endl;
+			cout << "R   rho/theta per branch                                     (> 0)" << endl;
+			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
+			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
+			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
+			double ML = 0.0;
+			vector< vector<ImportationState> > is_imported(root_node);
+			vector< vector<double> > laplaceMLE(0);
+			vector< Matrix<double> > laplaceQ(0);
+			laplaceMLE = vector< vector<double> >(root_node,vector<double>(4));
+			laplaceQ = vector< Matrix<double> >(root_node,Matrix<double>(4,4));
+			int j,k;
+			for(i=0;i<root_node;i++) {
+				// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
+				double pd = 1.0, pd_den = 2.0;
+				const int dec_id = ctree.node[i].id;
+				const int anc_id = ctree.node[i].ancestor->id;
+				for(j=0,k=0;j<isBLC.size();j++) {
+					if(isBLC[j]) {
+						Nucleotide dec = node_nuc[dec_id][ipat[k]];
+						Nucleotide anc = node_nuc[anc_id][ipat[k]];
+						if(dec!=anc) ++pd;
+						++pd_den;
+						++k;
+					}
+				}
+				const double initial_branch_length = pd/pd_den;
+				if(pd>=2.0) {
+					vector<double> param;
+					if(initial_values.size()==0) {
+						param = driving_prior_mean;
+						param[3] = log10(initial_branch_length);
+					} else {
+						param = initial_values;
+						param.push_back(log10(initial_branch_length));
+					}
+					clock_t pow_start_time = clock();
+					ClonalFrameViterbiTrainingPerBranch cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported[i],driving_prior_mean,driving_prior_precision);
+					param = cff.maximize_likelihood(param);
+					ML = cff.ML;
+					// Output results to screen
+					double branch_length = pow(10.,param[3]);
+					double rho_over_theta = pow(10.,param[0]);
+					double mean_import_length = pow(10.,param[1]);
+					double import_divergence = pow(10.,param[2]);
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and" << cff.neval << " evaluations" << endl;
+					// Approximate the likelihood by a multivariate Gaussian
+					// Interval over which to numerically compute second derivatives
+					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
+					const double h = 0.1;
+					vector<double> paramQ;
+					// The maximum log-likelihood
+					int n_calc_Hessian = 0;
+					// Label for a goto statement
+				calculate_Hessian_Viterbi:
+					++n_calc_Hessian;
+					if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
+					if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
+					if(n_calc_Hessian>1) {
+						// Re-optimize at adjusted parameter value
+						cout << "Re-optimizing" << endl;
+						param = cff.maximize_likelihood(param);
+						branch_length = pow(10.,param[3]);
+						rho_over_theta = pow(10.,param[0]);
+						mean_import_length = pow(10.,param[1]);
+						import_divergence = pow(10.,param[2]);
+						ML = cff.ML;
+						cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and" << cff.neval << " evaluations" << endl;
+					}
+					const double calcQ0 = ML;
+					for(j=0;j<4;j++) {
+						for(k=0;k<j;k++) {
+							paramQ = param; paramQ[j] += h; paramQ[k] += h;
+							const double calcQa = cff.log_likelihood(paramQ);
+							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
+							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
+							const double calcQb = cff.log_likelihood(paramQ);
+							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
+							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
+							const double calcQc = cff.log_likelihood(paramQ);
+							if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
+							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
+							const double calcQd = cff.log_likelihood(paramQ);
+							if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
+							const double calcQ = calcQa - calcQb - calcQc + calcQd;
+							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+						}
+						paramQ = param; paramQ[j] += 2.0*h;
+						const double calcQa = cff.log_likelihood(paramQ);
+						if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
+						paramQ = param; paramQ[j] -= 2.0*h;
+						const double calcQb = cff.log_likelihood(paramQ);
+						if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
+						const double calcQ = calcQa + calcQb - 2.0*calcQ0;
+						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
+					}
+					// Store the point estimates
+					laplaceMLE[i] = param;
+					// Update branch length in the tree
+					// Note this is unsafe in general because the corresponding node times are not adjusted
+					ctree.node[i].edge_time = pow(10.,param[3]);
+				} else {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " was too short for inference" << endl;
+					const double NaN = 1.0/0.0;
+					laplaceMLE[i] = vector<double>(4,NaN);
+					laplaceQ[i] = Matrix<double>(4,4,NaN);
+					vector<double> param;
+					if(initial_values.size()==0) {
+						param = driving_prior_mean;
+						param[3] = log10(initial_branch_length);
+					} else {
+						param = initial_values;
+						param.push_back(log10(initial_branch_length));
+					}
+					const double final_rho_over_theta = pow(10.,param[0]);
+					const double final_mean_import_length = pow(10.,param[1]);
+					const double final_import_divergence = pow(10.,param[2]);
+					const double final_branch_length = MAX(global_min_branch_length,pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))));
+					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
+					// Update branch length in the tree
+					// Note this is unsafe in general because the corresponding node times are not adjusted
+					ctree.node[i].edge_time = final_branch_length;
+				}
+			}
+			
+			// Output the importation status
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
+			cout << "Wrote inferred importation status to " << import_out_file << endl;
+			// Output the Laplace approximation
+			ofstream lout(laplace_out_file.c_str());
+			lout << "Branch";
+			for(j=0;j<4;j++) lout << "\t" << "P" << j;
+			for(j=0;j<4;j++) {
+				for(k=0;k<4;k++) {
+					lout << "\t" << "Q" << j << k;
+				}
+			}
+			lout << endl;
+			for(i=0;i<root_node;i++) {
+				lout << ctree_node_labels[i];
+				for(j=0;j<4;j++) lout << "\t" << laplaceMLE[i][j];
+				for(j=0;j<4;j++) {
+					for(k=0;k<4;k++) {
+						lout << "\t" << laplaceQ[i][j][k];
+					}
+				}
+				lout << endl;
+			}
+			lout.close();
+			cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
 		} else if(SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
 			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
@@ -3420,7 +3345,7 @@ void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id
 	}
 }
 
-void viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported) {
+double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported) {
 	// Store the positions of compatible sites
 	vector<double> position(0);
 	int i;
@@ -3454,4 +3379,5 @@ void viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotid
 		// Otherwise continue
 		ML = new_ML;
 	}
+	return ML;
 }
