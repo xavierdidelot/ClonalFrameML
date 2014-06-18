@@ -85,6 +85,8 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node);
 void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> &MLE);
 double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported, int &neval);
+void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param);
+double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, vector<double> &full_param, vector< vector<ImportationState> > &is_imported, int &neval);
 
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
@@ -1116,8 +1118,8 @@ public:
 	node(_node), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
 	pi(_pi), neval(0), is_imported(_is_imported),
 	prior_mean(_prior_mean), prior_precision(_prior_precision) {
-		if(prior_mean.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior mean must have length 4");
-		if(prior_precision.size()!=4) error("ClonalFrameLaplacePerBranchFunction: prior precision must have length 4");
+		if(prior_mean.size()!=4) error("ClonalFrameViterbiTrainingPerBranch: prior mean must have length 4");
+		if(prior_precision.size()!=4) error("ClonalFrameViterbiTrainingPerBranch: prior precision must have length 4");
 		// Precompute which sites are compatible
 		which_compat = vector<double>(0);
 		int i;
@@ -1150,6 +1152,93 @@ public:
 		double mean_import_length = pow(10.,param[1]);
 		double import_divergence = pow(10.,param[2]);
 		return maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported).LOG();
+	}
+};
+
+class ClonalFrameViterbiTraining {
+public:
+	// References to non-member variables
+	const marginal_tree &tree;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector< vector<ImportationState> > &is_imported;
+	// True member variable
+	double ML;
+	double PR;
+	int neval;
+	const vector<double> prior_a;
+	const vector<double> prior_b;
+	vector<double> which_compat;
+	const int root_node;
+	vector<bool> informative;
+	vector<double> initial_branch_length;
+public:
+	ClonalFrameViterbiTraining(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+										const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
+										const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node) : 
+	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+	pi(_pi), neval(0), is_imported(_is_imported),
+	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node) {
+		if(prior_a.size()!=4) error("ClonalFrameViterbiTraining: prior a must have length 4");
+		if(prior_b.size()!=4) error("ClonalFrameViterbiTraining: prior b must have length 4");
+		// Impose the constraint that the prior a parameter is greater than 1. This ensures the posterior has a mode
+		int i;
+		for(i=0;i<4;i++) {
+			if(prior_a[i]<=1.0) error("ClonalFrameViterbiTraining: prior a must have values greater than 1");
+		}
+		// Precompute which sites are compatible
+		which_compat = vector<double>(0);
+		for(i=0;i<iscompat.size();i++) {
+			if(iscompat[i]) {
+				which_compat.push_back((double)i);
+			}
+		}
+		int j,k;
+		for(i=0;i<root_node;i++) {
+			// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
+			double pd = 1.0, pd_den = 2.0;
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			for(j=0,k=0;j<iscompat.size();j++) {
+				if(iscompat[j]) {
+					Nucleotide dec = node_nuc[dec_id][ipat[k]];
+					Nucleotide anc = node_nuc[anc_id][ipat[k]];
+					if(dec!=anc) ++pd;
+					++pd_den;
+					++k;
+				}
+			}
+			initial_branch_length[i] = pd/pd_den;
+			informative[i] = (pd>=2.0) ? true : false;
+		}
+	}
+	vector<double> maximize_likelihood(const vector<double> &param) {
+		if(!(param.size()==3)) error("ClonalFrameViterbiTraining::maximize_likelihood(): 3 arguments required");
+		// Starting points for the shared parameters
+		vector<double> full_param(0);
+		full_param.push_back(param[0]);		// rho_over_theta
+		full_param.push_back(param[1]);		// mean_import_length: may need to invert
+		full_param.push_back(param[2]);		// import_divergence
+		int i;
+		for(i=0;i<initial_branch_length.size();i++) full_param.push_back(initial_branch_length[i]);
+		// Iterate
+		ML = Viterbi_training(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,is_imported,neval);
+		// Update importation status for uninformative branches
+		for(i=0;i<initial_branch_length.size();i++) {
+			if(!informative[i]) {
+				const int dec_id = tree.node[i].id;
+				const int anc_id = tree.node[i].ancestor->id;
+				const double branch_length = initial_branch_length[i];
+				const double rho_over_theta = full_param[0];
+				const double mean_import_length = full_param[1];
+				const double import_divergence = full_param[2];
+				maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]).LOG();				
+			}
+		}
+		return full_param;
 	}
 };
 
