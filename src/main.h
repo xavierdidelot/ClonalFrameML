@@ -1187,7 +1187,7 @@ public:
 		// Impose the constraint that the prior a parameter is greater than 1. This ensures the posterior has a mode
 		int i;
 		for(i=0;i<4;i++) {
-			if(prior_a[i]<=1.0) error("ClonalFrameViterbiTraining: prior a must have values greater than 1");
+		//	if(prior_a[i]<=1.0) error("ClonalFrameViterbiTraining: prior a must have values greater than 1");
 		}
 		// Precompute which sites are compatible
 		which_compat = vector<double>(0);
