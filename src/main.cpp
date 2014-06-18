@@ -1485,6 +1485,7 @@ int main (const int argc, const char* argv[]) {
 			param = cff.maximize_likelihood(param);
 			ML = cff.ML;
 			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
+			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
@@ -3421,7 +3422,9 @@ double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleot
 }
 
 // Given a path and ancestral states, calculate Bayesian estimates of M, nu, R and delta
-void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param) {
+void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param, vector<double> &posterior_a) {
+	full_param = vector<double>(3+informative.size());
+	posterior_a = vector<double>(3+informative.size());
 	// Indicator: use posterior mean or mode estimates?
 	const bool use_mode = false;
 	// Counters:
@@ -3493,6 +3496,7 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 			// Calculate Bayesian estimate of the per-branch mutation rate
 			// This is the mode or mean of a gamma posterior
 			full_param[3+i] = (use_mode) ? (prior_a[3]+mutU_br-1.0)/(prior_b[3]+nsiU_br) : (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
+			posterior_a[3+i] = (use_mode) ? (prior_a[3]+mutU_br-1.0) : (prior_a[3]+mutU_br);
 			// Update the parameters needed to estimate rho_over_theta across branches
 			numI += numI_br;
 			lenU += full_param[3+i]*lenU_br;
@@ -3500,13 +3504,16 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 	}
 	// Calculate MAP estimate of rho_over_theta
 	full_param[0] = (use_mode) ? (prior_a[0]+numI-1.0)/(prior_b[0]+lenU) : (prior_a[0]+numI)/(prior_b[0]+lenU);
+	posterior_a[0] = (use_mode) ? (prior_a[0]+numI-1.0) : (prior_a[0]+numI);
 	// Calculate MAP estimate of mean_import_length (note this parameter is the reciprocal of the termination rate)
 	full_param[1] = (use_mode) ? (prior_b[1]+lenI)/(prior_a[1]+numU-1.0) : (prior_b[1]+lenI)/(prior_a[1]+numU);
+	posterior_a[1] = (use_mode) ? (prior_a[1]+numU-1.0) : (prior_a[1]+numU);
 	// Calculate MAP estimate of import_divergence
 	full_param[2] = (use_mode) ? (prior_a[2]+mutI-1.0)/(prior_b[2]+nsiI) : (prior_a[2]+mutI)/(prior_b[2]+nsiI);
+	posterior_a[2] = (use_mode) ? (prior_a[2]+mutI-1.0) : (prior_a[2]+mutI);
 }
 
-double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, vector<double> &full_param, vector< vector<ImportationState> > &is_imported, int &neval) {
+double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval) {
 	int i;
 	// Initial parameters
 	double rho_over_theta = full_param[0];
@@ -3529,7 +3536,7 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 	vector<double> MLE;
 	for(i=0;i<maxit;i++) {
 		// Calculate Bayesian estimates of the model parameters given the Viterbi path
-		maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param);
+		maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
 		// Identify the model parameters
 		rho_over_theta = full_param[0];
 		mean_import_length = full_param[1];
