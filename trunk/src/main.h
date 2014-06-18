@@ -85,8 +85,8 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node);
 void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> &MLE);
 double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported, int &neval);
-void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param);
-double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, vector<double> &full_param, vector< vector<ImportationState> > &is_imported, int &neval);
+void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param, vector<double> &posterior_a);
+double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
 
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
@@ -1175,6 +1175,8 @@ public:
 	const int root_node;
 	vector<bool> informative;
 	vector<double> initial_branch_length;
+	vector<double> full_param;
+	vector<double> posterior_a;
 public:
 	ClonalFrameViterbiTraining(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
 										const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
@@ -1218,14 +1220,15 @@ public:
 	vector<double> maximize_likelihood(const vector<double> &param) {
 		if(!(param.size()==3)) error("ClonalFrameViterbiTraining::maximize_likelihood(): 3 arguments required");
 		// Starting points for the shared parameters
-		vector<double> full_param(0);
+		full_param = vector<double>(0);
+		posterior_a = vector<double>(0);
 		full_param.push_back(param[0]);		// rho_over_theta
 		full_param.push_back(param[1]);		// mean_import_length: may need to invert
 		full_param.push_back(param[2]);		// import_divergence
 		int i;
 		for(i=0;i<initial_branch_length.size();i++) full_param.push_back(initial_branch_length[i]);
 		// Iterate
-		ML = Viterbi_training(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,is_imported,neval);
+		ML = Viterbi_training(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,is_imported,neval);
 		// Update importation status for uninformative branches
 		for(i=0;i<initial_branch_length.size();i++) {
 			if(!informative[i]) {
