@@ -1498,13 +1498,13 @@ int main (const int argc, const char* argv[]) {
 			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
 			ofstream vout(viterbi_out_file.c_str());
 			char tab = '\t';
-			vout << "Parameter" << tab << "Posterior Mean" << tab << "2.5% Quantile" << tab << "97.5% Quantile" << tab << "a_post" << tab << "b_post" << endl;
-			vout << "R_over_M"	<< tab << param[0] << tab << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
-			vout << "delta"		<< tab << param[1] << tab << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
-			vout << "nu"		<< tab << param[2] << tab << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
+			vout << "Parameter" << tab << "Posterior Mean" << tab << /*"2.5% Quantile" << tab << "97.5% Quantile" << tab << */"a_post" << tab << "b_post" << endl;
+			vout << "R_over_M"	<< tab << param[0] << tab << /*gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << */cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
+			vout << "delta"		<< tab << param[1] << tab << /*1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << */cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
+			vout << "nu"		<< tab << param[2] << tab << /*gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << */cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
-					vout << ctree_node_labels[i] << tab << param[3+i] << tab << gamma_invcdf(0.025,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << gamma_invcdf(0.975,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
+					vout << ctree_node_labels[i] << tab << param[3+i] << tab << /*gamma_invcdf(0.025,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << gamma_invcdf(0.975,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << */cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
 				}
 			}
 			vout.close();
