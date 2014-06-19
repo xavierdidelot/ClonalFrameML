@@ -1477,6 +1477,11 @@ int main (const int argc, const char* argv[]) {
 			// For now, hard-code the priors
 			vector<double> prior_a(4,0.4794771), prior_b(4);
 			prior_b[0] = 1.263781; prior_b[1] = 126.3781; prior_b[2] = 2.521575; prior_b[3] = 503.1203;
+			// Increase the informativeness of the priors
+			for(i=0;i<4;i++) {
+				prior_a[i] *= 2.5;
+				prior_b[i] *= 2.5;
+			}
 			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
 			vector<double> param(3);
 			param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05;
