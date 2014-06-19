@@ -1487,7 +1487,7 @@ int main (const int argc, const char* argv[]) {
 			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
 			cout << " Posterior 95% CIs: R = (" << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << "," << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << 
-			") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]*param[0]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]*param[0]) <<
+			") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) <<
 			") D = (" << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << "," << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << ")" << endl;
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
