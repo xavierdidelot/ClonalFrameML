@@ -3521,7 +3521,7 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 			}
 			// Calculate Bayesian estimate of the per-branch mutation rate
 			// This is the mode or mean of a gamma posterior
-			full_param[3+br] = (use_mode) ? (prior_a[3]+mutU_br-1.0)/((prior_b[3]+1.)*nsiU_br) : (prior_a[3]+mutU_br)/((prior_b[3]+1.)*nsiU_br);
+			full_param[3+br] = (use_mode) ? (prior_a[3]+mutU_br-1.0)/(prior_b[3]+nsiU_br) : (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
 			posterior_a[3+br] = (use_mode) ? (prior_a[3]+mutU_br-1.0) : (prior_a[3]+mutU_br);
 			// Update the parameters needed to estimate rho_over_theta across branches
 			numI += numI_br;
