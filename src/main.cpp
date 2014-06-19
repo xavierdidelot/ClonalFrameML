@@ -1486,6 +1486,9 @@ int main (const int argc, const char* argv[]) {
 			ML = cff.ML;
 			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
+			cout << " Posterior 95% CIs: R = (" << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << "," << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << 
+			") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]*param[0]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]*param[0]) <<
+			") D = (" << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << "," << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << ")" << endl;
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
@@ -3562,8 +3565,57 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		ML = new_ML;
 	}
 	// Once more for debugging purposes
-	maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
+//	maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
 	return ML;
 }
 
+double gamma_invcdf(const double p, const double alph, const double bet) {
+	if(p<0. || p>1.) error("gamma_invcdf(): bad p");
+	return invgammp(p,alph)/bet;
+}
+
+// Returns x such that P(a,x)=p for an argument p between 0 and 1
+double invgammp(const double p, const double a) {
+	int j;
+	double x,err,t,u,pp,lna1,afac,a1=a-1,gln;
+	const double EPS=1.e-8;
+	gln = lgamma(a);
+	if(a<=0.) error("invgammp(): a must be pos in invgammp");
+	if(p>=1.) return MAX(100.,a+100.*sqrt(a));
+	if(p<=0.) return 0.0;
+	if(a>1.) {
+		lna1 = log(a1);
+		afac = exp(a1*(lna1-1.)-gln);
+		pp = (p<0.5) ? p : 1.-p;
+		t = sqrt(-2.*log(pp));
+		x = (2.30753+t*0.27061)/(1.+t*(0.99229+t*0.04481))-t;
+		if(p<0.5) x = -x;
+		x = MAX(1.e-3,a*pow(1.-1./(9.*a)-x/(3.*sqrt(a)),3));
+	} else {
+		t = 1.0 - a*(0.253+a*0.12);
+		if(p<t) x = pow(p/t,1./a);
+		else x = 1.-log(1.-(p-t)/(1.-t));
+	}
+	for(j=0;j<12;j++) {
+		if(x<=0.0) return 0.0;
+		err = gammp(a,x) - p;
+		if(a>1.) t = afac*exp(-(x-a1)+a1*(log(x)-lna1));
+		else t = exp(-x+a1*log(x)-gln);
+		u = err/t;
+		x -= (t=u/(1.-0.5*MIN(1.,u*((a-1.)/x - 1))));
+		if(x<=0.) x = 0.5*(x+t);
+		if(fabs(t) < EPS*x) break;
+	}
+	return x;
+}
+
+// See myutils lgamma.h
+// Returns the incomplete gamma function P(a,x)
+//double gammp(const double a, const double x) {
+//	if(x<0.0 || a<=0.0) error("gammp(): bad args");
+//	if(x==0.0) return 0.0;
+//	else if((int)a >= ASWITCH) return gammpapprox(a,x,1);
+//	else if(x<a+1.0) return gser(a,x);
+//	else return 1.0-gcf(a,x);
+//}
 
