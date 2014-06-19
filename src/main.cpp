@@ -3525,7 +3525,7 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 	full_param[1] = (use_mode) ? ((prior_b[1]+1.)*lenI)/(prior_a[1]+numU-1.0) : ((prior_b[1]+1.)*lenI)/(prior_a[1]+numU);
 	posterior_a[1] = (use_mode) ? (prior_a[1]+numU-1.0) : (prior_a[1]+numU);
 	// Calculate MAP estimate of import_divergence
-	full_param[2] = (use_mode) ? (prior_a[2]+mutI-1.0)/((prior_b[2]+1.)*+nsiI) : (prior_a[2]+mutI)/((prior_b[2]+1.)*nsiI);
+	full_param[2] = (use_mode) ? (prior_a[2]+mutI-1.0)/((prior_b[2]+1.)*nsiI) : (prior_a[2]+mutI)/((prior_b[2]+1.)*nsiI);
 	posterior_a[2] = (use_mode) ? (prior_a[2]+mutI-1.0) : (prior_a[2]+mutI);
 }
 
