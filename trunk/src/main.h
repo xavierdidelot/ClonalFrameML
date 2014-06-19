@@ -38,7 +38,7 @@
 #include <limits>
 #include <bfgs.h>
 #include <version.h>
-#include <Rcode.h>
+#include <lgamma.h>
 
 using std::cout;
 using myutils::NewickTree;
@@ -88,7 +88,9 @@ void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id
 double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported, int &neval);
 void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param, vector<double> &posterior_a);
 double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
-
+double gamma_invcdf(const double p, const double alph, const double bet);
+double invgammp(const double p, const double a);
+	
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
 	const vector<NewickNode*> &root2tip;	// temporary ordering of Newick nodes from root to tips
