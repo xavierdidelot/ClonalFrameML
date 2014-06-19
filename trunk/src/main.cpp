@@ -1484,7 +1484,12 @@ int main (const int argc, const char* argv[]) {
 			}
 			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
 			vector<double> param(3);
-			param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05;
+			if(initial_values.size()==0) {
+				// Hard coded starting point
+				param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05;
+			} else {
+				param = initial_values;
+			}
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameViterbiTraining cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node);
@@ -3447,7 +3452,7 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 	full_param = vector<double>(3+informative.size());
 	posterior_a = vector<double>(3+informative.size());
 	// Indicator: use posterior mean or mode estimates?
-	const bool use_mode = true;
+	const bool use_mode = false;
 	// Counters:
 	// Running total divergence at imported sites
 	double mutI=0.0;
