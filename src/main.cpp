@@ -1479,7 +1479,7 @@ int main (const int argc, const char* argv[]) {
 			prior_b[0] = 1.263781; prior_b[1] = 126.3781; prior_b[2] = 2.521575; prior_b[3] = 503.1203;
 			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
 			vector<double> param(3);
-			param[0] = 0.1; param[1] = 1000.0; param[3] = 0.05;
+			param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05;
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameViterbiTraining cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node);
