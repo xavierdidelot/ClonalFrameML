@@ -38,6 +38,7 @@
 #include <limits>
 #include <bfgs.h>
 #include <version.h>
+#include <Rcode.h>
 
 using std::cout;
 using myutils::NewickTree;

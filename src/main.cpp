@@ -3561,5 +3561,9 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		// Otherwise continue
 		ML = new_ML;
 	}
+	// Once more for debugging purposes
+	maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
 	return ML;
 }
+
+
