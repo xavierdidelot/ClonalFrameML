@@ -3519,13 +3519,13 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 		}
 	}
 	// Calculate MAP estimate of rho_over_theta
-	full_param[0] = (use_mode) ? (prior_a[0]+numI-1.0)/((prior_b[0]+1.)*lenU) : (prior_a[0]+numI)/((prior_b[0]+1.)*lenU);
+	full_param[0] = (use_mode) ? (prior_a[0]+numI-1.0)/(prior_b[0]+lenU) : (prior_a[0]+numI)/(prior_b[0]+lenU);
 	posterior_a[0] = (use_mode) ? (prior_a[0]+numI-1.0) : (prior_a[0]+numI);
 	// Calculate MAP estimate of mean_import_length (note this parameter is the reciprocal of the termination rate)
-	full_param[1] = (use_mode) ? ((prior_b[1]+1.)*lenI)/(prior_a[1]+numU-1.0) : ((prior_b[1]+1.)*lenI)/(prior_a[1]+numU);
+	full_param[1] = (use_mode) ? (prior_b[1]+lenI)/(prior_a[1]+numU-1.0) : (prior_b[1]+lenI)/(prior_a[1]+numU);
 	posterior_a[1] = (use_mode) ? (prior_a[1]+numU-1.0) : (prior_a[1]+numU);
 	// Calculate MAP estimate of import_divergence
-	full_param[2] = (use_mode) ? (prior_a[2]+mutI-1.0)/((prior_b[2]+1.)*nsiI) : (prior_a[2]+mutI)/((prior_b[2]+1.)*nsiI);
+	full_param[2] = (use_mode) ? (prior_a[2]+mutI-1.0)/(prior_b[2]+nsiI) : (prior_a[2]+mutI)/(prior_b[2]+nsiI);
 	posterior_a[2] = (use_mode) ? (prior_a[2]+mutI-1.0) : (prior_a[2]+mutI);
 }
 
