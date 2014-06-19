@@ -3447,7 +3447,7 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 	full_param = vector<double>(3+informative.size());
 	posterior_a = vector<double>(3+informative.size());
 	// Indicator: use posterior mean or mode estimates?
-	const bool use_mode = false;
+	const bool use_mode = true;
 	// Counters:
 	// Running total divergence at imported sites
 	double mutI=0.0;
