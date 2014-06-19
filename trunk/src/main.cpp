@@ -82,6 +82,7 @@ int main (const int argc, const char* argv[]) {
 	string prop3_out_file = string(out_file) + ".prop3.txt";
 	string loglik_out_file = string(out_file) + ".loglik.txt";
 	string loglik_prop_out_file = string(out_file) + ".loglik_prop.txt";
+	string viterbi_out_file = string(out_file) + ".viterbi_training.txt";
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
@@ -1494,7 +1495,19 @@ int main (const int argc, const char* argv[]) {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
 				}
 			}
-			
+			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
+			ofstream vout(viterbi_out_file.c_str());
+			char tab = '\t';
+			vout << "Parameter" << tab << "Posterior Mean" << tab << "2.5% Quantile" << tab << "97.5% Quantile" << tab << "a_post" << tab << "b_post" << endl;
+			vout << "R_over_M"	<< tab << param[0] << tab << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
+			vout << "delta"		<< tab << param[1] << tab << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
+			vout << "nu"		<< tab << param[2] << tab << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
+			for(i=0;i<root_node;i++) {
+				if(cff.informative[i]) {
+					vout << ctree_node_labels[i] << tab << param[3+i] << tab << gamma_invcdf(0.025,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << gamma_invcdf(0.975,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
+				}
+			}
+			vout.close();
 			// Output the importation status
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
