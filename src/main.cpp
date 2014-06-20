@@ -53,13 +53,14 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-mcmc_per_branch               true or false (default)   Estimate by MCMC recombination parameters for each branch." << endl;
 		errTxt << "-laplace_approx                true or false (default)   rho_per_branch model with approximation of the joint posterior." << endl;
-		errTxt << "-driving_prior_mean            4 values (df \"0 0 0 0\")   Mean of the driving prior used by the Laplace approximation." << endl;
-		errTxt << "-driving_prior_precision       4 values (df \"1 1 1 1\")   Precision of the driving prior used by the Laplace approximation." << endl;
-		errTxt << "-grid_approx                   value 0/2+  (default 0)   Number of points for grid approximation (0 = off)." << endl;
+		errTxt << "-use_nelder_mead               true or false (default)   Use Nelder-Mead and not Powell method in Laplace approximation." << endl;
+		errTxt << "-viterbi_training              true or false (default)   Estimate parameters by a Viterbi-based hill climbing algorithm." << endl;
+		errTxt << "-driving_prior_mean            4 values (df \"0 0 0 0\")   Mean of the prior used by Laplace/Viterbi algorithms." << endl;
+		errTxt << "-driving_prior_precision       4 values (df \"1 1 1 1\")   Precision of the prior used by Laplace/Viterbi algorithms." << endl;
+		errTxt << "-initial_values                3 values/empty (def \"\")   Initial values used by the Laplace/Viterbi algorithms." << endl;
+		errTxt << "-grid_approx                   value 0/2+  (default 0)   Number of points for a grid approximation (0 = off)." << endl;
 		errTxt << "-mcmc                          true or false (default)   Estimate by MCMC recombination parameters for all branches." << endl;
 		errTxt << "-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches." << endl;
-		errTxt << "-initial_values                3 values/empty (def \"\")   Initial values used by the Laplace approximation only." << endl;
-		errTxt << "-viterbi_training              true or false (default)   Estimate parameters by a Viterbi-based hill climbing algorithm." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -90,6 +91,7 @@ int main (const int argc, const char* argv[]) {
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
 	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false", mcmc_infer_branch_lengths = "false", string_initial_values = "", viterbi_training = "false";
+	string use_nelder_mead="false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	double grid_approx = 0.0;
 	// Process options
@@ -124,6 +126,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("mcmc_infer_branch_lengths",	TP_STRING, &mcmc_infer_branch_lengths);
 	arg.add_item("initial_values",				TP_STRING, &string_initial_values);
 	arg.add_item("viterbi_training",			TP_STRING, &viterbi_training);
+	arg.add_item("use_nelder_mead",				TP_STRING, &use_nelder_mead);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -148,6 +151,7 @@ int main (const int argc, const char* argv[]) {
 	bool MCMC_INFER_BRANCH_LENGTHS		= string_to_bool(mcmc_infer_branch_lengths,		"mcmc_infer_branch_lengths");
 	bool VITERBI_TRAINING_OLD			= false;
 	bool VITERBI_TRAINING				= string_to_bool(viterbi_training,				"viterbi_training");
+	bool USE_NELDER_MEAD				= string_to_bool(use_nelder_mead,				"use_nelder_mead");
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -260,7 +264,7 @@ int main (const int argc, const char* argv[]) {
 		if(!(initial_values.size()==0 || initial_values.size()==3)) error("initial values must have 0 or 3 values separated by spaces");
 		if(initial_values.size()>0 && !LAPLACE_APPROX) warning("-initial_values only used by -laplace_approx currently");
 	}
-	
+	if(USE_NELDER_MEAD && !LAPLACE_APPROX) error("-use_nelder_mead only applicable with -laplace_approx");
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -726,10 +730,6 @@ int main (const int argc, const char* argv[]) {
 					const int PARAMETERIZATION = 3;		// Do not let this take other values without reviewing code
 					ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
 					cff.parameterization = PARAMETERIZATION;
-					// Setup optimization function
-					Powell Pow(cff);
-					Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-					Pow.TOL = brent_tolerance;
 					// Now estimate parameters for the recombination model starting at the mean of the prior (or initial values), except the branch length
 					vector<double> param;
 					if(initial_values.size()==0) {
@@ -743,12 +743,26 @@ int main (const int argc, const char* argv[]) {
 						param = cff.convert_parameterization_1_to_3(param,global_min_branch_length);
 					}
 					clock_t pow_start_time = clock();
+					// Setup optimization function
 					int neval = cff.neval;
-					param = Pow.minimize(param,powell_tolerance);
+					const string optimizer = (USE_NELDER_MEAD) ? "Nelder-Mead" : "Powell";
+					double ML_branch = 0.0;
+					Powell Pow(cff);
+					Amoeba Am(cff);
+					if(!USE_NELDER_MEAD) {
+						Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
+						Pow.TOL = brent_tolerance;
+						param = Pow.minimize(param,powell_tolerance);
+						ML_branch = -Pow.function_minimum;
+					} else {
+						Am.coutput = SHOW_PROGRESS;
+						param = Am.minimize(param,1.0);
+						ML_branch = -Am.function_minimum;
+					}
 					if(PARAMETERIZATION==3) {
 						param = cff.convert_parameterization_3_to_0(param);
 					}
-					cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
+					cout << optimizer << " gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << ML_branch << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
 					if(false) {
 						// Attempt to refine using BFGS
 						param = driving_prior_mean;
@@ -779,9 +793,10 @@ int main (const int argc, const char* argv[]) {
 						// Re-optimize at adjusted parameter value
 						cout << "Re-optimizing" << endl;
 						if(PARAMETERIZATION==3) param = cff.convert_parameterization_0_to_3(param, global_min_branch_length);
-						param = Pow.minimize(param,powell_tolerance);
+						param = (USE_NELDER_MEAD) ? Am.minimize(param) : Pow.minimize(param,powell_tolerance);
 						if(PARAMETERIZATION==3) param = cff.convert_parameterization_3_to_0(param);
-						cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -Pow.function_minimum << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
+						ML_branch = (USE_NELDER_MEAD) ? -Am.function_minimum : -Pow.function_minimum;
+						cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << ML_branch << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
 					}
 					if(PARAMETERIZATION!=3) {
 						const double calcQ0 = -cff.f(param);
@@ -853,7 +868,7 @@ int main (const int argc, const char* argv[]) {
 					ctree.node[i].edge_time = final_branch_length;
 					// Output results to screen
 					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " R = " << final_rho_over_theta << " I = " << final_mean_import_length << " D = " << final_import_divergence << " M = " << final_branch_length << endl;
-					ML += -Pow.function_minimum;
+					ML += ML_branch;
 				} else {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " was too short for inference" << endl;
 					const double NaN = 1.0/0.0;
