@@ -1474,13 +1474,15 @@ int main (const int argc, const char* argv[]) {
 			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
 			double ML = 0.0;
 			vector< vector<ImportationState> > is_imported(root_node);
-			// For now, hard-code the priors
-			vector<double> prior_a(4,0.4794771), prior_b(4);
-			prior_b[0] = 1.263781; prior_b[1] = 126.3781; prior_b[2] = 2.521575; prior_b[3] = 503.1203;
-			// Increase the informativeness of the priors
+			// Calculate the a and b parameters of the priors
+			vector<double> prior_a(4), prior_b(4);
 			for(i=0;i<4;i++) {
-				prior_a[i] *= 2.5;
-				prior_b[i] *= 2.5;
+				// Mean = a/b and variance = a/b/b so "precision" is b*b/a
+				// So b = precision*mean and a = b*mean
+				if(driving_prior_mean[i]<=0.0) error("VITERBI_TRAINING: driving_prior_mean must be positive");
+				if(driving_prior_precision[i]<=0.0) error("VITERBI_TRAINING: driving_prior_precision must be positive");
+				prior_b[i] = driving_prior_precision[i]*driving_prior_mean[i];
+				prior_a[i] = prior_b[i]*driving_prior_mean[i];
 			}
 			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
 			vector<double> param(3);
