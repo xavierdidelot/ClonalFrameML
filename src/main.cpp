@@ -804,8 +804,8 @@ int main (const int argc, const char* argv[]) {
 					// Label for a goto statement
 				calculate_Hessian:
 					++n_calc_Hessian;
-					if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
-					if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
+					if(n_calc_Hessian==20) warning("Attempted Hessian calculation 20 times");
+					if(n_calc_Hessian==41) error("Attempted Hessian calculation 40 times");
 					if(n_calc_Hessian>1) {
 						// Re-optimize at adjusted parameter value
 						cout << "Re-optimizing" << endl;
