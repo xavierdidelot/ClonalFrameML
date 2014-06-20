@@ -39,6 +39,7 @@
 #include <bfgs.h>
 #include <version.h>
 #include <lgamma.h>
+#include <amoeba.h>
 
 using std::cout;
 using myutils::NewickTree;
@@ -632,7 +633,7 @@ public:
 // In this class, a "driving prior" is implemented. The idea is that this helps with the maximization, which is started from the mode of the driving
 // prior, and that post hoc the effect of the prior can be removed to obtain a Normal (Laplace) approximation to the likelihood. The prior used is a multi-
 // variate normal distribution with specified mean and precision matrix.
-class ClonalFrameLaplacePerBranchFunction : public PowellFunction, public BFGSFunction {
+class ClonalFrameLaplacePerBranchFunction : public PowellFunction, public BFGSFunction, public AmoebaFunction {
 public:
 	// References to non-member variables
 	const mt_node &node;
