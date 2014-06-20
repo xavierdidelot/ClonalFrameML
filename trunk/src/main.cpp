@@ -58,6 +58,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-driving_prior_mean            4 values (df \"0 0 0 0\")   Mean of the prior used by Laplace/Viterbi algorithms." << endl;
 		errTxt << "-driving_prior_precision       4 values (df \"1 1 1 1\")   Precision of the prior used by Laplace/Viterbi algorithms." << endl;
 		errTxt << "-initial_values                3 values/empty (def \"\")   Initial values used by the Laplace/Viterbi algorithms." << endl;
+		errTxt << "-guess_initial_m               true or false (default)   Initialize M and nu jointly in the Laplace/Viterbi algorithms." << endl;
 		errTxt << "-grid_approx                   value 0/2+  (default 0)   Number of points for a grid approximation (0 = off)." << endl;
 		errTxt << "-mcmc                          true or false (default)   Estimate by MCMC recombination parameters for all branches." << endl;
 		errTxt << "-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches." << endl;
@@ -91,7 +92,7 @@ int main (const int argc, const char* argv[]) {
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
 	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false", mcmc_infer_branch_lengths = "false", string_initial_values = "", viterbi_training = "false";
-	string use_nelder_mead="false";
+	string use_nelder_mead="false", guess_initial_m="false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	double grid_approx = 0.0;
 	// Process options
@@ -127,6 +128,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("initial_values",				TP_STRING, &string_initial_values);
 	arg.add_item("viterbi_training",			TP_STRING, &viterbi_training);
 	arg.add_item("use_nelder_mead",				TP_STRING, &use_nelder_mead);
+	arg.add_item("guess_initial_m",				TP_STRING, &guess_initial_m);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -152,6 +154,7 @@ int main (const int argc, const char* argv[]) {
 	bool VITERBI_TRAINING_OLD			= false;
 	bool VITERBI_TRAINING				= string_to_bool(viterbi_training,				"viterbi_training");
 	bool USE_NELDER_MEAD				= string_to_bool(use_nelder_mead,				"use_nelder_mead");
+	bool GUESS_INITIAL_M				= string_to_bool(guess_initial_m,				"guess_initial_m");
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -265,6 +268,8 @@ int main (const int argc, const char* argv[]) {
 		if(initial_values.size()>0 && !LAPLACE_APPROX) warning("-initial_values only used by -laplace_approx currently");
 	}
 	if(USE_NELDER_MEAD && !LAPLACE_APPROX) error("-use_nelder_mead only applicable with -laplace_approx");
+	if(GUESS_INITIAL_M && !(LAPLACE_APPROX || VITERBI_TRAINING)) error("-guess_initial_m only applicable with -laplace_approx or -viterbi_training");
+	if(GUESS_INITIAL_M && initial_values.size()>0) error("Cannot specify both -guess_initial_m and -initial_values");
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -734,7 +739,19 @@ int main (const int argc, const char* argv[]) {
 					vector<double> param;
 					if(initial_values.size()==0) {
 						param = driving_prior_mean;
+						// Standard approach: initially equate the expected number of mutations and substitutions
 						param[3] = log10(initial_branch_length);
+						if(GUESS_INITIAL_M) {
+							// Alternative approach: apportion the expected number of mutations and substitutions proportionally among M and nu according to the prior
+							// E(S) = 1/(1+R*delta)*M + R*delta/(1+R*delta)*nu
+							//      = M * ( 1/(1+M*R/M*delta) + R/M*delta*nu/(1+M*R/M*delta) ) = M * ( 1 + nu*R/M*delta )/( 1 + M*R/M*delta )
+							// So let, and possibly iterate a few times
+							// M = S * ( 1 + M*R/M*delta )/( 1 + nu*R/M*delta )
+							// log(M) = log(S) + log(1+10^(logM+logR/M+logdelta)) - log(1+10^(lognu+logR/M+logdelta))
+							for(j=0;j<3;j++) param[3] = log10(initial_branch_length) + log(1.0+pow(10.,param[3]+param[0]+param[1])) - log(1.0+pow(10.,param[2]+param[0]+param[1]));
+							// In case it goes wrong for some reason..
+							if(param[3]!=param[3]) param[3] = log10(initial_branch_length);
+						}
 					} else {
 						param = initial_values;
 						param.push_back(log10(initial_branch_length));
@@ -796,7 +813,7 @@ int main (const int argc, const char* argv[]) {
 						param = (USE_NELDER_MEAD) ? Am.minimize(param) : Pow.minimize(param,powell_tolerance);
 						if(PARAMETERIZATION==3) param = cff.convert_parameterization_3_to_0(param);
 						ML_branch = (USE_NELDER_MEAD) ? -Am.function_minimum : -Pow.function_minimum;
-						cout << "Powell gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << ML_branch << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
+						cout << optimizer << " gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << ML_branch << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
 					}
 					if(PARAMETERIZATION!=3) {
 						const double calcQ0 = -cff.f(param);
@@ -1509,7 +1526,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			// Do inference
 			clock_t pow_start_time = clock();
-			ClonalFrameViterbiTraining cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node);
+			ClonalFrameViterbiTraining cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M);
 			param = cff.maximize_likelihood(param);
 			ML = cff.ML;
 			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;

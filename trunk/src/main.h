@@ -1181,13 +1181,14 @@ public:
 	vector<double> initial_branch_length;
 	vector<double> full_param;
 	vector<double> posterior_a;
+	bool guess_initial_m;
 public:
 	ClonalFrameViterbiTraining(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
 										const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
-										const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node) : 
+										const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m) : 
 	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
 	pi(_pi), neval(0), is_imported(_is_imported),
-	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node) {
+	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m) {
 		if(prior_a.size()!=4) error("ClonalFrameViterbiTraining: prior a must have length 4");
 		if(prior_b.size()!=4) error("ClonalFrameViterbiTraining: prior b must have length 4");
 		// Impose the constraint that the prior a parameter is greater than 1. This ensures the posterior has a mode
@@ -1218,7 +1219,7 @@ public:
 				}
 			}
 			initial_branch_length[i] = pd/pd_den;
-			informative[i] = (pd>=2.0) ? true : false;
+			informative[i] = (pd>=2.0) ? true : false;			
 		}
 	}
 	vector<double> maximize_likelihood(const vector<double> &param) {
@@ -1230,7 +1231,24 @@ public:
 		full_param.push_back(param[1]);		// mean_import_length: may need to invert
 		full_param.push_back(param[2]);		// import_divergence
 		int i;
-		for(i=0;i<initial_branch_length.size();i++) full_param.push_back(initial_branch_length[i]);
+		for(i=0;i<initial_branch_length.size();i++) {
+			// Standard approach: initially equate the expected number of mutations and substitutions
+			double ibl = initial_branch_length[i];
+			if(guess_initial_m) {
+				// Alternative approach: apportion the expected number of mutations and substitutions proportionally among M and nu according to the prior
+				// E(S) = 1/(1+R*delta)*M + R*delta/(1+R*delta)*nu
+				//      = M * ( 1/(1+M*R/M*delta) + R/M*delta*nu/(1+M*R/M*delta) ) = M * ( 1 + nu*R/M*delta )/( 1 + M*R/M*delta )
+				// So let, and possibly iterate a few times
+				// M = S * ( 1 + M*R/M*delta )/( 1 + nu*R/M*delta )
+				// log(M) = log(S) + log(1+10^(logM+logR/M+logdelta)) - log(1+10^(lognu+logR/M+logdelta))
+				double log10ibl = log10(ibl);
+				int j;
+				for(j=0;j<3;j++) log10ibl = log10(initial_branch_length[i]) + log(1.0+pow(10.,log10ibl+param[0]+param[1])) - log(1.0+pow(10.,param[2]+param[0]+param[1]));
+				// Make sure it hasn't gone wrong for some reason before substituting...
+				if(!(log10ibl!=log10ibl)) ibl = pow(10.,log10ibl);
+			}
+			full_param.push_back(ibl);
+		}
 		// Iterate
 		ML = Viterbi_training(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,is_imported,neval);
 		// Update importation status for uninformative branches
