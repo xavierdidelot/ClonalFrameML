@@ -1251,17 +1251,15 @@ public:
 		}
 		// Iterate
 		ML = Viterbi_training(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,is_imported,neval);
-		// Update importation status for uninformative branches
+		// Update importation status for all branches **for ALL SITES**, including uninformative ones
 		for(i=0;i<initial_branch_length.size();i++) {
-			if(!informative[i]) {
-				const int dec_id = tree.node[i].id;
-				const int anc_id = tree.node[i].ancestor->id;
-				const double branch_length = initial_branch_length[i];
-				const double rho_over_theta = full_param[0];
-				const double mean_import_length = full_param[1];
-				const double import_divergence = full_param[2];
-				maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,which_compat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]).LOG();				
-			}
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			const double rho_over_theta = full_param[0];
+			const double mean_import_length = full_param[1];
+			const double import_divergence = full_param[2];
+			const double branch_length = (informative[i]) ? full_param[3+i] : initial_branch_length[i];
+			maximum_likelihood_ClonalFrame_branch_allsites(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
 		}
 		return full_param;
 	}
