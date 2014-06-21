@@ -87,11 +87,12 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node);
 void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> &MLE);
 double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported, int &neval);
-void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param, vector<double> &posterior_a);
-double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> prior_a, const vector<double> prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
+void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param, vector<double> &posterior_a);
+double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
 double gamma_invcdf(const double p, const double alph, const double bet);
 double invgammp(const double p, const double a);
-	
+double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
+
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
 	const vector<NewickNode*> &root2tip;	// temporary ordering of Newick nodes from root to tips
@@ -1262,6 +1263,121 @@ public:
 			maximum_likelihood_ClonalFrame_branch_allsites(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
 		}
 		return full_param;
+	}
+};
+
+// Based on ClonalFrameViterbiTraining, but using a hybrid algorithm comprising a
+// Viterbi approach for the M parameter and general optimization approach for the
+// other parameters
+class ClonalFrameViterbiM : public PowellFunction, public BFGSFunction, public AmoebaFunction {
+public:
+	// References to non-member variables
+	const marginal_tree &tree;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector< vector<ImportationState> > &is_imported;
+	// True member variable
+	double ML;
+	double PR;
+	int neval;
+	const vector<double> prior_mean;			// First 3 parameters only
+	const vector<double> prior_precision;		// First 3 parameters only
+	const double prior_a;						// Branch length only
+	const double prior_b;						// Branch length only
+	vector<double> which_compat;
+	const int root_node;
+	vector<bool> informative;
+	vector<double> initial_branch_length;
+	vector<double> full_param;
+	vector<double> posterior_a;
+	vector<double> padded_prior_a;
+	vector<double> padded_prior_b;
+	bool guess_initial_m;
+public:
+	ClonalFrameViterbiM(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+							const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported,
+							const vector<double> _prior_mean, const vector<double> _prior_precision,
+							const double _prior_a, const double _prior_b, const int _root_node, const bool _guess_initial_m) : 
+	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+	pi(_pi), neval(0), is_imported(_is_imported), prior_mean(_prior_mean), prior_precision(_prior_precision),
+	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), 
+	guess_initial_m(_guess_initial_m), padded_prior_a(4,0.0), padded_prior_b(4,0.0) {
+		if(prior_mean.size()!=3) error("ClonalFrameViterbiM: prior_mean must have length 3");
+		if(prior_precision.size()!=3) error("ClonalFrameViterbiM: prior_precision must have length 3");
+		int i;
+		// Precompute which sites are compatible
+		which_compat = vector<double>(0);
+		for(i=0;i<iscompat.size();i++) {
+			if(iscompat[i]) {
+				which_compat.push_back((double)i);
+			}
+		}
+		int j,k;
+		for(i=0;i<root_node;i++) {
+			// Crudely re-estimate branch length
+			double pd = 1.0, pd_den = 2.0;
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			for(j=0,k=0;j<iscompat.size();j++) {
+				if(iscompat[j]) {
+					Nucleotide dec = node_nuc[dec_id][ipat[k]];
+					Nucleotide anc = node_nuc[anc_id][ipat[k]];
+					if(dec!=anc) ++pd;
+					++pd_den;
+					++k;
+				}
+			}
+			initial_branch_length[i] = pd/pd_den;
+			informative[i] = (pd>=2.0) ? true : false;			
+		}
+		padded_prior_a[3] = prior_a;
+		padded_prior_b[3] = prior_b;
+	}
+	// Return function to be minimized
+	double f(const vector<double>& x) {
+		++neval;
+		if(x.size()!=3) error("ClonalFrameViterbiM::f(): 3 arguments required");
+		// Starting points for the shared parameters
+		full_param = vector<double>(0);
+		posterior_a = vector<double>(0);
+		full_param.push_back(pow(10.,x[0]));		// rho_over_theta
+		full_param.push_back(pow(10.,x[1]));		// mean_import_length
+		full_param.push_back(pow(10.,x[2]));		// import_divergence
+		int i;
+		for(i=0;i<initial_branch_length.size();i++) {
+			// Standard approach: initially equate the expected number of mutations to the prior mean
+			double ibl = prior_a/prior_b;
+			// Alternative approach: apportion the expected number of mutations and substitutions proportionally among M and nu according to the prior
+			if(guess_initial_m) {
+				// E(S) = 1/(1+R*delta)*M + R*delta/(1+R*delta)*nu
+				//      = M * ( 1/(1+M*R/M*delta) + R/M*delta*nu/(1+M*R/M*delta) ) = M * ( 1 + nu*R/M*delta )/( 1 + M*R/M*delta )
+				// So let, and possibly iterate a few times
+				// M = S * ( 1 + M*R/M*delta )/( 1 + nu*R/M*delta )
+				// log(M) = log(S) + log(1+10^(logM+logR/M+logdelta)) - log(1+10^(lognu+logR/M+logdelta))
+				double log10ibl = log10(initial_branch_length[i]);
+				int j;
+				for(j=0;j<3;j++) log10ibl = log10(initial_branch_length[i]) + log(1.0+pow(10.,log10ibl+x[0]+x[1])) - log(1.0+pow(10.,x[2]+x[0]+x[1]));
+				// Make sure it hasn't gone wrong for some reason before substituting...
+				if(!(log10ibl!=log10ibl)) ibl = pow(10.,log10ibl);
+			}
+			full_param.push_back(ibl);
+		}
+		// Iterate the likelihood *** wrt the M parameters only ***
+		ML = ViterbiM(tree,node_nuc,which_compat,ipat,kappa,pi,informative,padded_prior_a,padded_prior_b,full_param,posterior_a,is_imported,neval);
+		// Calculate the prior on rho_over_theta, mean_import_length and import_divergence
+		PR = log_prior(x);
+		return -(ML+PR);
+	}
+	double log_prior(const vector<double>& x) {
+		double ret = 0.0;
+		int i;
+		for(i=0;i<3;i++) {
+			ret -= 0.5*pow(prior_mean[i]-x[i],2.0)*prior_precision[i];
+		}
+		return ret;
 	}
 };
 
