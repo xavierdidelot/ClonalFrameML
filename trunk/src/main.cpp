@@ -1654,7 +1654,7 @@ int main (const int argc, const char* argv[]) {
 					const double calcQd = -cff.f(paramQ);
 					if(calcQd>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
 					const double calcQ = calcQa - calcQb - calcQc + calcQd;
-					laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
+					laplaceQ[0][j][k] = laplaceQ[0][k][j] = -calcQ/4.0/h/h;
 				}
 				paramQ = param; paramQ[j] += 2.0*h;
 				const double calcQa = -cff.f(paramQ);
@@ -1663,10 +1663,10 @@ int main (const int argc, const char* argv[]) {
 				const double calcQb = -cff.f(paramQ);
 				if(calcQb>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
 				const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-				laplaceQ[i][j][j] = -calcQ/4.0/h/h;
+				laplaceQ[0][j][j] = -calcQ/4.0/h/h;
 			}
 			// Store the point estimates
-			laplaceMLE[i] = param;
+			laplaceMLE[0] = param;
 			// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
 			const double final_rho_over_theta = pow(10.,param[0]);
 			const double final_mean_import_length = pow(10.,param[1]);
@@ -1696,12 +1696,11 @@ int main (const int argc, const char* argv[]) {
 				}
 			}
 			lout << endl;
-			i = 0;
 			lout << "All branches";
-			for(j=0;j<3;j++) lout << "\t" << laplaceMLE[i][j];
+			for(j=0;j<3;j++) lout << "\t" << laplaceMLE[0][j];
 			for(j=0;j<3;j++) {
 				for(k=0;k<3;k++) {
-					lout << "\t" << laplaceQ[i][j][k];
+					lout << "\t" << laplaceQ[0][j][k];
 				}
 			}
 			lout << endl;
