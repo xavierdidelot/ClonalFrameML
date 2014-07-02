@@ -3812,6 +3812,9 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		}
 	}
 	++neval;
+	cout << "params =";
+	for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+	cout << " ML = " << ML << endl;
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
 	const double threshold = 1.0e-6;
@@ -3834,6 +3837,9 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 			}
 		}
 		++neval;
+		cout << "params =";
+		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+		cout << " ML = " << ML << endl;
 		// Test for no further improvement
 		if(new_ML<ML) {
 			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
