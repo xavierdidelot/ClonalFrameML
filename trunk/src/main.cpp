@@ -63,6 +63,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-mcmc                          true or false (default)   Estimate by MCMC recombination parameters for all branches." << endl;
 		errTxt << "-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches." << endl;
 		errTxt << "-partial_viterbi               true or false (default)   Estimate parameters by Powell/Nelder-Mead and Viterbi algorithms." << endl;
+		errTxt << "-em                            true or false (default)   Estimate parameters by a Baum-Welch expectation maximization algorithm." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -86,6 +87,7 @@ int main (const int argc, const char* argv[]) {
 	string loglik_out_file = string(out_file) + ".loglik.txt";
 	string loglik_prop_out_file = string(out_file) + ".loglik_prop.txt";
 	string viterbi_out_file = string(out_file) + ".viterbi_training.txt";
+	string em_out_file = string(out_file) + ".em.txt";
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
@@ -93,7 +95,7 @@ int main (const int argc, const char* argv[]) {
 	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
 	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
 	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false", mcmc_infer_branch_lengths = "false", string_initial_values = "", viterbi_training = "false";
-	string use_nelder_mead="false", guess_initial_m="false", partial_viterbi="false";
+	string use_nelder_mead="false", guess_initial_m="false", partial_viterbi="false", em="false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	double grid_approx = 0.0;
 	// Process options
@@ -131,6 +133,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("use_nelder_mead",				TP_STRING, &use_nelder_mead);
 	arg.add_item("guess_initial_m",				TP_STRING, &guess_initial_m);
 	arg.add_item("partial_viterbi",				TP_STRING, &partial_viterbi);
+	arg.add_item("em",							TP_STRING, &em);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -158,6 +161,7 @@ int main (const int argc, const char* argv[]) {
 	bool USE_NELDER_MEAD				= string_to_bool(use_nelder_mead,				"use_nelder_mead");
 	bool GUESS_INITIAL_M				= string_to_bool(guess_initial_m,				"guess_initial_m");
 	bool PARTIAL_VITERBI				= string_to_bool(partial_viterbi,				"partial_viterbi");
+	bool EM								= string_to_bool(em,							"em");
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -168,12 +172,12 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "powell_tolerance value out of range (0,0.1], default 0.001";
 		error(errTxt.str().c_str());
 	}
-	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION) + (int)SINGLE_RHO_VITERBI + (int)SINGLE_RHO_FORWARD + (int)MCMC_PER_BRANCH + (int)LAPLACE_APPROX + (int)GRID_APPROX + (int)MCMC_JOINT + (int)VITERBI_TRAINING + (int)PARTIAL_VITERBI>1) {
+	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION) + (int)SINGLE_RHO_VITERBI + (int)SINGLE_RHO_FORWARD + (int)MCMC_PER_BRANCH + (int)LAPLACE_APPROX + (int)GRID_APPROX + (int)MCMC_JOINT + (int)VITERBI_TRAINING + (int)PARTIAL_VITERBI + (int)EM>1) {
 		stringstream errTxt;
-		errTxt << "joint_branch_param, rho_per_branch, rho_per_branch_no_lrt, rescale_no_recombination, single_rho_viterbi, single_rho_forward, mcmc_per_branch, laplace_approx, grid_approx, mcmc, viterbi_training and partial_viterbi are mutually incompatible";
+		errTxt << "joint_branch_param, rho_per_branch, rho_per_branch_no_lrt, rescale_no_recombination, single_rho_viterbi, single_rho_forward, mcmc_per_branch, laplace_approx, grid_approx, mcmc, viterbi_training, partial_viterbi and em are mutually incompatible";
 		error(errTxt.str().c_str());
 	}
-	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION || SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD || MCMC_PER_BRANCH || LAPLACE_APPROX || GRID_APPROX || MCMC_JOINT || VITERBI_TRAINING || PARTIAL_VITERBI) && !CORRECT_BRANCH_LENGTHS) {
+	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION || SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD || MCMC_PER_BRANCH || LAPLACE_APPROX || GRID_APPROX || MCMC_JOINT || VITERBI_TRAINING || PARTIAL_VITERBI || EM) && !CORRECT_BRANCH_LENGTHS) {
 		stringstream wrnTxt;
 		wrnTxt << "branch correction options will be ignored because correct_branch_lengths=false";
 		warning(wrnTxt.str().c_str());
@@ -216,6 +220,12 @@ int main (const int argc, const char* argv[]) {
 	if(EXCESS_DIVERGENCE_MODEL && PARTIAL_VITERBI) {
 		stringstream wrnTxt;
 		wrnTxt << "partial_viterbi implies no excess_divergence_model";
+		warning(wrnTxt.str().c_str());
+		EXCESS_DIVERGENCE_MODEL = false;
+	}
+	if(EXCESS_DIVERGENCE_MODEL && EM) {
+		stringstream wrnTxt;
+		wrnTxt << "em implies no excess_divergence_model";
 		warning(wrnTxt.str().c_str());
 		EXCESS_DIVERGENCE_MODEL = false;
 	}
@@ -274,10 +284,10 @@ int main (const int argc, const char* argv[]) {
 		}
 		if(i==1000) error("Maximum length of vector exceeded by initial_values");
 		if(!(initial_values.size()==0 || initial_values.size()==3)) error("initial values must have 0 or 3 values separated by spaces");
-		if(initial_values.size()>0 && !LAPLACE_APPROX) warning("-initial_values only used by -laplace_approx currently");
+		if(initial_values.size()>0 && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM)) warning("-initial_values only used by -laplace_approx, -viterbi_training, -partial_viterbi or -em");
 	}
 	if(USE_NELDER_MEAD && !(LAPLACE_APPROX || PARTIAL_VITERBI)) error("-use_nelder_mead only applicable with -laplace_approx or -partial_viterbi");
-	if(GUESS_INITIAL_M && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI)) error("-guess_initial_m only applicable with -laplace_approx, -viterbi_training or -partial_viterbi");
+	if(GUESS_INITIAL_M && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM)) error("-guess_initial_m only applicable with -laplace_approx, -viterbi_training, -partial_viterbi or -em");
 	if(GUESS_INITIAL_M && initial_values.size()>0) error("Cannot specify both -guess_initial_m and -initial_values");
 	
 	// Open the FASTA file(s)
@@ -1505,7 +1515,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
 		} else if(VITERBI_TRAINING) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			// using the Laplace approximation to the likelihood
+			// using Viterbi training
 			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
 			cout << "B   uncorrected branch length" << endl;
 			cout << "L   maximum unnormalized log-posterior per branch" << endl;
@@ -1550,6 +1560,67 @@ int main (const int argc, const char* argv[]) {
 			}
 			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
 			ofstream vout(viterbi_out_file.c_str());
+			char tab = '\t';
+			vout << "Parameter" << tab << "Posterior Mean" << tab << /*"2.5% Quantile" << tab << "97.5% Quantile" << tab << */"a_post" << tab << "b_post" << endl;
+			vout << "R_over_M"	<< tab << param[0] << tab << /*gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << */cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
+			vout << "delta"		<< tab << param[1] << tab << /*1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << */cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
+			vout << "nu"		<< tab << param[2] << tab << /*gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << */cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
+			for(i=0;i<root_node;i++) {
+				if(cff.informative[i]) {
+					vout << ctree_node_labels[i] << tab << param[3+i] << tab << /*gamma_invcdf(0.025,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << gamma_invcdf(0.975,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << */cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
+				}
+			}
+			vout.close();
+			// Output the importation status
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
+			cout << "Wrote inferred importation status to " << import_out_file << endl;
+		} else if(EM) {
+			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
+			// using Baum-Welch EM algorithm
+			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
+			cout << "B   uncorrected branch length" << endl;
+			cout << "L   maximum unnormalized log-posterior per branch" << endl;
+			cout << "R   rho/theta per branch                                     (> 0)" << endl;
+			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
+			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
+			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
+			double ML = 0.0;
+			vector< vector<ImportationState> > is_imported(root_node);
+			// Calculate the a and b parameters of the priors
+			vector<double> prior_a(4), prior_b(4);
+			for(i=0;i<4;i++) {
+				// Mean = a/b and variance = a/b/b so "precision" is b*b/a
+				// So b = precision*mean and a = b*mean
+				if(driving_prior_mean[i]<=0.0) error("EM: driving_prior_mean must be positive");
+				if(driving_prior_precision[i]<=0.0) error("EM: driving_prior_precision must be positive");
+				prior_b[i] = driving_prior_precision[i]*driving_prior_mean[i];
+				prior_a[i] = prior_b[i]*driving_prior_mean[i];
+			}
+			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
+			vector<double> param(3);
+			if(initial_values.size()==0) {
+				// Hard coded starting point
+				param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05;
+			} else {
+				param = initial_values;
+			}
+			// Do inference
+			clock_t pow_start_time = clock();
+			ClonalFrameBaumWelch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M);
+			param = cff.maximize_likelihood(param);
+			ML = cff.ML;
+			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
+			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
+			//cout << " Posterior 95% CIs: R = (" << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << "," << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << 
+			//") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) <<
+			//") D = (" << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << "," << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << ")" << endl;
+			for(i=0;i<root_node;i++) {
+				if(cff.informative[i]) {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
+				}
+			}
+			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
+			ofstream vout(em_out_file.c_str());
 			char tab = '\t';
 			vout << "Parameter" << tab << "Posterior Mean" << tab << /*"2.5% Quantile" << tab << "97.5% Quantile" << tab << */"a_post" << tab << "b_post" << endl;
 			vout << "R_over_M"	<< tab << param[0] << tab << /*gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << */cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
@@ -3871,3 +3942,217 @@ double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, c
 	return ML;
 }
 
+// The following function calculates, for a particular branch of the tree, the expected number of transitions from state i to state j and emissions from state i to observation j
+// This requires storage for the forward algorithm calculations and a second pass using the backward algorithm to calculate the marginal expectations
+// The marginal likelihood for the branch is returned
+mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, Matrix<mydouble> &numEmis, vector<mydouble> &denEmis, Matrix<mydouble> &numTrans, vector<mydouble> &denTrans) {
+	const int npos = position.size();
+	// Define an HKY85 emission probability matrix for Unimported sites
+	static Matrix<mydouble> pemisUnimported;
+	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
+	// Define an HKY85 emission probability matrix for Imported sites
+	static Matrix<mydouble> pemisImported;
+	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
+	// Define storate space for the intermediate forward calculations
+	static Matrix<mydouble> A;
+	A = Matrix<mydouble>(npos,2);
+	// Resize if necessary and zero the output objects
+	numEmis = Matrix<mydouble>(2,2,0.0);
+	denEmis = vector<mydouble>(2,0.0);
+	numTrans = Matrix<mydouble>(2,2,0.0);
+	denTrans = vector<mydouble>(2,0.0);
+	// Recombination parameters
+	const double recrate = rho_over_theta*branch_length;
+	const double endrecrate = 1.0/mean_import_length;
+	const double totrecrate = recrate+endrecrate;	
+	// Transient storage
+	mydouble aprev[2];
+	mydouble a[2];
+	// Equilibrium frequency of unimported and imported sites respectively
+	const mydouble pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
+	// Beginning at the first variable site, calculate the subsequence marginal likelihood
+	int i;
+	for(i=0;i<npos;i++) {
+		Nucleotide dec = node_nuc[dec_id][ipat[i]];
+		Nucleotide anc = node_nuc[anc_id][ipat[i]];
+		if(i==0) {
+			a[0] = pi[0]*pemisUnimported[anc][dec];
+			a[1] = pi[1]*  pemisImported[anc][dec];
+		} else {
+			aprev[0] = a[0];
+			aprev[1] = a[1];
+			const mydouble sumaprev = aprev[0]+aprev[1];
+			mydouble prnotrans;
+			prnotrans.setlog(-totrecrate*(position[i]-position[i-1]));
+			const mydouble prtrans = mydouble(1.0)-prnotrans;
+			a[0] = (aprev[0]*prnotrans+sumaprev*pi[0]*prtrans)*pemisUnimported[anc][dec];
+			a[1] = (aprev[1]*prnotrans+sumaprev*pi[1]*prtrans)*  pemisImported[anc][dec];
+		}
+		// Store for the second pass
+		A[i][0] = a[0];
+		A[i][1] = a[1];
+	}
+	// Record the marginal likelihood for output later
+	const mydouble ML = (a[0]+a[1]);
+	// Second pass: backward algorithm
+	mydouble bnext[2];
+	mydouble b[2];
+	// Beginning at the last variable site, calculate the marginal likelihood of the 3prime sites
+	for(i=npos-1;i>=0;i--) {
+		if(i==(npos-1)) {
+			b[0] = mydouble(1.0);
+			b[1] = mydouble(1.0);
+		} else {
+			bnext[0] = b[0];
+			bnext[1] = b[1];
+			// Note that these retrieve the ancestral and descendant nucleotides at the 3prime adjacent site
+			Nucleotide dec = node_nuc[dec_id][ipat[i+1]];
+			Nucleotide anc = node_nuc[anc_id][ipat[i+1]];
+			const mydouble pemisU = pemisUnimported[anc][dec];
+			const mydouble pemisI = pemisImported[anc][dec];
+			mydouble prnotrans;
+			prnotrans.setlog(-totrecrate*(position[i+1]-position[i]));
+			const mydouble prtrans = mydouble(1.0)-prnotrans;
+			const mydouble sumbnext = prtrans*(pi[0]*pemisU*bnext[0] + pi[1]*pemisI*bnext[1]);
+			b[0] = prnotrans*pemisU*bnext[0]+sumbnext;
+			b[1] = prnotrans*pemisI*bnext[1]+sumbnext;
+
+			// Update the expected number of transitions and emissions
+			// Calculate the marginal probabilities that the hidden state is Unimported or Imported
+			const mydouble pU = A[i][0]*b[0]/ML;	// NB:- pU+pI should always equal ML
+			const mydouble pI = A[i][1]*b[1]/ML;
+			const mydouble ppost[2]  = {pU,pI};
+			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
+			int j;
+			const int obs = (int)(anc!=dec);		// 0 = same, 1 = different
+			for(j=0;j<2;j++) {
+				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
+				numEmis[j][obs] += ppost[j];
+				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
+				denEmis[j]      += ppost[j];			// NB:- the denominator is the same for both observation states
+			}
+			// Increment the numerator and denominator of the expected number of transitions from state j to state k
+			// Impose maximum adjacent site distance of 1kb (needed for small-p Poisson approximation to heterogeneous bernoulli)
+			const mydouble ptrans[2] = {prnotrans,prtrans};
+			const mydouble pemis[2]  = {pemisU,pemisI};
+			const double dist = position[i+1]-position[i];
+			if(dist<=1000.) {
+				int k;
+				for(j=0;j<2;j++) {
+					for(k=0;k<2;k++) {
+						const int istrans = (int)(j!=k);
+						// Probability of transition from j to k given the data equals the joint likelihood of the data and transition from j to k, divided by marginal likelihood of the data
+						numTrans[j][k] += A[i][j]*ptrans[istrans]*pemis[k]*bnext[k]/ML;		// Note the use of bnext, not b
+						// Expected distance between sites equals actual distance weighted by the probability the 5prime site was in state j
+						denTrans[j]    += dist*ppost[j];									// NB:- the denominator is the same for both destination states
+					}
+				}
+			}
+		}
+	}
+	// Return the marginal likelihood
+	return ML;
+}
+
+double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval) {
+	int i;
+	// Initial parameters
+	double rho_over_theta = full_param[0];
+	double mean_import_length = full_param[1];
+	double import_divergence = full_param[2];
+	posterior_a = vector<double>(3+informative.size());
+	// Storage for the expected number of transitions and emissions in the HMM
+	Matrix<mydouble> numEmiss(2,2), numTrans(2,2);
+	vector<mydouble> denEmiss(2),   denTrans(2);
+	// Counters
+	double mutI=0.0;			// Running total divergence at imported sites
+	double numU=0.0, numI=0.0;	// Running total number of transitions *to* unimported, imported regions
+	double nsiI=0.0;			// Running total number of imported sites
+	double lenU=0.0, lenI=0.0;	// Running total length of unimported, imported regions
+	// Calculate the marginal likelihood and expected number of transitions and emissions by the forward-backward algorithm
+	double ML = 0;
+	for(i=0;i<informative.size();i++) {
+		if(informative[i]) {
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			const double branch_length = full_param[3+i];
+			ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+			// Update estimate of the branch length
+			const double mutU_br = numEmiss[0][1].todouble();
+			const double nsiU_br = denEmiss[0].todouble();
+			full_param[3+i] = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
+			posterior_a[3+i] = (prior_a[3]+mutU_br);
+			// Increment counters for the other expectations
+			mutI += numEmiss[1][1].todouble();
+			nsiI += denEmiss[1].todouble();
+			const double numI_br = numTrans[0][1].todouble();
+			const double lenU_br = denTrans[0].todouble();
+			numI += numI_br;
+			lenU += full_param[3+i]*lenU_br;
+			numU += numTrans[1][0].todouble();
+			lenI += denTrans[1].todouble();
+		}
+	}
+	++neval;
+	// Update estimates of the recombination parameters
+	full_param[0] = (prior_a[0]+numI)/(prior_b[0]+lenU);
+	full_param[1] = (prior_b[1]+lenI)/(prior_a[1]+numU);
+	full_param[2] = (prior_a[2]+mutI)/(prior_b[2]+nsiI);
+	posterior_a[0] = (prior_a[0]+numI);
+	posterior_a[1] = (prior_a[1]+numU);
+	posterior_a[2] = (prior_a[2]+mutI);
+	// Iterate until the maximum likelihood improves by less than some threshold
+	const int maxit = 200;
+	const double threshold = 1.0e-6;
+	vector<double> MLE;
+	for(i=0;i<maxit;i++) {
+		// Identify the model parameters
+		rho_over_theta = full_param[0];
+		mean_import_length = full_param[1];
+		import_divergence = full_param[2];
+		// Update the likelihood
+		mutI=0.0; numU=0.0; numI=0.0; nsiI=0.0; lenU=0.0; lenI=0.0;
+		double new_ML = 0.0;
+		for(i=0;i<informative.size();i++) {
+			if(informative[i]) {
+				const int dec_id = tree.node[i].id;
+				const int anc_id = tree.node[i].ancestor->id;
+				const double branch_length = full_param[3+i];
+				new_ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+				// Update estimate of the branch length
+				const double mutU_br = numEmiss[0][1].todouble();
+				const double nsiU_br = denEmiss[0].todouble();
+				full_param[3+i] = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
+				posterior_a[3+i] = (prior_a[3]+mutU_br);
+				// Increment counters for the other expectations
+				mutI += numEmiss[1][1].todouble();
+				nsiI += denEmiss[1].todouble();
+				const double numI_br = numTrans[0][1].todouble();
+				const double lenU_br = denTrans[0].todouble();
+				numI += numI_br;
+				lenU += full_param[3+i]*lenU_br;
+				numU += numTrans[1][0].todouble();
+				lenI += denTrans[1].todouble();
+			}
+		}
+		++neval;
+		// Update estimates of the recombination parameters
+		full_param[0] = (prior_a[0]+numI)/(prior_b[0]+lenU);
+		full_param[1] = (prior_b[1]+lenI)/(prior_a[1]+numU);
+		full_param[2] = (prior_a[2]+mutI)/(prior_b[2]+nsiI);
+		posterior_a[0] = (prior_a[0]+numI);
+		posterior_a[1] = (prior_a[1]+numU);
+		posterior_a[2] = (prior_a[2]+mutI);
+		// Test for no further improvement
+		if((new_ML-ML)<threshold) {
+			break;
+		} else if(new_ML<ML) {
+			warning("Likelihood got worse in Baum_Welch");
+		}
+		// Otherwise continue
+		ML = new_ML;
+	}
+	// Once more for debugging purposes
+	// mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans);
+	return ML;
+}
