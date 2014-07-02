@@ -4099,6 +4099,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 			lenU += full_param[3+i]*lenU_br;
 			numU += numTrans[1][0].todouble();
 			lenI += denTrans[1].todouble();
+			cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
 			cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
 			cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
 			cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
@@ -4147,6 +4148,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 				lenU += full_param[3+i]*lenU_br;
 				numU += numTrans[1][0].todouble();
 				lenI += denTrans[1].todouble();
+				cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
 				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
 				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
 				cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
