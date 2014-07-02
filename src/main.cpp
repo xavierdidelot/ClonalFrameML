@@ -4155,8 +4155,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		if(new_ML<ML) {
 			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
 			warning("Likelihood got worse in Baum_Welch");
-		}
-		if((new_ML-ML)<threshold) {
+		} else if((new_ML-ML)<threshold) {
 			break;
 		}
 		// Otherwise continue
