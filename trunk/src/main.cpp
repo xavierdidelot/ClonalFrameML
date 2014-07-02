@@ -3835,10 +3835,12 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		}
 		++neval;
 		// Test for no further improvement
+		if(new_ML<ML) {
+			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
+			warning("Likelihood got worse in viterbi_training");
+		}
 		if((new_ML-ML)<threshold) {
 			break;
-		} else if(new_ML<ML) {
-			warning("Likelihood got worse in viterbi_training");
 		}
 		// Otherwise continue
 		ML = new_ML;
@@ -4144,10 +4146,12 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		posterior_a[1] = (prior_a[1]+numU);
 		posterior_a[2] = (prior_a[2]+mutI);
 		// Test for no further improvement
+		if(new_ML<ML) {
+			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
+			warning("Likelihood got worse in Baum_Welch");
+		}
 		if((new_ML-ML)<threshold) {
 			break;
-		} else if(new_ML<ML) {
-			warning("Likelihood got worse in Baum_Welch");
 		}
 		// Otherwise continue
 		ML = new_ML;
