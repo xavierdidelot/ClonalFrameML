@@ -4063,6 +4063,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 		}
 	}
 	// Return the marginal likelihood
+	cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
 	return ML;
 }
 
