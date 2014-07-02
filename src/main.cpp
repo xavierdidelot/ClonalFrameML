@@ -4029,7 +4029,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
 				numEmis[j][obs] += ppost[j];
 				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
-				denEmis[j]      += ppost[j];			// NB:- the denominator is the same for both observation states
+				denEmis[j]      += ppost[j];		// NB:- the denominator is the same for both observation states
 			}
 			// Increment the numerator and denominator of the expected number of transitions from state j to state k
 			// Impose maximum adjacent site distance of 1kb (needed for small-p Poisson approximation to heterogeneous bernoulli)
@@ -4043,9 +4043,9 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 						const int istrans = (int)(j!=k);
 						// Probability of transition from j to k given the data equals the joint likelihood of the data and transition from j to k, divided by marginal likelihood of the data
 						numTrans[j][k] += A[i][j]*ptrans[istrans]*pemis[k]*bnext[k]/ML;		// Note the use of bnext, not b
-						// Expected distance between sites equals actual distance weighted by the probability the 5prime site was in state j
-						denTrans[j]    += dist*ppost[j];									// NB:- the denominator is the same for both destination states
 					}
+					// Expected distance between sites equals actual distance weighted by the probability the 5prime site was in state j
+					denTrans[j] += dist*ppost[j];											// NB:- the denominator is the same for both destination states
 				}
 			}
 		}
