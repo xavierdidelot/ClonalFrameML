@@ -4028,7 +4028,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 
 			// Update the expected number of transitions and emissions
 			// Calculate the marginal probabilities that the hidden state is Unimported or Imported
-			cout << A[i][0]*b[0]+A[i][1]*b[1] << endl;
+			cout << (A[i][0]*b[0]+A[i][1]*b[1]).LOG() << endl;
 			const mydouble pU = A[i][0]*b[0]/ML;	// NB:- pU+pI should always equal ML
 			const mydouble pI = A[i][1]*b[1]/ML;
 			const mydouble ppost[2]  = {pU,pI};
