@@ -94,6 +94,7 @@ double invgammp(const double p, const double a);
 double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
 double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput);
 double gamma_loglikelihood(const double x, const double a, const double b);
+Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput, const int nsim);
 
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
@@ -1491,9 +1492,9 @@ public:
 		}
 		return full_param;
 	}
-	Matrix<double> simulate_posterior(const vector<double> &param) {
+	Matrix<double> simulate_posterior(const vector<double> &param, const int nsim) {
 		if(!(param.size()==3+tree.n)) error("ClonalFrameBaumWelch::simulate_posterior(): 3 arguments required");
-		return Baum_Welch_simulate_posterior(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,param,posterior_a,neval,coutput);
+		return Baum_Welch_simulate_posterior(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,param,posterior_a,neval,coutput,nsim);
 	}
 };
 

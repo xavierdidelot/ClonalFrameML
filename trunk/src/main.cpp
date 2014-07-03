@@ -4241,3 +4241,173 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 double gamma_loglikelihood(const double x, const double a, const double b) {
 	return a*log(b)-lgamma(a)+(a-1)*log(x)-b*x;
 }
+
+void forward_backward_simulate_expectations_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, const int nsim, vector<double> &mutU, vector<double> &nsiU, vector<double> &mutI, vector<double> &nsiI, vector<double> &numUI, vector<double> &lenU, vector<double> &numIU, vector<double> &lenI) {
+	const int npos = position.size();
+	// Define an HKY85 emission probability matrix for Unimported sites
+	static Matrix<mydouble> pemisUnimported;
+	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
+	// Define an HKY85 emission probability matrix for Imported sites
+	static Matrix<mydouble> pemisImported;
+	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
+	// Define storage space for the intermediate forward calculations and counters
+	static Matrix<mydouble> A;
+	A = Matrix<mydouble>(npos,2);
+	static Matrix<double> numEmis, numTrans;
+	static vector<double> denEmis, denTrans;
+	// Define storage space for the observation at every site
+	static vector<int> emittedState;
+	emittedState = vector<int>(npos);
+	// Recombination parameters
+	const double recrate = rho_over_theta*branch_length;
+	const double endrecrate = 1.0/mean_import_length;
+	const double totrecrate = recrate+endrecrate;	
+	// Transient storage
+	mydouble aprev[2];
+	mydouble a[2];
+	// Equilibrium frequency of unimported and imported sites respectively
+	const mydouble pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
+	// Beginning at the first variable site, do the forward algorithm
+	int i;
+	for(i=0;i<npos;i++) {
+		Nucleotide dec = node_nuc[dec_id][ipat[i]];
+		Nucleotide anc = node_nuc[anc_id][ipat[i]];
+		if(i==0) {
+			a[0] = pi[0]*pemisUnimported[anc][dec];
+			a[1] = pi[1]*  pemisImported[anc][dec];
+		} else {
+			aprev[0] = a[0];
+			aprev[1] = a[1];
+			const mydouble sumaprev = aprev[0]+aprev[1];
+			mydouble prnotrans;
+			prnotrans.setlog(-totrecrate*(position[i]-position[i-1]));
+			const mydouble prtrans = mydouble(1.0)-prnotrans;
+			a[0] = (aprev[0]*prnotrans+sumaprev*pi[0]*prtrans)*pemisUnimported[anc][dec];
+			a[1] = (aprev[1]*prnotrans+sumaprev*pi[1]*prtrans)*  pemisImported[anc][dec];
+		}
+		// Store for the second pass
+		A[i][0] = a[0];
+		A[i][1] = a[1];
+		// Store the emitted state for simulation later
+		emittedState[i] = (int)(anc!=dec);
+	}
+	// Second pass: backward algorithm
+	// Define storage for the backward simulation probabilities
+	static Matrix<double> P;
+	P = Matrix<double>(npos,2); // P[i][j] is the probability of going from position (i+1) state j to position i state 1
+	mydouble bnext[2];
+	mydouble b[2];
+	// Beginning at the last variable site, do the backward algorithm and calculate backward simulation probabilities
+	for(i=npos-1;i>=0;i--) {
+		if(i==(npos-1)) {
+			// Backward algorithm
+			b[0] = mydouble(1.0);
+			b[1] = mydouble(1.0);
+			// Calculate the backwards simulation probability
+			// A[npos-1][j]*b[j] is the joint probability of the data and state j at the final position
+			const mydouble num = A[npos-1][1]*b[1];
+			const mydouble den = A[npos-1][0]*b[0] + num;
+			P[npos-1][0] = P[npos-1][1] = (num/den).todouble();
+		} else {
+			// Backward algorithm
+			bnext[0] = b[0];
+			bnext[1] = b[1];
+			// Note that these retrieve the ancestral and descendant nucleotides at the 3prime adjacent site
+			Nucleotide dec = node_nuc[dec_id][ipat[i+1]];
+			Nucleotide anc = node_nuc[anc_id][ipat[i+1]];
+			const mydouble pemisU = pemisUnimported[anc][dec];
+			const mydouble pemisI = pemisImported[anc][dec];
+			mydouble prnotrans;
+			prnotrans.setlog(-totrecrate*(position[i+1]-position[i]));
+			const mydouble prtrans = mydouble(1.0)-prnotrans;
+			const mydouble sumbnext = prtrans*(pi[0]*pemisU*bnext[0] + pi[1]*pemisI*bnext[1]);
+			b[0] = prnotrans*pemisU*bnext[0]+sumbnext;
+			b[1] = prnotrans*pemisI*bnext[1]+sumbnext;
+			// Calculate the backwards simulation probability
+			const mydouble pemis[2]  = {pemisU,pemisI};
+			// numjk is proportional to the probability of going from state j at position (i+1) to state k at position i
+			mydouble num00 = A[i][0]*(prnotrans+prtrans*pi[0])*pemis[0]*bnext[0];
+			mydouble num01 = A[i][1]*prtrans*pi[0]*pemis[0]*bnext[0];
+			mydouble num10 = A[i][0]*prtrans*pi[1]*pemis[1]*bnext[1];
+			mydouble num11 = A[i][1]*(prnotrans+prtrans*pi[1])*pemis[1]*bnext[1];
+			P[i][0] = (num01/(num00+num01)).todouble();
+			P[i][1] = (num11/(num10+num11)).todouble();
+		}
+	}
+	// Simulate the number of transitions and emissions
+	int sim;
+	for(sim=0;sim<nsim;sim++) {
+		// Resize if necessary and zero the counters
+		numEmis = Matrix<double>(2,2,0.0);
+		denEmis = vector<double>(2,0.0);
+		numTrans = Matrix<double>(2,2,0.0);
+		denTrans = vector<double>(2,0.0);
+		// Cycle from 3prime to 5prime
+		int last;		// Last hidden state
+		for(i=npos-1;i>=0;i--) {
+			if(i==(npos-1)) {
+				// Start by simulating the 3prime-most position
+				last = ran.bernoulli(P[i][0]);
+				// Update relevant counters
+				++numEmis[last][emittedState[i]];
+				++denEmis[last];
+			} else {
+				// Simulate the 5prime-next position
+				const int next = ran.bernoulli(P[i][last]);
+				// Update all the counters
+				++numEmis[next][emittedState[i]];
+				++denEmis[next];
+				const double dist = position[i+1]-position[i];
+				if(dist<=1000.0) {
+					++numTrans[next][last];
+					denTrans[next] += dist;
+				}
+				last = next;
+			}
+		}
+		mutU[sim] = numEmis[0][1];
+		nsiU[sim] = denEmis[0];
+		mutI[sim] = numEmis[1][1];
+		nsiI[sim] = denEmis[1];
+		numUI[sim] = numTrans[0][1];
+		lenU[sim] = denTrans[0];
+		numIU[sim] = numTrans[1][0];
+		lenI[sim] = denTrans[1];
+	}
+}
+
+Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput, const int nsim) {
+	// Storage for the simulated counts of transitions and emissions
+	vector<double> /*mutU(nsim,0.0), nsiU(nsim,0.0),*/ mutI(nsim,0.0), nsiI(nsim,0.0);
+	vector<double> numUI(nsim,0.0), lenU(nsim,0.0), numIU(nsim,0.0), lenI(nsim,0.0);
+	vector<double> mutU_br(nsim,0.0), nsiU_br(nsim,0.0), mutI_br(nsim,0.0), nsiI_br(nsim,0.0);
+	vector<double> numUI_br(nsim,0.0), lenU_br(nsim,0.0), numIU_br(nsim,0.0), lenI_br(nsim,0.0);
+	// Estimated parameters
+	double rho_over_theta = full_param[0];
+	double mean_import_length = full_param[1];
+	double import_divergence = full_param[2];
+	// Do all the simulations for each branch individually, and combine
+	int i;
+	for(i=0;i<informative.size();i++) {
+		if(informative[i]) {
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			const double branch_length = full_param[3+i];
+			forward_backward_simulate_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,nsim,mutU_br,nsiU_br,mutI_br,nsiI_br,numUI_br,lenU_br,numIU_br,lenI_br);
+			// Update the running totals for each simulation
+			int sim;
+			for(sim=0;sim<nsim;sim++) {
+				// For each branch, necessary to simulate the branch length
+				const double a = prior_a[3]+mutU_br[sim];
+				const double b = prior_b[3]+nsiU_br[sim];
+				const double sim_branch_length = ran.gamma(1.0/b,a);
+				numUI[sim] += numUI_br[sim];
+				 lenU[sim] += sim_branch_length*lenU_br[sim];
+				numIU[sim] += numIU_br[sim];
+				 lenI[sim] += lenI_br[sim];
+			}
+		}
+	}
+}
+
+
