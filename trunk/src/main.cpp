@@ -4118,9 +4118,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 			lenU += full_param[3+i]*lenU_br;
 			numU += numTrans[1][0].todouble();
 			lenI += denTrans[1].todouble();
-//			cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
-//			cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
-//			cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+			if(coutput) {
+				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
+				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
+				cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+			}
 		}
 	}
 	++neval;
@@ -4134,7 +4136,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	if(coutput) {
 		cout << "params =";
 		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-		cout << " ML = " << ML << endl;
+		cout << " ML = " << setprecision(9) << ML << endl;
 	}
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
@@ -4169,9 +4171,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 				lenU += full_param[3+i]*lenU_br;
 				numU += numTrans[1][0].todouble();
 				lenI += denTrans[1].todouble();
-//				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
-//				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
-//				cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+				if(coutput) {
+					cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
+					cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
+					cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+				}
 			}
 		}
 		++neval;
@@ -4185,11 +4189,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		if(coutput) {
 			cout << "params =";
 			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-			cout << " ML = " << ML << endl;
+			cout << " ML = " << setprecision(9) << ML << endl;
 		}
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
-			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
+			cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
 			warning("Likelihood got worse in Baum_Welch");
 		} else if(fabs(new_ML-ML)<threshold) {
 			break;
