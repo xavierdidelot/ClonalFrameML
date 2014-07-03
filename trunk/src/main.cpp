@@ -4018,6 +4018,25 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 		if(i==(npos-1)) {
 			b[0] = mydouble(1.0);
 			b[1] = mydouble(1.0);
+			
+			// Update the expected number of emissions
+			mydouble pU = A[i][0]*b[0];
+			mydouble pI = A[i][1]*b[1];
+			// NB:- pU+pI should always equal ML but just in case it introduces small errors
+			const mydouble MLi = pU + pI;
+			pU /= MLi;
+			pI /= MLi;
+			const mydouble ppost[2]  = {pU,pI};
+			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
+			int j;
+			// NB:- *** obs refers to the PRESENT site !!! ***
+			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
+			for(j=0;j<2;j++) {
+				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
+				numEmis[j][obs] += ppost[j].todouble();
+				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
+				denEmis[j]      += ppost[j].todouble();		// NB:- the denominator is the same for both observation states
+			}			
 		} else {
 			bnext[0] = b[0];
 			bnext[1] = b[1];
@@ -4040,14 +4059,15 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 //			}
 			mydouble pU = A[i][0]*b[0];
 			mydouble pI = A[i][1]*b[1];
-				// NB:- pU+pI should always equal ML but just in case it introduces small errors
+			// NB:- pU+pI should always equal ML but just in case it introduces small errors
 			const mydouble MLi = pU + pI;
 			pU /= MLi;
 			pI /= MLi;
 			const mydouble ppost[2]  = {pU,pI};
 			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
 			int j;
-			const int obs = (int)(anc!=dec);		// 0 = same, 1 = different
+			// NB:- *** obs refers to the PRESENT site !!! ***
+			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
 			for(j=0;j<2;j++) {
 				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
 				numEmis[j][obs] += ppost[j].todouble();
