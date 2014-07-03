@@ -1545,7 +1545,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			// Do inference
 			clock_t pow_start_time = clock();
-			ClonalFrameViterbiTraining cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M);
+			ClonalFrameViterbiTraining cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
 			param = cff.maximize_likelihood(param);
 			ML = cff.ML;
 			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
@@ -1606,7 +1606,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			// Do inference
 			clock_t pow_start_time = clock();
-			ClonalFrameBaumWelch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M);
+			ClonalFrameBaumWelch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
 			param = cff.maximize_likelihood(param);
 			ML = cff.ML;
 			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
@@ -3795,16 +3795,18 @@ void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const 
 	posterior_a[2] = (use_mode) ? (prior_a[2]+mutI-1.0) : (prior_a[2]+mutI);
 }
 
-double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval) {
+double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval, const bool coutput) {
 	int i;
 	// Initial parameters
 	double rho_over_theta = full_param[0];
 	double mean_import_length = full_param[1];
 	double import_divergence = full_param[2];
 	// Calculate the maximum likelihood importation state vector by the Viterbi algorithm
-	double ML = 0;
+	// Include the effect of the prior
+	double ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
 	for(i=0;i<informative.size();i++) {
 		if(informative[i]) {
+			ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
 			const int dec_id = tree.node[i].id;
 			const int anc_id = tree.node[i].ancestor->id;
 			const double branch_length = full_param[3+i];
@@ -3812,9 +3814,11 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		}
 	}
 	++neval;
-	cout << "params =";
-	for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-	cout << " ML = " << ML << endl;
+	if(coutput) {
+		cout << "params =";
+		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+		cout << " ML = " << ML << endl;
+	}
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
 	const double threshold = 1.0e-6;
@@ -3827,9 +3831,10 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		mean_import_length = full_param[1];
 		import_divergence = full_param[2];
 		// Update the likelihood
-		double new_ML = 0.0;
+		double new_ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
 		for(i=0;i<informative.size();i++) {
 			if(informative[i]) {
+				new_ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
 				const int dec_id = tree.node[i].id;
 				const int anc_id = tree.node[i].ancestor->id;
 				const double branch_length = full_param[3+i];
@@ -3837,11 +3842,13 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 			}
 		}
 		++neval;
-		cout << "params =";
-		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-		cout << " ML = " << ML << endl;
+		if(coutput) {
+			cout << "params =";
+			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+			cout << " ML = " << ML << endl;
+		}
 		// Test for no further improvement
-		if(new_ML<ML) {
+		if(new_ML-ML< -threshold) {
 			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
 			warning("Likelihood got worse in viterbi_training");
 		}
@@ -4072,7 +4079,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 	return ML;
 }
 
-double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval) {
+double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput) {
 	int i;
 	// Initial parameters
 	double rho_over_theta = full_param[0];
@@ -4088,9 +4095,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	double nsiI=0.0;			// Running total number of imported sites
 	double lenU=0.0, lenI=0.0;	// Running total length of unimported, imported regions
 	// Calculate the marginal likelihood and expected number of transitions and emissions by the forward-backward algorithm
-	double ML = 0;
+	// Include the effect of the prior
+	double ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
 	for(i=0;i<informative.size();i++) {
 		if(informative[i]) {
+			ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
 			const int dec_id = tree.node[i].id;
 			const int anc_id = tree.node[i].ancestor->id;
 			const double branch_length = full_param[3+i];
@@ -4122,9 +4131,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	posterior_a[0] = (prior_a[0]+numI);
 	posterior_a[1] = (prior_a[1]+numU);
 	posterior_a[2] = (prior_a[2]+mutI);
-//	cout << "params =";
-//	for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-//	cout << " ML = " << ML << endl;
+	if(coutput) {
+		cout << "params =";
+		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+		cout << " ML = " << ML << endl;
+	}
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
 	const double threshold = 1.0e-6;
@@ -4136,9 +4147,10 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		import_divergence = full_param[2];
 		// Update the likelihood
 		mutI=0.0; numU=0.0; numI=0.0; nsiI=0.0; lenU=0.0; lenI=0.0;
-		double new_ML = 0.0;
+		double new_ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
 		for(i=0;i<informative.size();i++) {
 			if(informative[i]) {
+				new_ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
 				const int dec_id = tree.node[i].id;
 				const int anc_id = tree.node[i].ancestor->id;
 				const double branch_length = full_param[3+i];
@@ -4170,9 +4182,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		posterior_a[0] = (prior_a[0]+numI);
 		posterior_a[1] = (prior_a[1]+numU);
 		posterior_a[2] = (prior_a[2]+mutI);
-//		cout << "params =";
-//		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-//		cout << " ML = " << ML << endl;
+		if(coutput) {
+			cout << "params =";
+			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+			cout << " ML = " << ML << endl;
+		}
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
 			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
@@ -4186,4 +4200,8 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	// Once more for debugging purposes
 	// mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans);
 	return ML;
+}
+
+double gamma_loglikelihood(const double x, const double a, const double b) {
+	return a*log(b)-lgamma(a)+(a-1)*log(x)-b*x;
 }
