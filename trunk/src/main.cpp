@@ -4038,8 +4038,12 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 //			if(fabs((A[i][0]*b[0]+A[i][1]*b[1]).LOG()-ML.LOG())>1e-6) {
 //				cout << ML.LOG() << "\t" << (A[i][0]*b[0]+A[i][1]*b[1]).LOG() << endl;
 //			}
-			const mydouble pU = A[i][0]*b[0]/ML;	// NB:- pU+pI should always equal ML
-			const mydouble pI = A[i][1]*b[1]/ML;
+			mydouble pU = A[i][0]*b[0];
+			mydouble pI = A[i][1]*b[1];
+				// NB:- pU+pI should always equal ML but just in case it introduces small errors
+			const mydouble MLi = pU + pI;
+			pU /= MLi;
+			pI /= MLi;
 			const mydouble ppost[2]  = {pU,pI};
 			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
 			int j;
@@ -4062,10 +4066,10 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 						const int istrans = (int)(j!=k);
 						// Probability of transition from j to k given the data equals the joint likelihood of the data and transition from j to k, divided by marginal likelihood of the data
 						if(istrans) {
-							numTrans[j][k] += (A[i][j]*prtrans*pi[k]*pemis[k]*bnext[k]/ML).todouble();		// Note the use of bnext, not b
+							numTrans[j][k] += (A[i][j]*prtrans*pi[k]*pemis[k]*bnext[k]/MLi).todouble();		// Note the use of bnext, not b
 //							if(j==0 && k==1) cout << "pos = " << i << " numTrans[0][1] = " << numTrans[j][k].todouble() << endl; //(A[i][j]*ptrans[istrans]*pemis[k]*bnext[k]/ML).LOG() << endl;
 						} else {
-							numTrans[j][k] += (A[i][j]*(prnotrans+prtrans*pi[k])*pemis[k]*bnext[k]/ML).todouble();		// Note the use of bnext, not b
+							numTrans[j][k] += (A[i][j]*(prnotrans+prtrans*pi[k])*pemis[k]*bnext[k]/MLi).todouble();		// Note the use of bnext, not b
 						}
 					}
 					// Expected distance between sites equals actual distance weighted by the probability the 5prime site was in state j
