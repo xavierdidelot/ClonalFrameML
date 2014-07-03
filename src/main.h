@@ -88,11 +88,12 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> &MLE);
 double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported, int &neval);
 void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param, vector<double> &posterior_a);
-double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
+double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval, const bool coutput);
 double gamma_invcdf(const double p, const double alph, const double bet);
 double invgammp(const double p, const double a);
 double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval);
-double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval);
+double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput);
+double gamma_loglikelihood(const double x, const double a, const double b);
 
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
@@ -1184,13 +1185,15 @@ public:
 	vector<double> full_param;
 	vector<double> posterior_a;
 	bool guess_initial_m;
+	bool coutput;
 public:
 	ClonalFrameViterbiTraining(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
 										const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
-										const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m) : 
+										const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m, const bool _coutput=false) : 
 	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
 	pi(_pi), neval(0), is_imported(_is_imported),
-	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m) {
+	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m),
+	coutput(_coutput) {
 		if(prior_a.size()!=4) error("ClonalFrameViterbiTraining: prior a must have length 4");
 		if(prior_b.size()!=4) error("ClonalFrameViterbiTraining: prior b must have length 4");
 		// Impose the constraint that the prior a parameter is greater than 1. This ensures the posterior has a mode
@@ -1252,7 +1255,7 @@ public:
 			full_param.push_back(ibl);
 		}
 		// Iterate
-		ML = Viterbi_training(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,is_imported,neval);
+		ML = Viterbi_training(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,is_imported,neval,coutput);
 		// Update importation status for all branches **for ALL SITES**, including uninformative ones
 		for(i=0;i<initial_branch_length.size();i++) {
 			const int dec_id = tree.node[i].id;
@@ -1405,13 +1408,15 @@ public:
 	vector<double> full_param;
 	vector<double> posterior_a;
 	bool guess_initial_m;
+	bool coutput;
 public:
 	ClonalFrameBaumWelch(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
 							   const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
-							   const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m) : 
+							   const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m, const bool _coutput=false) : 
 	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
 	pi(_pi), neval(0), is_imported(_is_imported),
-	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m) {
+	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m),
+	coutput(_coutput) {
 		if(prior_a.size()!=4) error("ClonalFrameBaumWelch: prior a must have length 4");
 		if(prior_b.size()!=4) error("ClonalFrameBaumWelch: prior b must have length 4");
 		// Impose the constraint that the prior a parameter is greater than 1. This ensures the posterior has a mode
@@ -1473,7 +1478,7 @@ public:
 			full_param.push_back(ibl);
 		}
 		// Iterate
-		ML = Baum_Welch(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,neval);
+		ML = Baum_Welch(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,neval,coutput);
 		// Update importation status for all branches **for ALL SITES**, including uninformative ones
 		for(i=0;i<initial_branch_length.size();i++) {
 			const int dec_id = tree.node[i].id;
