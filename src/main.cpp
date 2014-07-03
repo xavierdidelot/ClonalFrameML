@@ -4026,16 +4026,16 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			const mydouble MLi = pU + pI;
 			pU /= MLi;
 			pI /= MLi;
-			const mydouble ppost[2]  = {pU,pI};
+			const double ppost[2]  = {pU.todouble(),1.0-pU.todouble()};
 			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
 			int j;
 			// NB:- *** obs refers to the PRESENT site !!! ***
 			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
 			for(j=0;j<2;j++) {
 				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
-				numEmis[j][obs] += ppost[j].todouble();
+				numEmis[j][obs] += ppost[j];
 				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
-				denEmis[j]      += ppost[j].todouble();		// NB:- the denominator is the same for both observation states
+				denEmis[j]      += ppost[j];		// NB:- the denominator is the same for both observation states
 			}			
 		} else {
 			bnext[0] = b[0];
@@ -4063,16 +4063,16 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			const mydouble MLi = pU + pI;
 			pU /= MLi;
 			pI /= MLi;
-			const mydouble ppost[2]  = {pU,pI};
+			const double ppost[2]  = {pU.todouble(),1.0-pU.todouble()};
 			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
 			int j;
 			// NB:- *** obs refers to the PRESENT site !!! ***
 			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
 			for(j=0;j<2;j++) {
 				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
-				numEmis[j][obs] += ppost[j].todouble();
+				numEmis[j][obs] += ppost[j];
 				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
-				denEmis[j]      += ppost[j].todouble();		// NB:- the denominator is the same for both observation states
+				denEmis[j]      += ppost[j];		// NB:- the denominator is the same for both observation states
 			}
 			// Increment the numerator and denominator of the expected number of transitions from state j to state k
 			// Impose maximum adjacent site distance of 1kb (needed for small-p Poisson approximation to heterogeneous bernoulli)
@@ -4093,7 +4093,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 						}
 					}
 					// Expected distance between sites equals actual distance weighted by the probability the 5prime site was in state j
-					denTrans[j] += dist*ppost[j].todouble();											// NB:- the denominator is the same for both destination states
+					denTrans[j] += dist*ppost[j];											// NB:- the denominator is the same for both destination states
 				}
 			}
 		}
