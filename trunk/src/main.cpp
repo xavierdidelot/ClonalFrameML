@@ -3960,7 +3960,7 @@ double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, c
 // The following function calculates, for a particular branch of the tree, the expected number of transitions from state i to state j and emissions from state i to observation j
 // This requires storage for the forward algorithm calculations and a second pass using the backward algorithm to calculate the marginal expectations
 // The marginal likelihood for the branch is returned
-mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, Matrix<mydouble> &numEmis, vector<mydouble> &denEmis, Matrix<mydouble> &numTrans, vector<mydouble> &denTrans) {
+mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, Matrix<double> &numEmis, vector<double> &denEmis, Matrix<double> &numTrans, vector<double> &denTrans) {
 	const int npos = position.size();
 	// Define an HKY85 emission probability matrix for Unimported sites
 	static Matrix<mydouble> pemisUnimported;
@@ -3972,10 +3972,10 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 	static Matrix<mydouble> A;
 	A = Matrix<mydouble>(npos,2);
 	// Resize if necessary and zero the output objects
-	numEmis = Matrix<mydouble>(2,2,0.0);
-	denEmis = vector<mydouble>(2,0.0);
-	numTrans = Matrix<mydouble>(2,2,0.0);
-	denTrans = vector<mydouble>(2,0.0);
+	numEmis = Matrix<double>(2,2,0.0);
+	denEmis = vector<double>(2,0.0);
+	numTrans = Matrix<double>(2,2,0.0);
+	denTrans = vector<double>(2,0.0);
 //	cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
@@ -4046,9 +4046,9 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			const int obs = (int)(anc!=dec);		// 0 = same, 1 = different
 			for(j=0;j<2;j++) {
 				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
-				numEmis[j][obs] += ppost[j];
+				numEmis[j][obs] += ppost[j].todouble();
 				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
-				denEmis[j]      += ppost[j];		// NB:- the denominator is the same for both observation states
+				denEmis[j]      += ppost[j].todouble();		// NB:- the denominator is the same for both observation states
 			}
 			// Increment the numerator and denominator of the expected number of transitions from state j to state k
 			// Impose maximum adjacent site distance of 1kb (needed for small-p Poisson approximation to heterogeneous bernoulli)
@@ -4062,14 +4062,14 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 						const int istrans = (int)(j!=k);
 						// Probability of transition from j to k given the data equals the joint likelihood of the data and transition from j to k, divided by marginal likelihood of the data
 						if(istrans) {
-							numTrans[j][k] += A[i][j]*prtrans*pi[k]*pemis[k]*bnext[k]/ML;		// Note the use of bnext, not b
+							numTrans[j][k] += (A[i][j]*prtrans*pi[k]*pemis[k]*bnext[k]/ML).todouble();		// Note the use of bnext, not b
 //							if(j==0 && k==1) cout << "pos = " << i << " numTrans[0][1] = " << numTrans[j][k].todouble() << endl; //(A[i][j]*ptrans[istrans]*pemis[k]*bnext[k]/ML).LOG() << endl;
 						} else {
-							numTrans[j][k] += A[i][j]*(prnotrans+prtrans*pi[k])*pemis[k]*bnext[k]/ML;		// Note the use of bnext, not b
+							numTrans[j][k] += (A[i][j]*(prnotrans+prtrans*pi[k])*pemis[k]*bnext[k]/ML).todouble();		// Note the use of bnext, not b
 						}
 					}
 					// Expected distance between sites equals actual distance weighted by the probability the 5prime site was in state j
-					denTrans[j] += dist*ppost[j];											// NB:- the denominator is the same for both destination states
+					denTrans[j] += dist*ppost[j].todouble();											// NB:- the denominator is the same for both destination states
 				}
 			}
 		}
@@ -4087,8 +4087,8 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	double import_divergence = full_param[2];
 	posterior_a = vector<double>(3+informative.size());
 	// Storage for the expected number of transitions and emissions in the HMM
-	Matrix<mydouble> numEmiss(2,2), numTrans(2,2);
-	vector<mydouble> denEmiss(2),   denTrans(2);
+	Matrix<double> numEmiss(2,2), numTrans(2,2);
+	vector<double> denEmiss(2),   denTrans(2);
 	// Counters
 	double mutI=0.0;			// Running total divergence at imported sites
 	double numU=0.0, numI=0.0;	// Running total number of transitions *to* unimported, imported regions
@@ -4105,23 +4105,23 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 			const double branch_length = full_param[3+i];
 			ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
 			// Update estimate of the branch length
-			const double mutU_br = numEmiss[0][1].todouble();
-			const double nsiU_br = denEmiss[0].todouble();
+			const double mutU_br = numEmiss[0][1];
+			const double nsiU_br = denEmiss[0];
 			full_param[3+i] = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
 			posterior_a[3+i] = (prior_a[3]+mutU_br);
 			// Increment counters for the other expectations
-			mutI += numEmiss[1][1].todouble();
-			nsiI += denEmiss[1].todouble();
-			const double numI_br = numTrans[0][1].todouble();
-			const double lenU_br = denTrans[0].todouble();
+			mutI += numEmiss[1][1];
+			nsiI += denEmiss[1];
+			const double numI_br = numTrans[0][1];
+			const double lenU_br = denTrans[0];
 			numI += numI_br;
 			lenU += full_param[3+i]*lenU_br;
-			numU += numTrans[1][0].todouble();
-			lenI += denTrans[1].todouble();
+			numU += numTrans[1][0];
+			lenI += denTrans[1];
 			if(coutput) {
-				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
-				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
-				cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
+				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
+				cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
 			}
 		}
 	}
@@ -4158,23 +4158,23 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 				const double branch_length = full_param[3+i];
 				new_ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
 				// Update estimate of the branch length
-				const double mutU_br = numEmiss[0][1].todouble();
-				const double nsiU_br = denEmiss[0].todouble();
+				const double mutU_br = numEmiss[0][1];
+				const double nsiU_br = denEmiss[0];
 				full_param[3+i] = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
 				posterior_a[3+i] = (prior_a[3]+mutU_br);
 				// Increment counters for the other expectations
-				mutI += numEmiss[1][1].todouble();
-				nsiI += denEmiss[1].todouble();
-				const double numI_br = numTrans[0][1].todouble();
-				const double lenU_br = denTrans[0].todouble();
+				mutI += numEmiss[1][1];
+				nsiI += denEmiss[1];
+				const double numI_br = numTrans[0][1];
+				const double lenU_br = denTrans[0];
 				numI += numI_br;
 				lenU += full_param[3+i]*lenU_br;
-				numU += numTrans[1][0].todouble();
-				lenI += denTrans[1].todouble();
+				numU += numTrans[1][0];
+				lenI += denTrans[1];
 				if(coutput) {
-					cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1].todouble() << " nI = " << denEmiss[1].todouble() << endl;
-					cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0].todouble() << " dI = " << denTrans[1].todouble() << endl;
-					cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+					cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
+					cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
+					cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
 				}
 			}
 		}
