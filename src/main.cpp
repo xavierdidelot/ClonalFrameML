@@ -404,6 +404,14 @@ int main (const int argc, const char* argv[]) {
 		find_alignment_patterns(nuc,nuc_ispoly,pat,pat1,cpat,ipat);
 		// Storage for the MLE of the nucleotide sequence at every node
 		Matrix<Nucleotide> node_nuc;
+		// Sanity check: are all branch lengths non-negative
+		for(i=0;i<ctree_node_labels.size();i++) {
+			if(ctree.node[i].edge_time<0.0) {
+				stringstream errTxt;
+				errTxt << "Negative branch length of " << ctree.node[i].edge_time << " found for branch " << ctree_node_labels[i];
+				error(errTxt.str().c_str());
+			}
+		}
 		// Begin by computing the joint maximum likelihood ancestral sequences
 		mydouble ML = maximum_likelihood_ancestral_sequences(nuc,ctree,kappa,empirical_nucleotide_frequencies,pat1,cpat,node_nuc);
 
