@@ -3845,7 +3845,7 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		if(coutput) {
 			cout << "params =";
 			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-			cout << " ML = " << ML << endl;
+			cout << " ML = " << new_ML << endl;
 		}
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
@@ -4189,7 +4189,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		if(coutput) {
 			cout << "params =";
 			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-			cout << " ML = " << setprecision(9) << ML << endl;
+			cout << " ML = " << setprecision(9) << new_ML << endl;
 		}
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
