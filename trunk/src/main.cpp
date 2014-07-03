@@ -4030,7 +4030,9 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
 			int j;
 			// NB:- *** obs refers to the PRESENT site !!! ***
-			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
+			Nucleotide dec = node_nuc[dec_id][ipat[i]];
+			Nucleotide anc = node_nuc[anc_id][ipat[i]];
+			const int obs = (int)(anc!=dec);		// 0 = same, 1 = different
 			for(j=0;j<2;j++) {
 				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
 				numEmis[j][obs] += ppost[j];
@@ -4043,8 +4045,8 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			// Note that these retrieve the ancestral and descendant nucleotides at the 3prime adjacent site
 			Nucleotide dec = node_nuc[dec_id][ipat[i+1]];
 			Nucleotide anc = node_nuc[anc_id][ipat[i+1]];
-			const mydouble pemisU = pemisUnimported[anc][dec];
-			const mydouble pemisI = pemisImported[anc][dec];
+			mydouble pemisU = pemisUnimported[anc][dec];
+			mydouble pemisI = pemisImported[anc][dec];
 			mydouble prnotrans;
 			prnotrans.setlog(-totrecrate*(position[i+1]-position[i]));
 			const mydouble prtrans = mydouble(1.0)-prnotrans;
@@ -4065,9 +4067,13 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			pI /= MLi;
 			const double ppost[2]  = {pU.todouble(),1.0-pU.todouble()};
 			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
+			// NB:- *** obs now refers to the PRESENT site !!! ***
+			dec = node_nuc[dec_id][ipat[i]];
+			anc = node_nuc[anc_id][ipat[i]];
+			pemisU = pemisUnimported[anc][dec];
+			pemisI = pemisImported[anc][dec];
+			const int obs = (int)(anc!=dec);		// 0 = same, 1 = different
 			int j;
-			// NB:- *** obs refers to the PRESENT site !!! ***
-			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
 			for(j=0;j<2;j++) {
 				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
 				numEmis[j][obs] += ppost[j];
@@ -4076,7 +4082,6 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			}
 			// Increment the numerator and denominator of the expected number of transitions from state j to state k
 			// Impose maximum adjacent site distance of 1kb (needed for small-p Poisson approximation to heterogeneous bernoulli)
-			const mydouble ptrans[2] = {prnotrans,prtrans};
 			const mydouble pemis[2]  = {pemisU,pemisI};
 			const double dist = position[i+1]-position[i];
 			if(dist<=1000.) {
