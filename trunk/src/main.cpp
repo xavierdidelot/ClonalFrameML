@@ -4105,7 +4105,6 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput) {
 	int i;
 	if(coutput) cout << setprecision(9);
-	vector<double> old_param = full_param;
 	// Initial parameters
 	double rho_over_theta = full_param[0];
 	double mean_import_length = full_param[1];
@@ -4140,10 +4139,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 			const double numI_br = numTrans[0][1];
 			const double lenU_br = denTrans[0];
 			numI += numI_br;
-			// In an attempt to stabilize the EM algorithm, use the parameter value from the previous iteration here
-			// The intention is to fix, in some sense, the rho/theta parameter because it may break the EM
-//			lenU += full_param[3+i]*lenU_br;
-			lenU += old_param[3+i]*lenU_br;
+			lenU += full_param[3+i]*lenU_br;
 			numU += numTrans[1][0];
 			lenI += denTrans[1];
 			if(coutput) {
@@ -4161,7 +4157,6 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	posterior_a[0] = (prior_a[0]+numI);
 	posterior_a[1] = (prior_a[1]+numU);
 	posterior_a[2] = (prior_a[2]+mutI);
-	old_param = full_param;
 	if(coutput) {
 		cout << "params =";
 		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
@@ -4169,7 +4164,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	}
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
-	const double threshold = 1.0e-6;
+	const double threshold = 1.0e-2;
 	vector<double> MLE;
 	for(i=0;i<maxit;i++) {
 		// Identify the model parameters
@@ -4197,10 +4192,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 				const double numI_br = numTrans[0][1];
 				const double lenU_br = denTrans[0];
 				numI += numI_br;
-				// In an attempt to stabilize the EM algorithm, use the parameter value from the previous iteration here
-				// The intention is to fix, in some sense, the rho/theta parameter because it may break the EM
-//				lenU += full_param[3+i]*lenU_br;
-				lenU += old_param[3+i]*lenU_br;
+				lenU += full_param[3+i]*lenU_br;
 				numU += numTrans[1][0];
 				lenI += denTrans[1];
 				if(coutput) {
@@ -4218,7 +4210,6 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		posterior_a[0] = (prior_a[0]+numI);
 		posterior_a[1] = (prior_a[1]+numU);
 		posterior_a[2] = (prior_a[2]+mutI);
-		old_param = full_param;
 		if(coutput) {
 			cout << "params =";
 			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
