@@ -64,6 +64,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches." << endl;
 		errTxt << "-partial_viterbi               true or false (default)   Estimate parameters by Powell/Nelder-Mead and Viterbi algorithms." << endl;
 		errTxt << "-em                            true or false (default)   Estimate parameters by a Baum-Welch expectation maximization algorithm." << endl;
+		errTxt << "-emsim                         value >= 0  (default 0)   Number of simulations to estimate uncertainty in the EM algorithm." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
@@ -88,6 +89,7 @@ int main (const int argc, const char* argv[]) {
 	string loglik_prop_out_file = string(out_file) + ".loglik_prop.txt";
 	string viterbi_out_file = string(out_file) + ".viterbi_training.txt";
 	string em_out_file = string(out_file) + ".em.txt";
+	string emsim_out_file = string(out_file) + ".emsim.txt";
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
@@ -98,6 +100,7 @@ int main (const int argc, const char* argv[]) {
 	string use_nelder_mead="false", guess_initial_m="false", partial_viterbi="false", em="false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
 	double grid_approx = 0.0;
+	int emsim = 0;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
 	arg.add_item("correct_branch_lengths",		TP_STRING, &correct_branch_lengths);
@@ -134,6 +137,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("guess_initial_m",				TP_STRING, &guess_initial_m);
 	arg.add_item("partial_viterbi",				TP_STRING, &partial_viterbi);
 	arg.add_item("em",							TP_STRING, &em);
+	arg.add_item("emsim",						TP_INT,	   &emsim);
 	arg.read_input(argc-4,argv+4);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
@@ -289,6 +293,8 @@ int main (const int argc, const char* argv[]) {
 	if(USE_NELDER_MEAD && !(LAPLACE_APPROX || PARTIAL_VITERBI)) error("-use_nelder_mead only applicable with -laplace_approx or -partial_viterbi");
 	if(GUESS_INITIAL_M && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM)) error("-guess_initial_m only applicable with -laplace_approx, -viterbi_training, -partial_viterbi or -em");
 	if(GUESS_INITIAL_M && initial_values.size()>0) error("Cannot specify both -guess_initial_m and -initial_values");
+	if(emsim<0) error("-emsim cannot be negative");
+	if(emsim>0 && !EM) error("-emsim only applicable with -em");
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -1643,6 +1649,19 @@ int main (const int argc, const char* argv[]) {
 			// Output the importation status
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
+			
+			// If required, simulate under the point estimates and output posterior samples of the parameters
+			if(emsim>0) {
+				Matrix<double> sim = cff.simulate_posterior(param,emsim);
+				if(sim.nrows()!=3 || sim.ncols()!=emsim) error("ClonalFrameBaumWelch::simulate_posterior() produced unexpected results");
+				ofstream eout(emsim_out_file.c_str());
+				eout << "R_over_M" << tab << "delta" << tab << "nu" << endl;
+				for(i=0;i<emsim;i++) {
+					eout << sim[0][i] << tab << sim[1][i] << tab << sim[2][i] << endl;
+				}
+				eout.close();				
+			}
+			
 		} else if(PARTIAL_VITERBI) {
 			// Joint optimization of R/M, mean import length and import divergence over all branches
 			// using a general purpose algorithm in combination with the Viterbi algorithm for
@@ -3187,14 +3206,14 @@ mydouble maximum_likelihood_ClonalFrame_branch_allsites(const int dec_id, const 
 	// Store the positions of **all** sites
 	is_imported = vector<ImportationState>(iscompat.size(),Unimported);
 	// subseq_ML[i][j] is, for position i, the subsequence maximum likelihood given the next position has state j = {Unimported,Imported}
-	static Matrix<mydouble> subseq_ML(iscompat.size(),2);
+	Matrix<mydouble> subseq_ML(iscompat.size(),2);
 	// path_ML[i][j] is, for position i, the state of position i that maximizes the subsequence likelihood given the next position has state j = {Unimported,Imported}
-	static Matrix<ImportationState> path_ML(iscompat.size(),2);
+	Matrix<ImportationState> path_ML(iscompat.size(),2);
 	// Define an HKY85 emission probability matrix for Unimported sites
-	static Matrix<mydouble> pemisUnimported;
+	Matrix<mydouble> pemisUnimported;
 	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
 	// Define an HKY85 emission probability matrix for Imported sites
-	static Matrix<mydouble> pemisImported;
+	Matrix<mydouble> pemisImported;
 	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
@@ -3203,7 +3222,7 @@ mydouble maximum_likelihood_ClonalFrame_branch_allsites(const int dec_id, const 
 	// Equilibrium frequency of unimported and imported sites respectively
 	const double pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
 	// Define a transition probability matrix
-	static Matrix<mydouble> ptrans(2,2,0.0);
+	Matrix<mydouble> ptrans(2,2,0.0);
 	// These probabilities do not change until (i==0)
 	ptrans[0][0] = (mydouble)(exp(-totrecrate)+pi[0]*(1-exp(-totrecrate)));
 	ptrans[0][1] = (mydouble)(pi[1]*(1-exp(-totrecrate)));
@@ -3294,14 +3313,14 @@ mydouble maximum_likelihood_ClonalFrame_branch(const int dec_id, const int anc_i
 	const int npos = position.size();
 	is_imported = vector<ImportationState>(npos,Unimported);
 	// subseq_ML[i][j] is, for position i, the subsequence maximum likelihood given the next position has state j = {Unimported,Imported}
-	static Matrix<mydouble> subseq_ML(npos,2);
+	Matrix<mydouble> subseq_ML(npos,2);
 	// path_ML[i][j] is, for position i, the state of position i that maximizes the subsequence likelihood given the next position has state j = {Unimported,Imported}
-	static Matrix<ImportationState> path_ML(npos,2);
+	Matrix<ImportationState> path_ML(npos,2);
 	// Define an HKY85 emission probability matrix for Unimported sites
-	static Matrix<mydouble> pemisUnimported;
+	Matrix<mydouble> pemisUnimported;
 	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
 	// Define an HKY85 emission probability matrix for Imported sites
-	static Matrix<mydouble> pemisImported;
+	Matrix<mydouble> pemisImported;
 	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
@@ -3310,7 +3329,7 @@ mydouble maximum_likelihood_ClonalFrame_branch(const int dec_id, const int anc_i
 	// Equilibrium frequency of unimported and imported sites respectively
 	const double pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
 	// Define a transition probability matrix
-	static Matrix<mydouble> ptrans(2,2,0.0);
+	Matrix<mydouble> ptrans(2,2,0.0);
 	// Beginning at the last variable site, calculate the subsequence maximum likelihood
 	int i;
 	for(i=npos-1;i>=0;i--) {
@@ -3378,10 +3397,10 @@ double marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id
 		}
 	}
 	// Define an HKY85 emission probability matrix for Unimported sites
-	static Matrix<double> pemisUnimported;
+	Matrix<double> pemisUnimported;
 	pemisUnimported = dcompute_HKY85_ptrans(branch_length,kappa,pinuc);
 	// Define an HKY85 emission probability matrix for Imported sites
-	static Matrix<double> pemisImported;
+	Matrix<double> pemisImported;
 	pemisImported = dcompute_HKY85_ptrans(import_divergence,kappa,pinuc);
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
@@ -3433,10 +3452,10 @@ mydouble mydouble_marginal_likelihood_ClonalFrame_branch(const int dec_id, const
 mydouble mydouble_marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence) {
 	const int npos = position.size();
 	// Define an HKY85 emission probability matrix for Unimported sites
-	static Matrix<mydouble> pemisUnimported;
+	Matrix<mydouble> pemisUnimported;
 	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
 	// Define an HKY85 emission probability matrix for Imported sites
-	static Matrix<mydouble> pemisImported;
+	Matrix<mydouble> pemisImported;
 	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
@@ -3475,7 +3494,7 @@ mydouble likelihood_branch(const int dec_id, const int anc_id, const Matrix<Nucl
 	mydouble ML(1.0);
 	const int npat = pat1.size();
 	// Define an HKY85 emission probability matrix for Unimported sites
-	static Matrix<mydouble> pemis;
+	Matrix<mydouble> pemis;
 	pemis = compute_HKY85_ptrans(branch_length,kappa,pinuc);
 	// Cycle through the patterns calculating the likelihood
 	int i;
@@ -3971,13 +3990,13 @@ double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, c
 mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, Matrix<double> &numEmis, vector<double> &denEmis, Matrix<double> &numTrans, vector<double> &denTrans) {
 	const int npos = position.size();
 	// Define an HKY85 emission probability matrix for Unimported sites
-	static Matrix<mydouble> pemisUnimported;
+	Matrix<mydouble> pemisUnimported;
 	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
 	// Define an HKY85 emission probability matrix for Imported sites
-	static Matrix<mydouble> pemisImported;
+	Matrix<mydouble> pemisImported;
 	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
-	// Define storate space for the intermediate forward calculations
-	static Matrix<mydouble> A;
+	// Define storage space for the intermediate forward calculations
+	Matrix<mydouble> A;
 	A = Matrix<mydouble>(npos,2);
 	// Resize if necessary and zero the output objects
 	numEmis = Matrix<double>(2,2,0.0);
@@ -4245,18 +4264,18 @@ double gamma_loglikelihood(const double x, const double a, const double b) {
 void forward_backward_simulate_expectations_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, const int nsim, vector<double> &mutU, vector<double> &nsiU, vector<double> &mutI, vector<double> &nsiI, vector<double> &numUI, vector<double> &lenU, vector<double> &numIU, vector<double> &lenI) {
 	const int npos = position.size();
 	// Define an HKY85 emission probability matrix for Unimported sites
-	static Matrix<mydouble> pemisUnimported;
+	Matrix<mydouble> pemisUnimported;
 	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
 	// Define an HKY85 emission probability matrix for Imported sites
-	static Matrix<mydouble> pemisImported;
+	Matrix<mydouble> pemisImported;
 	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
 	// Define storage space for the intermediate forward calculations and counters
-	static Matrix<mydouble> A;
+	Matrix<mydouble> A;
 	A = Matrix<mydouble>(npos,2);
-	static Matrix<double> numEmis, numTrans;
-	static vector<double> denEmis, denTrans;
+	Matrix<double> numEmis, numTrans;
+	vector<double> denEmis, denTrans;
 	// Define storage space for the observation at every site
-	static vector<int> emittedState;
+	vector<int> emittedState;
 	emittedState = vector<int>(npos);
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
@@ -4293,7 +4312,7 @@ void forward_backward_simulate_expectations_ClonalFrame_branch(const int dec_id,
 	}
 	// Second pass: backward algorithm
 	// Define storage for the backward simulation probabilities
-	static Matrix<double> P;
+	Matrix<double> P;
 	P = Matrix<double>(npos,2); // P[i][j] is the probability of going from position (i+1) state j to position i state 1
 	mydouble bnext[2];
 	mydouble b[2];
@@ -4376,7 +4395,9 @@ void forward_backward_simulate_expectations_ClonalFrame_branch(const int dec_id,
 	}
 }
 
-Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput, const int nsim) {
+Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, int &neval, const bool coutput, const int nsim) {
+  // Storage for output: for each parameter, simulated values
+  Matrix<double> post(3,nsim,0.0);
 	// Storage for the simulated counts of transitions and emissions
 	vector<double> /*mutU(nsim,0.0), nsiU(nsim,0.0),*/ mutI(nsim,0.0), nsiI(nsim,0.0);
 	vector<double> numUI(nsim,0.0), lenU(nsim,0.0), numIU(nsim,0.0), lenI(nsim,0.0);
@@ -4408,6 +4429,23 @@ Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Ma
 			}
 		}
 	}
+	// Simulate the recombination parameters
+	int sim;
+	for(sim=0;sim<nsim;sim++) {
+		// rho over theta
+		const double a0 = prior_a[0]+numUI[sim];
+		const double b0 = prior_b[0]+lenU[sim];
+		post[0][sim] = ran.gamma(1.0/b0,a0);
+		// Mean import length
+		const double a1 = prior_a[1]+numIU[sim];
+		const double b1 = prior_b[1]+lenI[sim];
+		post[1][sim] = 1.0/ran.gamma(1.0/b1,a1);
+		// Mean import divergence
+		const double a2 = prior_a[2]+mutI[sim];
+		const double b2 = prior_b[2]+nsiI[sim];
+		post[2][sim] = ran.gamma(1.0/b2,a2);
+	}
+	return post;
 }
 
 
