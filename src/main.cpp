@@ -1710,38 +1710,45 @@ int main (const int argc, const char* argv[]) {
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameBaumWelchRhoPerBranch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
-			/*param = */cff.maximize_likelihood(param);
+			cff.maximize_likelihood(param);
+			ML = cff.ML;
+			cout << "Mean parameters:" << endl;
+			cout << " L = " << ML << " R = " << cff.mean_param[0] << " I = " << 1.0/cff.mean_param[1] << " D = " << cff.mean_param[2] << " M = " << cff.mean_param[3] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 			/*************************** UPDATED ONLY THIS FAR ************************/
-//			ML = cff.ML;
-//			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 //			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
 //			//cout << " Posterior 95% CIs: R = (" << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << "," << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << 
 //			//") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) <<
 //			//") D = (" << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << "," << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << ")" << endl;
-//			for(i=0;i<root_node;i++) {
-//				if(cff.informative[i]) {
-//					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
-//				}
-//			}
-//			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
-//			ofstream vout(em_out_file.c_str());
-//			char tab = '\t';
-//			vout << "Parameter" << tab << "Posterior Mean" << tab << /*"2.5% Quantile" << tab << "97.5% Quantile" << tab << */"a_post" << tab << "b_post" << endl;
-//			vout << "R_over_M"	<< tab << param[0] << tab << /*gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << */cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
-//			vout << "delta"		<< tab << param[1] << tab << /*1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << */cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
-//			vout << "nu"		<< tab << param[2] << tab << /*gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << */cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
-//			for(i=0;i<root_node;i++) {
-//				if(cff.informative[i]) {
-//					vout << ctree_node_labels[i] << tab << param[3+i] << tab << /*gamma_invcdf(0.025,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << gamma_invcdf(0.975,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << */cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
-//				}
-//			}
-//			vout.close();
-//			// Output the importation status
-//			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-//			cout << "Wrote inferred importation status to " << import_out_file << endl;
-//			
-//			// If required, simulate under the point estimates and output posterior samples of the parameters
-//			if(emsim>0) {
+			cout << "Parameters per branch:" << endl;
+			for(i=0;i<root_node;i++) {
+				if(cff.informative[i]) {
+					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " R = " << cff.mean_param[0]*cff.full_param[i][0] << " I = " << 1.0/(cff.mean_param[1]*cff.full_param[i][1]) << " D = " << cff.mean_param[2]*cff.full_param[i][2] << " M = " << cff.mean_param[3]*cff.full_param[i][3] << endl;
+				}
+			}
+			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
+			ofstream vout(em_out_file.c_str());
+			char tab = '\t';
+			vout << "Parameter" << tab << "Branch" << tab << "Posterior Mean" << tab << "a_post" << tab << "b_post" << endl;
+			int p;
+			string pname[4] = {"R_over_M","delta","nu","M"};
+			for(p=0;p<4;p++) {
+				vout << pname[p] << tab << "Mean" << tab <<cff.mean_param[p] << tab << "NA" << tab << "NA" << endl;
+			}
+			for(i=0;i<root_node;i++) {
+				if(cff.informative[i]) {
+					for(p=0;p<4;p++) {
+						vout << pname[p] << tab << ctree_node_labels[i] << tab << cff.full_param[i][p] << tab << cff.posterior_a[i][p] << tab << cff.posterior_a[i][p]/cff.full_param[i][p] << endl;
+					}
+				}
+			}
+			vout.close();
+			// Output the importation status
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
+			cout << "Wrote inferred importation status to " << import_out_file << endl;
+			
+			// If required, simulate under the point estimates and output posterior samples of the parameters
+			if(emsim>0) {
+				warning("-emsim not yet implemented for -embranch");
 //				Matrix<double> sim = cff.simulate_posterior(param,emsim);
 //				if(sim.nrows()!=3 || sim.ncols()!=emsim) error("ClonalFrameBaumWelch::simulate_posterior() produced unexpected results");
 //				ofstream eout(emsim_out_file.c_str());
@@ -1750,8 +1757,7 @@ int main (const int argc, const char* argv[]) {
 //					eout << sim[0][i] << tab << sim[1][i] << tab << sim[2][i] << endl;
 //				}
 //				eout.close();				
-//			}
-//			
+			}
 		} else if(PARTIAL_VITERBI) {
 			// Joint optimization of R/M, mean import length and import divergence over all branches
 			// using a general purpose algorithm in combination with the Viterbi algorithm for
@@ -4608,6 +4614,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 	for(i=0;i<informative.size();i++) {
 		if(informative[i]) {
 			full_param[i][3] = (prior_a[4]+mutU_br[i])/(prior_b[4]+mean_param[3]*nsiU_br[i]);
+			posterior_a[i][3] = (prior_a[4]+mutU_br[i]);
 		}
 	}
 	// Next update the recombination parameters
@@ -4653,6 +4660,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 					den = nsiI_br[i];
 				}
 				full_param[i][p] = (prior_a[4]+num)/(prior_b[4]+mean_param[p]*den);
+				posterior_a[i][p] = (prior_a[4]+num);
 			}
 		}
 	}
@@ -4712,6 +4720,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 		for(i=0;i<informative.size();i++) {
 			if(informative[i]) {
 				full_param[i][3] = (prior_a[4]+mutU_br[i])/(prior_b[4]+mean_param[3]*nsiU_br[i]);
+				posterior_a[i][3] = (prior_a[4]+mutU_br[i]);
 			}
 		}
 		// Next update the recombination parameters
@@ -4756,6 +4765,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 						den = nsiI_br[i];
 					}
 					full_param[i][p] = (prior_a[4]+num)/(prior_b[4]+mean_param[p]*den);
+					posterior_a[i][p] = (prior_a[4]+num);
 				}
 			}
 		}
