@@ -1576,10 +1576,15 @@ public:
 		// NB:- **internally** define second parameter to be INVERSE mean import length
 		mean_param.push_back(1.0/param[1]);		// 1/mean_import_length
 		mean_param.push_back(param[2]);		// import_divergence
-		mean_param.push_back(param[3]);		// mean branch length
+		// Specially for the mean branch length, set it to the crudely estimated value assuming no recombnation
+		mean_param.push_back(0.0);		// mean branch length
+		int i;
+		for(i=0;i<initial_branch_length.size();i++) {
+			mean_param[3] += initial_branch_length[i];
+		}
+		mean_param[3] /= (double)initial_branch_length.size();
 		full_param = Matrix<double>(initial_branch_length.size(),4);
 		posterior_a = Matrix<double>(initial_branch_length.size(),4,0.0);
-		int i;
 		for(i=0;i<initial_branch_length.size();i++) {
 			full_param[i][0] = 1.0;		// factor rho_over_theta
 			full_param[i][1] = 1.0;		// factor mean_import_length
