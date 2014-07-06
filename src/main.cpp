@@ -4193,7 +4193,8 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	const int maxit = 200;
 	const double threshold = 1.0e-2;
 	vector<double> MLE;
-	for(i=0;i<maxit;i++) {
+	int it;
+	for(it=0;it<maxit;it++) {
 		// Identify the model parameters
 		rho_over_theta = full_param[0];
 		mean_import_length = full_param[1];
@@ -4252,6 +4253,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		// Otherwise continue
 		ML = new_ML;
 	}
+	if(it==maxit) warning("Baum_Welch(): maximum number of iterations reached");
 	// Once more for debugging purposes
 	// mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans);
 	return ML;
@@ -4449,3 +4451,242 @@ Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Ma
 }
 
 
+double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &mean_param, Matrix<double> &full_param, Matrix<double> &posterior_a, int &neval, const bool coutput) {
+	int i;
+	if(coutput) cout << setprecision(9);
+	// Resize as necessary
+	posterior_a = Matrix<double>(informative.size(),4);
+	// Storage for the expected number of transitions and emissions in the HMM per branch
+	Matrix<double> numEmiss(2,2), numTrans(2,2);
+	vector<double> denEmiss(2),   denTrans(2);
+	// Counters
+	double mutI=0.0;			// Running total divergence at imported sites
+	double numU=0.0, numI=0.0;	// Running total number of transitions *to* unimported, imported regions
+	double nsiI=0.0;			// Running total number of imported sites
+	double lenU=0.0, lenI=0.0;	// Running total length of unimported, imported regions
+	// Counters per branch
+	vector<double> mutU_br(informative.size(),0.0), mutI_br(informative.size(),0.0);
+	vector<double> nsiU_br(informative.size(),0.0), nsiI_br(informative.size(),0.0);
+	vector<double> numI_br(informative.size(),0.0), numU_br(informative.size(),0.0);
+	vector<double> lenU_br(informative.size(),0.0), lenI_br(informative.size(),0.0);
+	// Calculate the marginal likelihood and expected number of transitions and emissions by the forward-backward algorithm
+	// Include the effect of the prior (this is dubious - should instead compute loglikelihood of the pseudocounts)
+	double ML = gamma_loglikelihood(mean_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(mean_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(mean_param[2], prior_a[2], prior_b[2]) + gamma_loglikelihood(mean_param[3], prior_a[3], prior_b[3]);
+	for(i=0;i<informative.size();i++) {
+		if(informative[i]) {
+			// Include the effect of the prior (this is dubious - should instead compute loglikelihood of the pseudocounts)
+			ML += gamma_loglikelihood(full_param[i][0], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][1], prior_a[4], prior_b[4])
+				+ gamma_loglikelihood(full_param[i][2], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][3], prior_a[4], prior_b[4]);
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			// Initial parameters
+			const double rho_over_theta = mean_param[0]*full_param[i][0];
+			const double mean_import_length = 1.0/(mean_param[1]*full_param[i][1]);	// NB internal definition
+			const double import_divergence = mean_param[2]*full_param[i][2];
+			const double branch_length = mean_param[3]*full_param[i][3];
+			ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+			// Store counters per branch
+			mutU_br[i] = numEmiss[0][1];
+			nsiU_br[i] = denEmiss[0];
+			mutI_br[i] = numEmiss[1][1];
+			nsiI_br[i] = denEmiss[1];
+			numI_br[i] = numTrans[0][1];
+			lenU_br[i] = denTrans[0];
+			numU_br[i] = numTrans[1][0];
+			lenI_br[i] = denTrans[1];
+//			if(coutput) {
+//				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
+//				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
+//				cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
+//			}
+		}
+	}
+	++neval;
+	// Update estimates of all the parameters: start with the branch lengths
+	double mean_param_num, mean_param_den;
+	// First, iterate to update the mean branch length parameter (max 3 times)
+	int j;
+	for(j=0;j<3;j++) {
+		mean_param_num = prior_a[3];
+		mean_param_den = prior_b[3];
+		for(i=0;i<informative.size();i++) {
+			if(informative[i]) {
+				mean_param_num += mutU_br[i];
+				mean_param_den += (prior_a[4]+mutU_br[i])*nsiU_br[i]/(prior_b[4]+mean_param[3]*nsiU_br[i]);
+			}
+		}
+		mean_param[3] = mean_param_num/mean_param_den;
+	}
+	// Second, update the individual branch length factors
+	for(i=0;i<informative.size();i++) {
+		if(informative[i]) {
+			full_param[i][3] = (prior_a[4]+mutU_br[i])/(prior_b[4]+mean_param[3]*nsiU_br[i]);
+		}
+	}
+	// Next update the recombination parameters
+	int p;
+	for(p=0;p<3;p++) {
+		// First, iterate to update the mean branch length parameter (max 3 times)
+		for(j=0;j<3;j++) {
+			mean_param_num = prior_a[p];
+			mean_param_den = prior_b[p];
+			for(i=0;i<informative.size();i++) {
+				if(informative[i]) {
+					double num, den;
+					if(p==0) {
+						num = numI_br[i];
+						// Adjust the counts for R/M according to the estimated branch lengths
+						den = lenU_br[i]*mean_param[3]*full_param[i][3];
+					} else if(p==1) {
+						num = numU_br[i];
+						den = lenI_br[i];
+					} else {
+						num = mutI_br[i];
+						den = nsiI_br[i];
+					}
+					mean_param_num += num;
+					mean_param_den += (prior_a[4]+num)*den/(prior_b[4]+mean_param[p]*den);
+				}
+			}
+			mean_param[p] = mean_param_num/mean_param_den;
+		}
+		// Second, update the individual branch length factors
+		for(i=0;i<informative.size();i++) {
+			if(informative[i]) {
+				double num, den;
+				if(p==0) {
+					num = numI_br[i];
+					// Adjust the counts for R/M according to the estimated branch lengths
+					den = lenU_br[i]*mean_param[3]*full_param[i][3];
+				} else if(p==1) {
+					num = numU_br[i];
+					den = lenI_br[i];
+				} else {
+					num = mutI_br[i];
+					den = nsiI_br[i];
+				}
+				full_param[i][p] = (prior_a[4]+num)/(prior_b[4]+mean_param[p]*den);
+			}
+		}
+	}
+//	if(coutput) {
+//		cout << "params =";
+//		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+//		cout << " ML = " << ML << endl;
+//	}
+	
+	// Iterate until the maximum likelihood improves by less than some threshold
+	const int maxit = 200;
+	const double threshold = 1.0e-2;
+	int it;
+	for(it=0;it<maxit;it++) {
+		// Update the likelihood
+		double new_ML = gamma_loglikelihood(mean_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(mean_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(mean_param[2], prior_a[2], prior_b[2]) + gamma_loglikelihood(mean_param[3], prior_a[3], prior_b[3]);
+		for(i=0;i<informative.size();i++) {
+			if(informative[i]) {
+				// Include the effect of the prior (this is dubious - should instead compute loglikelihood of the pseudocounts)
+				ML += gamma_loglikelihood(full_param[i][0], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][1], prior_a[4], prior_b[4])
+				+ gamma_loglikelihood(full_param[i][2], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][3], prior_a[4], prior_b[4]);
+				const int dec_id = tree.node[i].id;
+				const int anc_id = tree.node[i].ancestor->id;
+				// Initial parameters
+				const double rho_over_theta = mean_param[0]*full_param[i][0];
+				const double mean_import_length = 1.0/(mean_param[1]*full_param[i][1]);	// NB internal definition
+				const double import_divergence = mean_param[2]*full_param[i][2];
+				const double branch_length = mean_param[3]*full_param[i][3];
+				ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+				// Store counters per branch
+				mutU_br[i] = numEmiss[0][1];
+				nsiU_br[i] = denEmiss[0];
+				mutI_br[i] = numEmiss[1][1];
+				nsiI_br[i] = denEmiss[1];
+				numI_br[i] = numTrans[0][1];
+				lenU_br[i] = denTrans[0];
+				numU_br[i] = numTrans[1][0];
+				lenI_br[i] = denTrans[1];
+			}
+		}
+		++neval;
+		// Update estimates of all the parameters: start with the branch lengths
+		// First, iterate to update the mean branch length parameter (max 3 times)
+		int j;
+		for(j=0;j<3;j++) {
+			mean_param_num = prior_a[3];
+			mean_param_den = prior_b[3];
+			for(i=0;i<informative.size();i++) {
+				if(informative[i]) {
+					mean_param_num += mutU_br[i];
+					mean_param_den += (prior_a[4]+mutU_br[i])*nsiU_br[i]/(prior_b[4]+mean_param[3]*nsiU_br[i]);
+				}
+			}
+			mean_param[3] = mean_param_num/mean_param_den;
+		}
+		// Second, update the individual branch length factors
+		for(i=0;i<informative.size();i++) {
+			if(informative[i]) {
+				full_param[i][3] = (prior_a[4]+mutU_br[i])/(prior_b[4]+mean_param[3]*nsiU_br[i]);
+			}
+		}
+		// Next update the recombination parameters
+		for(p=0;p<3;p++) {
+			// First, iterate to update the mean branch length parameter (max 3 times)
+			for(j=0;j<3;j++) {
+				mean_param_num = prior_a[p];
+				mean_param_den = prior_b[p];
+				for(i=0;i<informative.size();i++) {
+					if(informative[i]) {
+						double num, den;
+						if(p==0) {
+							num = numI_br[i];
+							// Adjust the counts for R/M according to the estimated branch lengths
+							den = lenU_br[i]*mean_param[3]*full_param[i][3];
+						} else if(p==1) {
+							num = numU_br[i];
+							den = lenI_br[i];
+						} else {
+							num = mutI_br[i];
+							den = nsiI_br[i];
+						}
+						mean_param_num += num;
+						mean_param_den += (prior_a[4]+num)*den/(prior_b[4]+mean_param[p]*den);
+					}
+				}
+				mean_param[p] = mean_param_num/mean_param_den;
+			}
+			// Second, update the individual branch length factors
+			for(i=0;i<informative.size();i++) {
+				if(informative[i]) {
+					double num, den;
+					if(p==0) {
+						num = numI_br[i];
+						// Adjust the counts for R/M according to the estimated branch lengths
+						den = lenU_br[i]*mean_param[3]*full_param[i][3];
+					} else if(p==1) {
+						num = numU_br[i];
+						den = lenI_br[i];
+					} else {
+						num = mutI_br[i];
+						den = nsiI_br[i];
+					}
+					full_param[i][p] = (prior_a[4]+num)/(prior_b[4]+mean_param[p]*den);
+				}
+			}
+		}
+//		if(coutput) {
+//			cout << "params =";
+//			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
+//			cout << " ML = " << new_ML << endl;
+//		}
+		// Test for no further improvement
+		if(new_ML-ML< -threshold) {
+			cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
+			warning("Likelihood got worse in Baum_Welch");
+		} else if(fabs(new_ML-ML)<threshold) {
+			break;
+		}
+		// Otherwise continue
+		ML = new_ML;
+	}
+	if(it==maxit) warning("Baum_Welch_Rho_Per_Branch(): maximum number of iterations reached");
+	return ML;
+}
