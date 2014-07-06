@@ -95,6 +95,7 @@ double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, c
 double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput);
 double gamma_loglikelihood(const double x, const double a, const double b);
 Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, int &neval, const bool coutput, const int nsim);
+double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &mean_param, Matrix<double> &full_param, Matrix<double> &posterior_a, int &neval, const bool coutput);
 
 class orderNewickNodesByStatusAndAge : public std::binary_function<size_t,size_t,bool> {
 public:
@@ -1386,6 +1387,10 @@ public:
 	}
 };
 
+/*	Maximum likelihood routine based on the Baum-Welch EM algorithm for estimating
+	a single set of recombination parameters (R/M, import length, import divergence)
+	and an independent branch length per branch. Note that the approach is classical
+	and the priors act through pseudocounts - i.e. a form of data augmentation prior */
 class ClonalFrameBaumWelch {
 public:
 	// References to non-member variables
@@ -1420,11 +1425,7 @@ public:
 	coutput(_coutput) {
 		if(prior_a.size()!=4) error("ClonalFrameBaumWelch: prior a must have length 4");
 		if(prior_b.size()!=4) error("ClonalFrameBaumWelch: prior b must have length 4");
-		// Impose the constraint that the prior a parameter is greater than 1. This ensures the posterior has a mode
 		int i;
-		for(i=0;i<4;i++) {
-			//	if(prior_a[i]<=1.0) error("ClonalFrameViterbiTraining: prior a must have values greater than 1");
-		}
 		// Precompute which sites are compatible
 		which_compat = vector<double>(0);
 		for(i=0;i<iscompat.size();i++) {
@@ -1495,6 +1496,129 @@ public:
 	Matrix<double> simulate_posterior(const vector<double> &param, const int nsim) {
 		if(!(param.size()==3+informative.size())) error("ClonalFrameBaumWelch::simulate_posterior(): 3 arguments required");
 		return Baum_Welch_simulate_posterior(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,param,neval,coutput,nsim);
+	}
+};
+
+/*	In this version, the Baum-Welch algorithm is used to maximize the likelihood of
+	all four parameters (R/M, import length, import divergence, branch length)
+	for each branch. As for ClonalFrameBaumWelch, the prior acts through pseudocounts
+	i.e. a data augmentation prior, and there is an extra parameter whose prior
+	determines the variance in estimates of the recombination parameters per branch.
+	This parameter needs to be set fairly stringently to prevent wild estimates in
+	the absence of strong information per branch.									*/
+class ClonalFrameBaumWelchRhoPerBranch {
+public:
+	// References to non-member variables
+	const marginal_tree &tree;
+	const Matrix<Nucleotide> &node_nuc;
+	const vector<bool> &iscompat;
+	const vector<int> &ipat;
+	const double kappa;
+	const vector<double> &pi;
+	vector< vector<ImportationState> > &is_imported;
+	// True member variable
+	double ML;
+	double PR;
+	int neval;
+	const vector<double> prior_a;
+	const vector<double> prior_b;
+	vector<double> which_compat;
+	const int root_node;
+	vector<bool> informative;
+	vector<double> initial_branch_length;
+	vector<double> mean_param;					//	Mean recombination parameters
+	Matrix<double> full_param;					//	Branch-specific recombination parameters and branch length
+	Matrix<double> posterior_a;
+	bool guess_initial_m;
+	bool coutput;
+public:
+	ClonalFrameBaumWelchRhoPerBranch(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
+						 const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
+						 const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m, const bool _coutput=false) : 
+	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+	pi(_pi), neval(0), is_imported(_is_imported),
+	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m),
+	coutput(_coutput) {
+		if(prior_a.size()!=5) error("ClonalFrameBaumWelchRhoPerBranch: prior a must have length 5");
+		if(prior_b.size()!=5) error("ClonalFrameBaumWelchRhoPerBranch: prior b must have length 5");
+		int i;
+		// Precompute which sites are compatible
+		which_compat = vector<double>(0);
+		for(i=0;i<iscompat.size();i++) {
+			if(iscompat[i]) {
+				which_compat.push_back((double)i);
+			}
+		}
+		int j,k;
+		for(i=0;i<root_node;i++) {
+			// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
+			double pd = 1.0, pd_den = 2.0;
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			for(j=0,k=0;j<iscompat.size();j++) {
+				if(iscompat[j]) {
+					Nucleotide dec = node_nuc[dec_id][ipat[k]];
+					Nucleotide anc = node_nuc[anc_id][ipat[k]];
+					if(dec!=anc) ++pd;
+					++pd_den;
+					++k;
+				}
+			}
+			initial_branch_length[i] = pd/pd_den;
+			informative[i] = (pd>=2.0) ? true : false;			
+		}
+	}
+	void maximize_likelihood(const vector<double> &param) {
+		if(!(param.size()==4)) error("ClonalFrameBaumWelchRhoPerBranch::maximize_likelihood(): 4 arguments required");
+		// Starting points for the shared parameters
+		mean_param = vector<double>(0);
+		mean_param.push_back(param[0]);		// rho_over_theta
+		// NB:- **internally** define second parameter to be INVERSE mean import length
+		mean_param.push_back(1.0/param[1]);		// 1/mean_import_length
+		mean_param.push_back(param[2]);		// import_divergence
+		mean_param.push_back(param[3]);		// mean branch length
+		full_param = Matrix<double>(initial_branch_length.size(),4);
+		posterior_a = Matrix<double>(initial_branch_length.size(),4,0.0);
+		int i;
+		for(i=0;i<initial_branch_length.size();i++) {
+			full_param[i][0] = 1.0;		// factor rho_over_theta
+			full_param[i][1] = 1.0;		// factor mean_import_length
+			full_param[i][2] = 1.0;		// factor import_divergence
+			// Standard approach: initially equate the expected number of mutations and substitutions
+			double ibl = initial_branch_length[i];
+			if(guess_initial_m) {
+				// Alternative approach: apportion the expected number of mutations and substitutions proportionally among M and nu according to the prior
+				// E(S) = 1/(1+R*delta)*M + R*delta/(1+R*delta)*nu
+				//      = M * ( 1/(1+M*R/M*delta) + R/M*delta*nu/(1+M*R/M*delta) ) = M * ( 1 + nu*R/M*delta )/( 1 + M*R/M*delta )
+				// So let, and possibly iterate a few times
+				// M = S * ( 1 + M*R/M*delta )/( 1 + nu*R/M*delta )
+				// log(M) = log(S) + log(1+10^(logM+logR/M+logdelta)) - log(1+10^(lognu+logR/M+logdelta))
+				double log10ibl = log10(ibl);
+				int j;
+				for(j=0;j<3;j++) log10ibl = log10(initial_branch_length[i]) + log(1.0+pow(10.,log10ibl+param[0]+param[1])) - log(1.0+pow(10.,param[2]+param[0]+param[1]));
+				// Make sure it hasn't gone wrong for some reason before substituting...
+				if(!(log10ibl!=log10ibl)) ibl = pow(10.,log10ibl);
+			}
+			full_param[i][3] = ibl/mean_param[3];
+		}
+		// Iterate
+		ML = Baum_Welch_Rho_Per_Branch(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,mean_param,full_param,posterior_a,neval,coutput);
+		// Update importation status for all branches **for ALL SITES**, including uninformative ones
+		for(i=0;i<initial_branch_length.size();i++) {
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			const double rho_over_theta = mean_param[0]*full_param[i][0];
+			const double mean_import_length = 1.0/(mean_param[1]*full_param[i][1]);
+			const double import_divergence = mean_param[2]*full_param[i][2];
+			const double branch_length = (informative[i]) ? mean_param[3]*full_param[i][3] : initial_branch_length[i];
+			maximum_likelihood_ClonalFrame_branch_allsites(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
+		}
+		return;
+	}
+	Matrix<double> simulate_posterior(const vector<double> &param, const int nsim) {
+		error("Not implemented yet");
+//		if(!(param.size()==3+informative.size())) error("ClonalFrameBaumWelchRhoPerBranch::simulate_posterior(): 3 arguments required");
+//		return Baum_Welch_simulate_posterior(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,param,neval,coutput,nsim);
 	}
 };
 
