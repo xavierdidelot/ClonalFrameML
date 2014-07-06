@@ -299,10 +299,10 @@ int main (const int argc, const char* argv[]) {
 		}
 		if(i==1000) error("Maximum length of vector exceeded by initial_values");
 		if(!(initial_values.size()==0 || initial_values.size()==3)) error("initial values must have 0 or 3 values separated by spaces");
-		if(initial_values.size()>0 && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM || EMBRANCH)) warning("-initial_values only used by -laplace_approx, -viterbi_training, -partial_viterbi or -em");
+		if(initial_values.size()>0 && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM || EMBRANCH)) warning("-initial_values only used by -laplace_approx, -viterbi_training, -partial_viterbi, -em or -embranch");
 	}
 	if(USE_NELDER_MEAD && !(LAPLACE_APPROX || PARTIAL_VITERBI)) error("-use_nelder_mead only applicable with -laplace_approx or -partial_viterbi");
-	if(GUESS_INITIAL_M && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM)) error("-guess_initial_m only applicable with -laplace_approx, -viterbi_training, -partial_viterbi or -em");
+	if(GUESS_INITIAL_M && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM || EMBRANCH)) error("-guess_initial_m only applicable with -laplace_approx, -viterbi_training, -partial_viterbi, -em or -embranch");
 	if(GUESS_INITIAL_M && initial_values.size()>0) error("Cannot specify both -guess_initial_m and -initial_values");
 	if(emsim<0) error("-emsim cannot be negative");
 	if(emsim>0 && !(EM || EMBRANCH)) error("-emsim only applicable with -em or -embranch");
