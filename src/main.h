@@ -1493,7 +1493,7 @@ public:
 		return full_param;
 	}
 	Matrix<double> simulate_posterior(const vector<double> &param, const int nsim) {
-		if(!(param.size()==3+tree.n)) error("ClonalFrameBaumWelch::simulate_posterior(): 3 arguments required");
+		if(!(param.size()==3+informative.size())) error("ClonalFrameBaumWelch::simulate_posterior(): 3 arguments required");
 		return Baum_Welch_simulate_posterior(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,param,neval,coutput,nsim);
 	}
 };
