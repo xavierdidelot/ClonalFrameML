@@ -4644,7 +4644,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 			}
 			mean_param[p] = mean_param_num/mean_param_den;
 		}
-		// Second, update the individual branch length factors
+		// Second, update the individual per branch factors
 		for(i=0;i<informative.size();i++) {
 			if(informative[i]) {
 				double num, den;
@@ -4664,11 +4664,11 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 			}
 		}
 	}
-//	if(coutput) {
-//		cout << "params =";
-//		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-//		cout << " ML = " << ML << endl;
-//	}
+	if(coutput) {
+		cout << "mean params =";
+		for(int j=0;j<mean_param.size();j++) cout << " " << mean_param[j];
+		cout << " ML = " << ML << endl;
+	}
 	
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
@@ -4680,7 +4680,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 		for(i=0;i<informative.size();i++) {
 			if(informative[i]) {
 				// Include the effect of the prior (this is dubious - should instead compute loglikelihood of the pseudocounts)
-				ML += gamma_loglikelihood(full_param[i][0], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][1], prior_a[4], prior_b[4])
+				new_ML += gamma_loglikelihood(full_param[i][0], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][1], prior_a[4], prior_b[4])
 				+ gamma_loglikelihood(full_param[i][2], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][3], prior_a[4], prior_b[4]);
 				const int dec_id = tree.node[i].id;
 				const int anc_id = tree.node[i].ancestor->id;
@@ -4689,7 +4689,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 				const double mean_import_length = 1.0/(mean_param[1]*full_param[i][1]);	// NB internal definition
 				const double import_divergence = mean_param[2]*full_param[i][2];
 				const double branch_length = mean_param[3]*full_param[i][3];
-				ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+				new_ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
 				// Store counters per branch
 				mutU_br[i] = numEmiss[0][1];
 				nsiU_br[i] = denEmiss[0];
@@ -4769,11 +4769,11 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 				}
 			}
 		}
-//		if(coutput) {
-//			cout << "params =";
-//			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-//			cout << " ML = " << new_ML << endl;
-//		}
+		if(coutput) {
+			cout << "mean params =";
+			for(int j=0;j<mean_param.size();j++) cout << " " << mean_param[j];
+			cout << " ML = " << new_ML << endl;
+		}
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
 			cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
