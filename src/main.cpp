@@ -4526,6 +4526,8 @@ Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Ma
 				 lenU[sim] += sim_branch_length*lenU_br[sim];
 				numIU[sim] += numIU_br[sim];
 				 lenI[sim] += lenI_br[sim];
+				 mutI[sim] += mutI_br[sim];
+				 nsiI[sim] += nsiI_br[sim];
 			}
 		}
 	}
