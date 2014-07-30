@@ -65,12 +65,26 @@ The options of `ClonalFrameML` are listed below:
 Running `ClonalFrameML` produces several output files, each of which starts with the `output_prefix` specified in the command line and ending with the following extensions:
 
 ==ML_sequence.fasta==
-==em.txt==
-==emsim.txt==
-==importation_status.txt==
-==labelled_tree.corrected.nwk==
-==labelled_tree.newick==
+
+This file contains the sequence reconstructed by maximum likelihood for all internal nodes of the phylogeny, as well as for all missing data in the input sequences.
+
 ==position_cross_reference.txt==
+A vector of comma-separated values indicating the location in the input sequence file of the sites reconstructed in the output `ML_sequence.fasta` file.
+
+==em.txt==
+
+This file contains the point estimates for R/theta, nu, delta and the branch lengths.
+
+==emsim.txt==
+
+This file contains the bootstrapped values for the three parameters R/theta, nu and delta.
+
+==importation_status.txt==
+
+This file contains the list of reconstructed recombination events. There is one line for each event, the first column indicates the branch on which the event was found, and the second and third columns indicate the first and last genomic positions affected by the recombination event.
+
+==labelled_tree.newick==
+This file contains the starting tree with all nodes labelled so that they can be referred to in other files.
 
 =Graphical output=
 
