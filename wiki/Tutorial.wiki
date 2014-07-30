@@ -2,6 +2,68 @@
 
 =Input =
 
+There are two input files needed to run `ClonalFrameML`. The first one is an alignment of the sequences which can be either in fasta or extended multi fasta (XMFA) format. The second one is a starting tree, which must be in Newick format.
+
 =Running=
 
+The basic command for running `ClonalFrameML` is as follows:
+
+{{{
+ClonalFrameML newick_file fasta_file kappa output_file [OPTIONS]
+}}}
+
+The options of `ClonalFrameML` are listed below:
+
+{{{
+-fasta_file_list               true or false (default)   Take fasta_file to be a white-space separated file list.
+-correct_branch_lengths        true (default) or false   Correct branch lengths using ClonalFrame model.
+-excess_divergence_model       true or false (default)   Use the 'excess divergence' model. Mandatory for two sequences.
+-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases.
+-ignore_user_sites             sites_file                Ignore sites listed in whitespace-separated sites_file.
+-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites.
+-use_incompatible_sites        true or false (default)   Use homoplasious and multiallelic sites to correct branch lengths.
+-brent_tolerance               tolerance (default .001)  Set the tolerance of the Brent routine.
+-powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine.
+-joint_branch_param            true or false (default)   Jointly optimize branch lengths and recombination parameters.
+-rho_per_branch                true or false (default)   Estimate recombination parameters separately for each branch.
+-rho_per_branch_no_lrt         true or false (default)   As above but suppress likelihood ratio test for recombination.
+-single_rho_viterbi            true or false (default)   Jointly optimize recombination parameters using Viterbi algorithm.
+-single_rho_forward            true or false (default)   Jointly optimize recombination parameters using forward algorithm.
+-rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model.
+-multithread                   true or false (default)   Enable OpenMP parallel code. Overhead may cancel out gains.
+-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines.
+-compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file.
+-initial_rho_over_theta        value > 0 (default 0.1)   Initial value of rho/theta used in the search.
+-initial_import_divergence     value > 0 (default 0.1)   Initial value of import divergence used in the search.
+-initial_mean_import_length    value > 1 (default 500)   Initial value of mean import length used in the search.
+-min_branch_length             value > 0 (default 1e-7)  Minimum branch length.
+-mcmc_per_branch               true or false (default)   Estimate by MCMC recombination parameters for each branch.
+-laplace_approx                true or false (default)   rho_per_branch model with approximation of the joint posterior.
+-use_nelder_mead               true or false (default)   Use Nelder-Mead and not Powell method in Laplace approximation.
+-viterbi_training              true or false (default)   Estimate parameters by a Viterbi-based hill climbing algorithm.
+-driving_prior_mean            4 values (df "0 0 0 0")   Mean of the prior used by Laplace/Viterbi algorithms.
+-driving_prior_precision       4 values (df "1 1 1 1")   Precision of the prior used by Laplace/Viterbi algorithms.
+-initial_values                3 values/empty (def "")   Initial values used by the Laplace/Viterbi algorithms.
+-guess_initial_m               true or false (default)   Initialize M and nu jointly in the Laplace/Viterbi algorithms.
+-grid_approx                   value 0/2+  (default 0)   Number of points for a grid approximation (0 = off).
+-mcmc                          true or false (default)   Estimate by MCMC recombination parameters for all branches.
+-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches.
+-partial_viterbi               true or false (default)   Estimate parameters by Powell/Nelder-Mead and Viterbi algorithms.
+-em                            true or false (default)   Estimate parameters by a Baum-Welch expectation maximization algorithm.
+-emsim                         value >= 0  (default 0)   Number of simulations to estimate uncertainty in the EM algorithm.
+-embranch                      true or false (default)   Estimate parameters for each branch using the EM algorithm.
+-embranch_dispersion           value > 0 (default .01)   Dispersion in parameters among branches in the -embranch model.
+
+}}}
+
 =Output=
+
+Running `ClonalFrameML` produces the following output files:
+
+==ML_sequence.fasta==
+==em.txt==
+==emsim.txt==
+==importation_status.txt==
+==labelled_tree.corrected.nwk==
+==labelled_tree.newick==
+==position_cross_reference.txt==
