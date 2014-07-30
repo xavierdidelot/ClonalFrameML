@@ -2,7 +2,7 @@
 
 =Input =
 
-There are two input files needed to run `ClonalFrameML`. The first one is an alignment of the sequences which can be either in fasta or extended multi fasta (XMFA) format. The second one is a starting tree, which must be in Newick format.
+There are two input files needed to run `ClonalFrameML`. The first one is an alignment of the sequences which can be either in [http://en.wikipedia.org/wiki/FASTA_format fasta format] or [http://asap.ahabs.wisc.edu/mauve-aligner/mauve-user-guide/mauve-output-file-formats.html extended multi fasta (XMFA) format]. The second one is a starting tree, which must be in [http://en.wikipedia.org/wiki/Newick_format Newick format]. There must be as many leaves in this tree as there are sequences in the alignment file, and the names of the leaves must match the names in the headers of the alignment file.
 
 =Running=
 
