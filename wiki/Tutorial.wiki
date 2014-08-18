@@ -101,7 +101,13 @@ The result is a PDF file named `output_prefix.pdf`
 
 =Example: standard model=
 
-Download the S. aureus [http://www.danielwilson.me.uk/files/ClonalFrameML/Saureus.fasta FASTA file], [http://www.danielwilson.me.uk/files/ClonalFrameML/Saureus.phyML.newick maximum likelihood tree] and list of [http://www.danielwilson.me.uk/files/ClonalFrameML/Saureus.non-core-sites.txt non-core sites].
+Start by downloading the example files from [http://www.danielwilson.me.uk/files/cfml.tgz here]. Unzip on Mac/Linux as follows:
+
+{{{
+tar -xzvf cfml.tgz
+}}}
+
+The file contains the S. aureus FASTA file (Saureus.fasta), maximum likelihood tree (Saureus.phyML.newick), lists of core and non-core sites (Saureus.core-sites.txt and Saureus.non-core-sites.txt) and some R code (cfml_results_2.R).
 
 Run the standard `ClonalFrameML` analysis as follows:
 
@@ -116,7 +122,7 @@ Note that the transition:transversion ratio of 4.967695 was estimated by PhyML. 
 
 The pseudocounts prior is specified by -driving_prior_mean and -driving_prior_precision corresponding to the parameters of a gamma distribution. They specify the parameters in the following order: R/theta (relative rate of recombination to mutation), 1/delta (inverse mean DNA import length), nu (mean divergence of imported DNA) and mean branch length. The suggested values specify distributions that, on the log scale, are approximately centred on R/theta = 0.1, delta = 1000, nu = 0.1 and the mean branch length in the PhyML tree, with standard deviations of one order of magnitude.
 
-Once the analysis has finished, a figure can be produced with an R script downloaded from [http://www.danielwilson.me.uk/files/ClonalFrameML/cfml_results_2.R here]. The R script takes a list of the [http://www.danielwilson.me.uk/files/ClonalFrameML/core-sites.txt core sites] (the complement of the non-core sites fed into ClonalFrameML):
+Once the analysis has finished, a figure can be produced with an R script. The R script takes a list of the [http://www.danielwilson.me.uk/files/ClonalFrameML/core-sites.txt core sites] (the complement of the non-core sites fed into ClonalFrameML):
 
 {{{
 Rscript cfml_results_2.R example.output core-sites.txt
