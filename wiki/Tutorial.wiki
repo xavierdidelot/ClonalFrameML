@@ -122,25 +122,25 @@ Note that the transition:transversion ratio of 4.967695 was estimated by PhyML. 
 
 The pseudocounts prior is specified by -driving_prior_mean and -driving_prior_precision corresponding to the parameters of a gamma distribution. They specify the parameters in the following order: R/theta (relative rate of recombination to mutation), 1/delta (inverse mean DNA import length), nu (mean divergence of imported DNA) and mean branch length. The suggested values specify distributions that, on the log scale, are approximately centred on R/theta = 0.1, delta = 1000, nu = 0.1 and the mean branch length in the PhyML tree, with standard deviations of one order of magnitude.
 
-Once the analysis has finished, a figure can be produced with an R script. The R script takes a list of the [http://www.danielwilson.me.uk/files/ClonalFrameML/core-sites.txt core sites] (the complement of the non-core sites fed into ClonalFrameML):
+Once the analysis has finished, a figure can be produced with an R script. The R script takes a list of the core sites (the complement of the non-core sites fed into ClonalFrameML):
 
 {{{
 Rscript cfml_results_2.R example.output core-sites.txt
 }}}
 
-This will generate a pdf.
+This will generate a pdf similar to the figures in the paper.
 
 =Example: per-branch model=
 
 Run the `ClonalFrameML` analysis in which recombination parameters are estimated per branch as follows:
 
 {{{
-./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example.output 
+./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example2.output 
 -embranch true -emsim 100 -embranch_dispersion 0.1 -guess_initial_m true 
 -ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true 
 -driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" 
 -driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" 
--initial_values "0.21525916 182.682034 0.00720050018" > example.log.txt
+-initial_values "0.21525916 182.682034 0.00720050018" > example2.log.txt
 }}}
 
 This time -embranch is specified instead of -em. The -embranch_dispersion option specifies the constraint on the variability of recombination parameters among branches of the tree. It is on a scale of 0-1, with 0 being the most constrained (least dispersed). The -initial_values of R/theta, delta and nu can be set. It is advisable to run the simpler model first, and use the results to initialize the per-branch model. Again the R code can be used to generate a figure.
