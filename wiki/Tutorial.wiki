@@ -1,7 +1,7 @@
 #summary User guide for `ClonalFrameML`
 
 =Notice=
-Please note that this user guide is still under development. 
+Please note that this user guide and the software front-end is still under development. 
 
 =Input =
 
