@@ -129,7 +129,8 @@ This will generate a pdf.
 Run the `ClonalFrameML` analysis in which recombination parameters are estimated per branch as follows:
 
 {{{
-./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example.output -embranch true -emsim 100 -embranch_dispersion 0.1 -guess_initial_m true 
+./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example.output 
+-embranch true -emsim 100 -embranch_dispersion 0.1 -guess_initial_m true 
 -ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true 
 -driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" 
 -driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" 
