@@ -68,11 +68,7 @@ The file contains the S. aureus FASTA file (Saureus.fasta), maximum likelihood t
 Run the standard `ClonalFrameML` analysis as follows:
 
 {{{
-./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example.output -em true -emsim 100 \
--guess_initial_m true \
--ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true \
--driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" \
--driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" > example.log.txt
+./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example.output -em true -emsim 100 -guess_initial_m true -ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true -driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" -driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" > example.log.txt
 }}}
 
 Note that the transition:transversion ratio of 4.967695 was estimated by PhyML. The option -em true specifies the standard analysis in which recombination parameters are shared by all branches, and the -emsim 100 option requests 100 pseudo-bootstrap replicates. The -guess_initial_m true aims to start the estimation of branch lengths at a reasonable set of values. The positions listed in the file specified by the -ignore_user_sites option lists any site that was not callable or present in all the genomes. These sites are treated as missing data, which is important since uncalled sites can cause artefactual clustering of substitutions. The -use_incompatible_sites option specifies the analysis of homoplasious as well as non-homoplasious sites.
@@ -92,12 +88,7 @@ This will generate a pdf similar to the figures in the paper.
 Run the `ClonalFrameML` analysis in which recombination parameters are estimated per branch as follows:
 
 {{{
-./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example2.output \
--embranch true -emsim 100 -embranch_dispersion 0.1 -guess_initial_m true \
--ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true \
--driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" \
--driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" \
--initial_values "0.21525916 182.682034 0.00720050018" > example2.log.txt
+./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example2.output -embranch true -emsim 100 -embranch_dispersion 0.1 -guess_initial_m true -ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true -driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" -driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" -initial_values "0.21525916 182.682034 0.00720050018" > example2.log.txt
 }}}
 
 This time -embranch is specified instead of -em. The -embranch_dispersion option specifies the constraint on the variability of recombination parameters among branches of the tree. It is on a scale of 0-1, with 0 being the most constrained (least dispersed). The -initial_values of R/theta, delta and nu can be set. It is advisable to run the simpler model first, and use the results to initialize the per-branch model. Again the R code can be used to generate a figure.
