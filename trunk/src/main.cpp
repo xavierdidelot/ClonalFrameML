@@ -3818,7 +3818,7 @@ double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleot
 		if((new_ML-ML)<threshold) {
 			break;
 		} else if(new_ML<ML) {
-			warning("Likelihood got worse in viterbi_training");
+			//warning("Likelihood got worse in viterbi_training");
 		}
 		// Otherwise continue
 		ML = new_ML;
@@ -3974,7 +3974,7 @@ double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &nod
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
 			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
-			warning("Likelihood got worse in viterbi_training");
+			//warning("Likelihood got worse in viterbi_training");
 		}
 		if((new_ML-ML)<threshold) {
 			break;
@@ -4071,7 +4071,7 @@ double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, c
 		if((new_ML-ML)<threshold) {
 			break;
 		} else if(new_ML<ML) {
-			warning("Likelihood got worse in ViterbiM");
+			//warning("Likelihood got worse in ViterbiM");
 		}
 		// Otherwise continue
 		ML = new_ML;
@@ -4343,8 +4343,8 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		}
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
-			cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
-			warning("Likelihood got worse in Baum_Welch");
+			//cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
+			//warning("Likelihood got worse in Baum_Welch");
 		} else if(fabs(new_ML-ML)<threshold) {
 			break;
 		}
@@ -4778,8 +4778,8 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 		}
 		// Test for no further improvement
 		if(new_ML-ML< -threshold) {
-			cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
-			warning("Likelihood got worse in Baum_Welch");
+			//cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
+			//warning("Likelihood got worse in Baum_Welch");
 		} else if(fabs(new_ML-ML)<threshold) {
 			break;
 		}
