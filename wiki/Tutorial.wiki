@@ -65,7 +65,7 @@ tar -xzvf cfml.tgz
 
 The file contains the S. aureus FASTA file (Saureus.fasta), maximum likelihood tree (Saureus.phyML.newick), lists of core and non-core sites (Saureus.core-sites.txt and Saureus.non-core-sites.txt) and some R code (cfml_results_2.R).
 
-Run the standard `ClonalFrameML` analysis as follows:
+Run the standard `ClonalFrameML` analysis as follows. Note! This is a real-world example, and requires around 12 hours of run time.
 
 {{{
 ./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example.output -em true -emsim 100 -guess_initial_m true -ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true -driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" -driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" > example.log.txt
@@ -85,7 +85,7 @@ This will generate a pdf similar to the figures in the paper.
 
 =Example: per-branch model=
 
-Run the `ClonalFrameML` analysis in which recombination parameters are estimated per branch as follows:
+Run the `ClonalFrameML` analysis in which recombination parameters are estimated per branch as follows. Note! This is a real-world example, and requires around 24 hours of run time.
 
 {{{
 ./ClonalFrameML Saureus.phyML.newick Saureus.fasta 4.967695 example2.output -embranch true -emsim 100 -embranch_dispersion 0.1 -ignore_user_sites Saureus.non-core-sites.txt -use_incompatible_sites true -driving_prior_mean "0.3793988249 0.0037939882 0.3793988249 0.0001199764" -driving_prior_precision "3.33101e+00 3.33101e+04 3.33101e+00 3.33101e+07" -initial_values "0.21525916 182.682034 0.00720050018" > example2.log.txt
