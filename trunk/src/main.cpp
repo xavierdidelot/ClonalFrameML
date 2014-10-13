@@ -21,156 +21,96 @@
 
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();
-	// Output version number
-	cout << "ClonalFrameML version 0." << ClonalFrameML_SVNRevision << endl;
+	// Output version number (There were 178 SVN revisions up to version 1.0)
+	cout << "ClonalFrameML version 1." << ClonalFrameML_SVNRevision-178 << endl;
 	// Process the command line arguments	
 	if(argc<5) {
 		stringstream errTxt;
-		errTxt << "Syntax: ClonalFrameML newick_file fasta_file kappa output_file [OPTIONS]" << endl;
+		errTxt << "Syntax: ClonalFrameML newick_file fasta_file output_file [OPTIONS]" << endl;
 		errTxt << endl;
-		errTxt << "The following options are available:" << endl;
-		errTxt << "-fasta_file_list               true or false (default)   Take fasta_file to be a white-space separated file list." << endl;
-		errTxt << "-correct_branch_lengths        true (default) or false   Correct branch lengths using ClonalFrame model." << endl;
-		errTxt << "-excess_divergence_model       true or false (default)   Use the 'excess divergence' model. Mandatory for two sequences." << endl;
-		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
-		errTxt << "-ignore_user_sites             sites_file                Ignore sites listed in whitespace-separated sites_file." << endl;
-		errTxt << "-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites." << endl;
-		errTxt << "-use_incompatible_sites        true or false (default)   Use homoplasious and multiallelic sites to correct branch lengths." << endl;
-		errTxt << "-brent_tolerance               tolerance (default .001)  Set the tolerance of the Brent routine." << endl;
-		errTxt << "-powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine." << endl;
-		errTxt << "-joint_branch_param            true or false (default)   Jointly optimize branch lengths and recombination parameters." << endl;
-		errTxt << "-rho_per_branch                true or false (default)   Estimate recombination parameters separately for each branch." << endl;
-		errTxt << "-rho_per_branch_no_lrt         true or false (default)   As above but suppress likelihood ratio test for recombination." << endl;
-		errTxt << "-single_rho_viterbi            true or false (default)   Jointly optimize recombination parameters using Viterbi algorithm." << endl;
-		errTxt << "-single_rho_forward            true or false (default)   Jointly optimize recombination parameters using forward algorithm." << endl;
-		errTxt << "-rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model." << endl;		
-		errTxt << "-multithread                   true or false (default)   Enable OpenMP parallel code. Overhead may cancel out gains." << endl;
-		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
-		errTxt << "-compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file." << endl;
-		errTxt << "-initial_rho_over_theta        value > 0 (default 0.1)   Initial value of rho/theta used in the search." << endl;
-		errTxt << "-initial_import_divergence     value > 0 (default 0.1)   Initial value of import divergence used in the search." << endl;
-		errTxt << "-initial_mean_import_length    value > 1 (default 500)   Initial value of mean import length used in the search." << endl;
-		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
-		errTxt << "-mcmc_per_branch               true or false (default)   Estimate by MCMC recombination parameters for each branch." << endl;
-		errTxt << "-laplace_approx                true or false (default)   rho_per_branch model with approximation of the joint posterior." << endl;
-		errTxt << "-use_nelder_mead               true or false (default)   Use Nelder-Mead and not Powell method in Laplace approximation." << endl;
-		errTxt << "-viterbi_training              true or false (default)   Estimate parameters by a Viterbi-based hill climbing algorithm." << endl;
-		errTxt << "-driving_prior_mean            4 values (df \"0 0 0 0\")   Mean of the prior used by Laplace/Viterbi algorithms." << endl;
-		errTxt << "-driving_prior_precision       4 values (df \"1 1 1 1\")   Precision of the prior used by Laplace/Viterbi algorithms." << endl;
-		errTxt << "-initial_values                3 values/empty (def \"\")   Initial values used by the Laplace/Viterbi algorithms." << endl;
-		errTxt << "-guess_initial_m               true or false (default)   Initialize M and nu jointly in the Laplace/Viterbi algorithms." << endl;
-		errTxt << "-grid_approx                   value 0/2+  (default 0)   Number of points for a grid approximation (0 = off)." << endl;
-		errTxt << "-mcmc                          true or false (default)   Estimate by MCMC recombination parameters for all branches." << endl;
-		errTxt << "-mcmc_infer_branch_lengths     true or false (default)   Estimate by MCMC branch lengths for all branches." << endl;
-		errTxt << "-partial_viterbi               true or false (default)   Estimate parameters by Powell/Nelder-Mead and Viterbi algorithms." << endl;
-		errTxt << "-em                            true or false (default)   Estimate parameters by a Baum-Welch expectation maximization algorithm." << endl;
-		errTxt << "-emsim                         value >= 0  (default 0)   Number of simulations to estimate uncertainty in the EM algorithm." << endl;
+		errTxt << "Options specifying the analysis type:" << endl;
+		errTxt << "-em                            true (default) or false   Estimate parameters by a Baum-Welch expectation maximization algorithm." << endl;
 		errTxt << "-embranch                      true or false (default)   Estimate parameters for each branch using the EM algorithm." << endl;
+		errTxt << "-rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model." << endl;		
+		errTxt << "-imputation_only               true or false (default)   Perform only ancestral state reconstruction and imputation." << endl;
+		errTxt << "Options affecting all analyses:" << endl;
+		errTxt << "-kappa                         value > 0 (default 2.0)   Relative rate of transitions vs transversions in substitution model" << endl;
+		errTxt << "-fasta_file_list               true or false (default)   Take fasta_file to be a white-space separated file list." << endl;
+		errTxt << "-ignore_user_sites             sites_file                Ignore sites listed in whitespace-separated sites_file." << endl;
+		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
+		errTxt << "-use_incompatible_sites        true (default) or false   Use homoplasious and multiallelic sites to correct branch lengths." << endl;
+		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
+		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
+		errTxt << "-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites." << endl;
+//		errTxt << "-compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file." << endl;	// Alternative not currently implemented, so not optional
+		errTxt << "Options affecting -em and -embranch:" << endl;
+		errTxt << "-prior_mean                    df \"0.1 0.001 0.1 0.0001\" Prior mean for R/theta, 1/delta, nu and M." << endl;
+		errTxt << "-prior_sd                      df \"0.1 0.001 0.1 0.0001\" Prior standard deviation for R/theta, 1/delta, nu and M." << endl;
+		errTxt << "-initial_values                default \"0.1 0.001 0.05\"  Initial values for R/theta, 1/delta and nu." << endl;
+		errTxt << "-guess_initial_m               true (default) or false   Initialize M and nu jointly in the EM algorithms." << endl;
+		errTxt << "-emsim                         value >= 0  (default 0)   Number of simulations to estimate uncertainty in the EM results." << endl;
 		errTxt << "-embranch_dispersion           value > 0 (default .01)   Dispersion in parameters among branches in the -embranch model." << endl;
+		errTxt << "Options affecting -rescale_no_recombination:" << endl;
+		errTxt << "-brent_tolerance               tolerance (default .001)  Set the tolerance of the Brent routine for -rescale_no_recombination." << endl;
+		errTxt << "-powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine for -rescale_no_recombination." << endl;
 		error(errTxt.str().c_str());
 	}
 	// Process required arguments
 	const char* newick_file = argv[1];
 	const char* fasta_file = argv[2];
-	const double kappa = atof(argv[3]);
-	const char* out_file = argv[4];
+	const char* out_file = argv[3];
 	string tree_out_file = string(out_file) + ".labelled_tree.newick";
 	string fasta_out_file = string(out_file) + ".ML_sequence.fasta";
 	string xref_out_file = string(out_file) + ".position_cross_reference.txt";
 	string import_out_file = string(out_file) + ".importation_status.txt";
-	string laplace_out_file = string(out_file) + ".laplace.txt";
-	string mcmc0_out_file = string(out_file) + ".mcmc0.txt";
-	string mcmc1_out_file = string(out_file) + ".mcmc1.txt";
-	string mcmc2_out_file = string(out_file) + ".mcmc2.txt";
-	string mcmc3_out_file = string(out_file) + ".mcmc3.txt";
-	string prop0_out_file = string(out_file) + ".prop0.txt";
-	string prop1_out_file = string(out_file) + ".prop1.txt";
-	string prop2_out_file = string(out_file) + ".prop2.txt";
-	string prop3_out_file = string(out_file) + ".prop3.txt";
-	string loglik_out_file = string(out_file) + ".loglik.txt";
-	string loglik_prop_out_file = string(out_file) + ".loglik_prop.txt";
-	string viterbi_out_file = string(out_file) + ".viterbi_training.txt";
 	string em_out_file = string(out_file) + ".em.txt";
 	string emsim_out_file = string(out_file) + ".emsim.txt";
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
-	string fasta_file_list="false", correct_branch_lengths="true", excess_divergence_model="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
-	string use_incompatible_sites="false", joint_branch_param="false", rho_per_branch="false", rho_per_branch_no_LRT="false", rescale_no_recombination="false";
-	string single_rho_viterbi="false", single_rho_forward="false", multithread="false", show_progress="false", compress_reconstructed_sites="true", laplace_approx="false", mcmc_per_branch = "false";
-	string string_driving_prior_mean="0 0 0 0", string_driving_prior_precision="1 1 1 1", mcmc_joint = "false", mcmc_infer_branch_lengths = "false", string_initial_values = "", viterbi_training = "false";
-	string use_nelder_mead="false", guess_initial_m="false", partial_viterbi="false", em="false", embranch="false";
-	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, initial_rho_over_theta = 0.1, initial_mean_import_length = 500.0, initial_import_divergence = 0.1, global_min_branch_length = 1.0e-7;
-	double grid_approx = 0.0, embranch_dispersion = 0.01;
+	string fasta_file_list="false", imputation_only="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
+	string use_incompatible_sites="true", rescale_no_recombination="false";
+	string show_progress="false", compress_reconstructed_sites="true";
+	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
+	string guess_initial_m="true", em="true", embranch="false";
+	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, global_min_branch_length = 1.0e-7;
+	double embranch_dispersion = 0.01, kappa = 2.0;
 	int emsim = 0;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
-	arg.add_item("correct_branch_lengths",		TP_STRING, &correct_branch_lengths);
-	arg.add_item("excess_divergence_model",		TP_STRING, &excess_divergence_model);
+	arg.add_item("imputation_only",				TP_STRING, &imputation_only);
 	arg.add_item("ignore_incomplete_sites",		TP_STRING, &ignore_incomplete_sites);
 	arg.add_item("ignore_user_sites",			TP_STRING, &ignore_user_sites);
 	arg.add_item("reconstruct_invariant_sites", TP_STRING, &reconstruct_invariant_sites);
 	arg.add_item("use_incompatible_sites",		TP_STRING, &use_incompatible_sites);
 	arg.add_item("brent_tolerance",				TP_DOUBLE, &brent_tolerance);
 	arg.add_item("powell_tolerance",			TP_DOUBLE, &powell_tolerance);
-	arg.add_item("joint_branch_param",			TP_STRING, &joint_branch_param);
-	arg.add_item("rho_per_branch",				TP_STRING, &rho_per_branch);
-	arg.add_item("rho_per_branch_no_lrt",		TP_STRING, &rho_per_branch_no_LRT);
 	arg.add_item("rescale_no_recombination",	TP_STRING, &rescale_no_recombination);
-	arg.add_item("single_rho_viterbi",			TP_STRING, &single_rho_viterbi);
-	arg.add_item("single_rho_forward",			TP_STRING, &single_rho_forward);
-	arg.add_item("multithread",			        TP_STRING, &multithread);
 	arg.add_item("show_progress",				TP_STRING, &show_progress);
 	arg.add_item("compress_reconstructed_sites",TP_STRING, &compress_reconstructed_sites);	
-	arg.add_item("initial_rho_over_theta",		TP_DOUBLE, &initial_rho_over_theta);	
-	arg.add_item("initial_mean_import_length",	TP_DOUBLE, &initial_mean_import_length);	
-	arg.add_item("initial_import_divergence",	TP_DOUBLE, &initial_import_divergence);	
 	arg.add_item("min_branch_length",			TP_DOUBLE, &global_min_branch_length);
-	arg.add_item("mcmc_per_branch",				TP_STRING, &mcmc_per_branch);
-	arg.add_item("laplace_approx",				TP_STRING, &laplace_approx);
-	arg.add_item("driving_prior_mean",			TP_STRING, &string_driving_prior_mean);
-	arg.add_item("driving_prior_precision",		TP_STRING, &string_driving_prior_precision);
-	arg.add_item("grid_approx",					TP_DOUBLE, &grid_approx);
-	arg.add_item("mcmc",						TP_STRING, &mcmc_joint);
-	arg.add_item("mcmc_infer_branch_lengths",	TP_STRING, &mcmc_infer_branch_lengths);
+	arg.add_item("prior_mean",					TP_STRING, &string_prior_mean);
+	arg.add_item("prior_sd",					TP_STRING, &string_prior_sd);
 	arg.add_item("initial_values",				TP_STRING, &string_initial_values);
-	arg.add_item("viterbi_training",			TP_STRING, &viterbi_training);
-	arg.add_item("use_nelder_mead",				TP_STRING, &use_nelder_mead);
 	arg.add_item("guess_initial_m",				TP_STRING, &guess_initial_m);
-	arg.add_item("partial_viterbi",				TP_STRING, &partial_viterbi);
 	arg.add_item("em",							TP_STRING, &em);
 	arg.add_item("emsim",						TP_INT,	   &emsim);
 	arg.add_item("embranch",					TP_STRING, &embranch);
 	arg.add_item("embranch_dispersion",			TP_DOUBLE, &embranch_dispersion);
-	arg.read_input(argc-4,argv+4);
+	arg.add_item("kappa",						TP_DOUBLE, &kappa);
+	arg.read_input(argc-3,argv+3);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
-	bool CORRECT_BRANCH_LENGTHS			= string_to_bool(correct_branch_lengths,		"correct_branch_lengths");
-	bool EXCESS_DIVERGENCE_MODEL		= string_to_bool(excess_divergence_model,		"excess_divergence_model");
+	bool CORRECT_BRANCH_LENGTHS			= !string_to_bool(imputation_only,				"imputation_only");
 	bool IGNORE_INCOMPLETE_SITES		= string_to_bool(ignore_incomplete_sites,		"ignore_incomplete_sites");
 	bool RECONSTRUCT_INVARIANT_SITES	= string_to_bool(reconstruct_invariant_sites,	"reconstruct_invariant_sites");
 	bool USE_INCOMPATIBLE_SITES			= string_to_bool(use_incompatible_sites,		"use_incompatible_sites");
-	bool OLD_JOINT_BRANCH_PARAM			= false;
-	bool JOINT_BRANCH_PARAM				= string_to_bool(joint_branch_param,			"joint_branch_param");
-	bool RHO_PER_BRANCH					= string_to_bool(rho_per_branch,				"rho_per_branch");
-	bool RHO_PER_BRANCH_NO_LRT			= string_to_bool(rho_per_branch_no_LRT,			"rho_per_branch_no_lrt");
 	bool RESCALE_NO_RECOMBINATION		= string_to_bool(rescale_no_recombination,		"rescale_no_recombination");
-	bool SINGLE_RHO_VITERBI				= string_to_bool(single_rho_viterbi,			"single_rho_viterbi");
-	bool SINGLE_RHO_FORWARD				= string_to_bool(single_rho_forward,			"single_rho_forward");
-	bool MULTITHREAD					= string_to_bool(multithread,					"multithread");
 	bool SHOW_PROGRESS					= string_to_bool(show_progress,					"show_progress");
 	bool COMPRESS_RECONSTRUCTED_SITES	= string_to_bool(compress_reconstructed_sites,	"compress_reconstructed_sites");
-	bool MCMC_PER_BRANCH				= string_to_bool(mcmc_per_branch,				"mcmc_per_branch");
-	bool LAPLACE_APPROX					= string_to_bool(laplace_approx,				"laplace_approx");
-	bool GRID_APPROX = (grid_approx != 0.0);
-	bool MCMC_JOINT						= string_to_bool(mcmc_joint,					"mcmc");
-	bool MCMC_INFER_BRANCH_LENGTHS		= string_to_bool(mcmc_infer_branch_lengths,		"mcmc_infer_branch_lengths");
-	bool VITERBI_TRAINING_OLD			= false;
-	bool VITERBI_TRAINING				= string_to_bool(viterbi_training,				"viterbi_training");
-	bool USE_NELDER_MEAD				= string_to_bool(use_nelder_mead,				"use_nelder_mead");
 	bool GUESS_INITIAL_M				= string_to_bool(guess_initial_m,				"guess_initial_m");
-	bool PARTIAL_VITERBI				= string_to_bool(partial_viterbi,				"partial_viterbi");
 	bool EM								= string_to_bool(em,							"em");
 	bool EMBRANCH						= string_to_bool(embranch,						"embranch");
+	bool MULTITHREAD = false;
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -181,111 +121,50 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "powell_tolerance value out of range (0,0.1], default 0.001";
 		error(errTxt.str().c_str());
 	}
-	if(((int)JOINT_BRANCH_PARAM + (int)RHO_PER_BRANCH + (int)RHO_PER_BRANCH_NO_LRT + (int)RESCALE_NO_RECOMBINATION) + (int)SINGLE_RHO_VITERBI + (int)SINGLE_RHO_FORWARD + (int)MCMC_PER_BRANCH + (int)LAPLACE_APPROX + (int)GRID_APPROX + (int)MCMC_JOINT + (int)VITERBI_TRAINING + (int)PARTIAL_VITERBI + (int)EM +(int)EMBRANCH>1) {
+	if(((int)RESCALE_NO_RECOMBINATION) + (int)EM +(int)EMBRANCH>1) {
 		stringstream errTxt;
-		errTxt << "joint_branch_param, rho_per_branch, rho_per_branch_no_lrt, rescale_no_recombination, single_rho_viterbi, single_rho_forward, mcmc_per_branch, laplace_approx, grid_approx, mcmc, viterbi_training, partial_viterbi and em are mutually incompatible";
+		errTxt << "rescale_no_recombination, em and embranch are mutually incompatible";
 		error(errTxt.str().c_str());
 	}
-	if((EXCESS_DIVERGENCE_MODEL || JOINT_BRANCH_PARAM || RHO_PER_BRANCH || RESCALE_NO_RECOMBINATION || SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD || MCMC_PER_BRANCH || LAPLACE_APPROX || GRID_APPROX || MCMC_JOINT || VITERBI_TRAINING || PARTIAL_VITERBI || EM || EMBRANCH) && !CORRECT_BRANCH_LENGTHS) {
+	if((RESCALE_NO_RECOMBINATION || EM || EMBRANCH) && !CORRECT_BRANCH_LENGTHS) {
 		stringstream wrnTxt;
-		wrnTxt << "branch correction options will be ignored because correct_branch_lengths=false";
+		wrnTxt << "advanced options will be ignored because imputation_only=true";
 		warning(wrnTxt.str().c_str());
 	}
-	if(!EXCESS_DIVERGENCE_MODEL && RHO_PER_BRANCH) {
-		stringstream wrnTxt;
-		wrnTxt << "rho_per_branch implies excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = true;
-	}
-	if(!EXCESS_DIVERGENCE_MODEL && MCMC_PER_BRANCH) {
-		stringstream wrnTxt;
-		wrnTxt << "mcmc_per_branch implies excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = true;
-	}
-	if(EXCESS_DIVERGENCE_MODEL && LAPLACE_APPROX) {
-		stringstream wrnTxt;
-		wrnTxt << "laplace_approx implies no excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = false;
-	}
-	if(EXCESS_DIVERGENCE_MODEL && (SINGLE_RHO_FORWARD || SINGLE_RHO_VITERBI)) {
-		stringstream errTxt;
-		errTxt << "single_rho not implemented under excess_divergence_model";
-		error(errTxt.str().c_str());
-	}
-	if(EXCESS_DIVERGENCE_MODEL && MCMC_JOINT) {
-		stringstream wrnTxt;
-		wrnTxt << "mcmc currently implies no excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = false;
-	}
-	if(EXCESS_DIVERGENCE_MODEL && VITERBI_TRAINING) {
-		stringstream wrnTxt;
-		wrnTxt << "viterbi_training currently implies no excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = false;
-	}
-	if(EXCESS_DIVERGENCE_MODEL && PARTIAL_VITERBI) {
-		stringstream wrnTxt;
-		wrnTxt << "partial_viterbi implies no excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = false;
-	}
-	if(EXCESS_DIVERGENCE_MODEL && EM) {
-		stringstream wrnTxt;
-		wrnTxt << "em implies no excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = false;
-	}
-	if(EXCESS_DIVERGENCE_MODEL && EMBRANCH) {
-		stringstream wrnTxt;
-		wrnTxt << "embranch currently implies no excess_divergence_model";
-		warning(wrnTxt.str().c_str());
-		EXCESS_DIVERGENCE_MODEL = false;
+	if(CORRECT_BRANCH_LENGTHS && !(RESCALE_NO_RECOMBINATION || EM || EMBRANCH)) {
+		error("One of -em, -embranch or -rescale_no_recombination must be specified when imputation_only=false");
 	}
 	if(MULTITHREAD) {
 		cout << "WARNING: multithreaded version not implemented, ignoring." << endl;
 	}
-	if(initial_mean_import_length<1) {
-		stringstream errTxt;
-		errTxt << "initial_mean_import_length must be greater than 1";
-		error(errTxt.str().c_str());
-	}
 	if(global_min_branch_length<=0.0) {
 		error("Minimum branch length must be positive");
 	}
-//	if(LAPLACE_APPROX && !(RHO_PER_BRANCH)) {
-//		error("Laplace approximation only applied under rho per branch model");
-//	}
-	// Process the driving prior mean and precision
-	vector<double> driving_prior_mean(0), driving_prior_precision(0);
-	stringstream sstream_driving_prior_mean;
-	sstream_driving_prior_mean << string_driving_prior_mean;
+	// Process the prior mean and standard deviation
+	vector<double> prior_mean(0), prior_sd(0);
+	stringstream sstream_prior_mean;
+	sstream_prior_mean << string_prior_mean;
 	int i;
 	for(i=0;i<1000;i++) {
-		if(sstream_driving_prior_mean.eof()) break;
-		double driving_prior_mean_elem;
-		sstream_driving_prior_mean >> driving_prior_mean_elem;
-		if(sstream_driving_prior_mean.fail()) error("Could not interpret value specified by driving_prior_mean");
-		driving_prior_mean.push_back(driving_prior_mean_elem);
+		if(sstream_prior_mean.eof()) break;
+		double prior_mean_elem;
+		sstream_prior_mean >> prior_mean_elem;
+		if(sstream_prior_mean.fail()) error("Could not interpret value specified by prior_mean");
+		prior_mean.push_back(prior_mean_elem);
 	}
-	if(i==1000) error("Maximum length of vector exceeded by driving_prior_mean");
-	stringstream sstream_driving_prior_precision;
-	sstream_driving_prior_precision << string_driving_prior_precision;
+	if(i==1000) error("Maximum length of vector exceeded by prior_mean");
+	stringstream sstream_prior_sd;
+	sstream_prior_sd << string_prior_sd;
 	for(i=0;i<1000;i++) {
-		if(sstream_driving_prior_precision.eof()) break;
-		double driving_prior_precision_elem;
-		sstream_driving_prior_precision >> driving_prior_precision_elem;
-		if(sstream_driving_prior_precision.fail()) error("Could not interpret value specified by driving_prior_precision");
-		driving_prior_precision.push_back(driving_prior_precision_elem);
+		if(sstream_prior_sd.eof()) break;
+		double prior_sd_elem;
+		sstream_prior_sd >> prior_sd_elem;
+		if(sstream_prior_sd.fail()) error("Could not interpret value specified by prior_sd");
+		prior_sd.push_back(prior_sd_elem);
 	}
-	if(driving_prior_mean.size()!=4) error("driving_prior_mean must have 4 values separated by spaces");
-	if(driving_prior_precision.size()!=4) error("driving_prior_precision must have 4 values separated by spaces");
-	if(fabs(grid_approx-(double)(int)(grid_approx))>1.0e-12) error("grid_approx must have an integer value");
-	if(GRID_APPROX && grid_approx<2.0) error("grid_approx must be 0 (off) or 2 or more");
-	if(!MCMC_JOINT & MCMC_INFER_BRANCH_LENGTHS) warning("mcmc_infer_branch_lengths will be ignored because -mcmc is false");
-	// Process the initial values for the Laplace approximation
+	if(prior_mean.size()!=4) error("prior_mean must have 4 values separated by spaces");
+	if(prior_sd.size()!=4) error("prior_sd must have 4 values separated by spaces");
+	// Process the initial values
 	vector<double> initial_values(0);
 	if(string_initial_values!="") {
 		stringstream sstream_initial_values;
@@ -298,15 +177,12 @@ int main (const int argc, const char* argv[]) {
 			initial_values.push_back(initial_values_elem);
 		}
 		if(i==1000) error("Maximum length of vector exceeded by initial_values");
-		if(!(initial_values.size()==0 || initial_values.size()==3)) error("initial values must have 0 or 3 values separated by spaces");
-		if(initial_values.size()>0 && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM || EMBRANCH)) warning("-initial_values only used by -laplace_approx, -viterbi_training, -partial_viterbi, -em or -embranch");
+		if(!(initial_values.size()==3)) error("initial values must have 3 values separated by spaces");
 	}
-	if(USE_NELDER_MEAD && !(LAPLACE_APPROX || PARTIAL_VITERBI)) error("-use_nelder_mead only applicable with -laplace_approx or -partial_viterbi");
-	if(GUESS_INITIAL_M && !(LAPLACE_APPROX || VITERBI_TRAINING || PARTIAL_VITERBI || EM || EMBRANCH)) error("-guess_initial_m only applicable with -laplace_approx, -viterbi_training, -partial_viterbi, -em or -embranch");
-	if(GUESS_INITIAL_M && initial_values.size()>0) error("Cannot specify both -guess_initial_m and -initial_values");
 	if(emsim<0) error("-emsim cannot be negative");
 	if(emsim>0 && !(EM || EMBRANCH)) error("-emsim only applicable with -em or -embranch");
 	if(embranch_dispersion<=0.0) error("-embranch_dispersion must be positive");
+	if(kappa<=0.0) error("-kappa must be positive");
 	
 	// Open the FASTA file(s)
 	DNA fa;
@@ -351,10 +227,6 @@ int main (const int argc, const char* argv[]) {
 		fa.readFASTA_1pass(fasta_file);
 	}
 	cout << "Read " << fa.nseq << " sequences of length " << fa.lseq << " sites from " << fasta_file << endl;
-	if(fa.nseq==2) {
-		if(!EXCESS_DIVERGENCE_MODEL) cout << "WARNING: with only two sequences, the excess divergence model is mandatory." << endl;
-		EXCESS_DIVERGENCE_MODEL = true;
-	}
 	// Open the Newick file and convert to internal rooted tree format, outputting the names of the tips and internal nodes
 	NewickTree newick = read_Newick(newick_file);
 	vector<string> ctree_node_labels;
@@ -432,7 +304,7 @@ int main (const int argc, const char* argv[]) {
 		}
 		// Begin by computing the joint maximum likelihood ancestral sequences
 		mydouble ML = maximum_likelihood_ancestral_sequences(nuc,ctree,kappa,empirical_nucleotide_frequencies,pat1,cpat,node_nuc);
-
+		
 		cout << "IMPUTATION AND RECONSTRUCTION OF ANCESTRAL STATES:" << endl;
 		cout << "Analysing " << nIRAS << " sites" << endl;
 		// Report the estimated equilibrium frequencies
@@ -440,7 +312,7 @@ int main (const int argc, const char* argv[]) {
 		cout << "%   G " << round(1000*empirical_nucleotide_frequencies[Guanine])/10 << "%   T " << round(1000*empirical_nucleotide_frequencies[Thymine])/10 << "%" << endl;
 		// Report the ML
 		cout << "Maximum log-likelihood for imputation and ancestral state reconstruction = " << ML.LOG() << endl;
-
+		
 		if(!COMPRESS_RECONSTRUCTED_SITES) cout << "WARNING: -compress_reconstructed_sites=false not yet implemented, ignoring." << endl;
 		// Output the ML reconstructed sequences
 		write_ancestral_fasta(node_nuc, ctree_node_labels, fasta_out_file.c_str());
@@ -465,159 +337,13 @@ int main (const int argc, const char* argv[]) {
 		// Begin by computing the joint maximum likelihood ancestral sequences
 		mydouble ML = maximum_likelihood_ancestral_sequences(nuc,ctree,kappa,empirical_nucleotide_frequencies,pat1,cpat,node_nuc);
 		
-		cout << "BRANCH LENGTH CORRECTION:" << endl;
+		cout << "BRANCH LENGTH CORRECTION/RECOMBINATION ANALYSIS:" << endl;
 		cout << "Analysing " << nBLC << " sites" << endl;
 		// Report the estimated equilibrium frequencies
 		cout << "Empirical nucleotide frequencies:   A " << round(1000*empirical_nucleotide_frequencies[Adenine])/10 << "%   C " << round(1000*empirical_nucleotide_frequencies[Cytosine])/10;
 		cout << "%   G " << round(1000*empirical_nucleotide_frequencies[Guanine])/10 << "%   T " << round(1000*empirical_nucleotide_frequencies[Thymine])/10 << "%" << endl;
 		
-		if(OLD_JOINT_BRANCH_PARAM) {
-			// Prepare to correct branch lengths
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			ClonalFrameFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,root_node);
-			vector<double> param(3+root_node);
-			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
-			for(i=0;i<root_node;i++) param[3+i] = log10(ctree.node[i].edge_time); 
-			
-			// Maximize the likelihood of the parameters
-			Powell Pow(cff);
-			Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-			Pow.TOL = brent_tolerance;
-			param = Pow.minimize(param,powell_tolerance);
-			// Ensure importation status is updated correctly
-			cff.f(param);
-			
-			cout << "Maximum log-likelihood of " << -Pow.function_minimum << " found in " << cff.neval << " iterations" << endl;
-			cout << "rho/theta         = " << pow(10.,param[0]) << endl;
-			cout << "Import length     = " << pow(10.,param[1]) << endl;
-			cout << "Import divergence = " << pow(10.,param[2]) << endl;
-			for(i=0;i<root_node;i++) {
-				cout << "Branch length " << ctree_node_labels[i] << " = " << pow(10.,param[3+i]) << endl;
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = pow(10.,param[3+i]);
-			}
-
-			// Output the importation status
-			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);	
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-		} else if(JOINT_BRANCH_PARAM) {
-			cout << "Beginning parameter estimation" << endl;
-			vector< vector<ImportationState> > is_imported(root_node);
-			// Calculate the expected number of substitutions per branch according to the ancestral state reconstruction
-			vector<double> substitutions_per_branch(root_node,0);
-			for(i=0;i<root_node;i++) {
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				int j,k;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				substitutions_per_branch[i] = pd/pd_den;
-			}
-			// Prepare to correct branch lengths
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			// Minimum branch length
-			const double min_branch_length = global_min_branch_length;
-			const bool USE_VITERBI = false;
-			ClonalFrameFunctionJoint cff(USE_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,is_imported,substitutions_per_branch,min_branch_length,SHOW_PROGRESS,brent_tolerance,powell_tolerance,root_node);
-			vector<double> param(3);
-			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
-			// Maximize the likelihood of the parameters
-			Powell Pow(cff);
-			Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-			Pow.TOL = brent_tolerance;
-			param = Pow.minimize(param,powell_tolerance);
-			// Ensure importation status is updated correctly
-			cff.f(param);
-			
-			cout << "Maximum log-likelihood of " << -Pow.function_minimum << " found in " << cff.neval << " iterations" << endl;
-			cout << "rho/theta         = " << pow(10.,param[0]) << endl;
-			cout << "Import length     = " << pow(10.,param[1]) << endl;
-			cout << "Import divergence = " << pow(10.,param[2]) << endl;
-			for(i=0;i<root_node;i++) {
-				double blen = cff.branch_length[i];
-				if(blen<min_branch_length) blen = min_branch_length;
-				cout << "Branch length " << ctree_node_labels[i] << " = " << blen << endl;
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = blen;
-			}
-			
-			// Output the importation status
-			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-		} else if(RHO_PER_BRANCH_NO_LRT) {
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
-			// Now estimate branch lengths
-			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum log-likelihood per branch" << endl;
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			cout << "R   expected number of recombination imports per branch      (> 0)" << endl;
-			cout << "F   ratio of imported versus unimported sites                (0-1)" << endl;
-			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
-			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(root_node);
-			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				int j,k;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				const double initial_branch_length = pd/pd_den;
-				// Initial values for the other parameters
-				const double initial_import_ratio = 1.0/initial_mean_import_length;			// constrained to be less than 1
-				// Minimum branch length
-				const double min_branch_length = global_min_branch_length;
-				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],initial_branch_length,min_branch_length);
-				// Setup optimization function
-				Powell Pow(cff);
-				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-				Pow.TOL = brent_tolerance;
-				// Initially, estimate parameters with total substitution rate fixed at the crude estimate
-				vector<double> param(3);
-				param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio)); param[2] = log10(initial_import_divergence);
-				param = Pow.minimize(param,powell_tolerance);
-				// Then refine
-				const double import_ratio = 1.0/(1.0+pow(10.,-param[1]));
-				const double import_divergence = pow(10.,param[2]);
-				param.push_back(log10(initial_branch_length/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
-				param = Pow.minimize(param,powell_tolerance);
-				// Ensure importation status is updated correctly
-				double final_branch_length = pow(10.,param[3]);
-				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
-				const double final_rho_over_theta = pow(10.,param[0]);
-				const double final_mean_import_length = (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta;
-				const double final_import_divergence = final_branch_length*(2.0+pow(10.,param[2]));
-				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-				// Update branch length in the tree
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = final_branch_length;
-				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " M = " << final_branch_length << " R = " << pow(10.,param[0]+param[3]) << " F = " << 1.0/(1.0+pow(10.,-param[1])) << " E = " << final_branch_length*(1.0+pow(10.,param[2])) << endl;
-				ML += -Pow.function_minimum;
-			}
-			cout << "Log-likelihood after branch optimization is " << ML << endl;
-						
-			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-		} else if(RESCALE_NO_RECOMBINATION) {
+		if(RESCALE_NO_RECOMBINATION) {
 			// Rescale the branch lengths using given sites without a model of recombination
 			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
 			cout << "B   uncorrected branch length" << endl;
@@ -652,961 +378,20 @@ int main (const int argc, const char* argv[]) {
 				param = Pow.minimize(param,powell_tolerance);
 				double final_branch_length = pow(10.,param[0]);
 				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
-				// Update branch length in the tree
+				// Update branch length in the output tree
 				// Note this is unsafe in general because the corresponding node times are not adjusted
 				ctree.node[i].edge_time = final_branch_length;
 				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " M = " << final_branch_length << endl;
 				ML += -Pow.function_minimum;
 			}
 			cout << "Log-likelihood after branch optimization is " << ML << endl;
-		} else if(RHO_PER_BRANCH) {
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
-			// Also impose a likelihood ratio test, so only report simpler model if no signifcant improvement with the recombination model.
-			// Now estimate branch lengths
-			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L0  maximum log-likelihood per branch (no recombination model)" << endl;
-			cout << "L   maximum log-likelihood per branch" << endl;
-			cout << "*   preferred model based on likelihood ratio test" << endl;
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			cout << "R   expected number of recombination imports per branch      (> 0)" << endl;
-			cout << "F   ratio of imported versus unimported sites                (0-1)" << endl;
-			cout << "E   excess substitutions imported by recombination           (> M)" << endl;			
-			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(root_node);
-			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				int j,k;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				const double initial_branch_length = pd/pd_den;
-				// Initial values for the other parameters
-				const double initial_import_ratio = 1.0/initial_mean_import_length;			// constrained to be less than 1
-				// Minimum branch length
-				const double min_branch_length = global_min_branch_length;
-				// Object for the no-recombination model
-				ClonalFrameRescaleBranchFunction cff0(ctree.node[i],node_nuc,pat1,cpat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,initial_branch_length,min_branch_length);
-				// Setup optimization function
-				Powell Pow0(cff0);
-				Pow0.coutput = Pow0.brent.coutput = SHOW_PROGRESS;
-				Pow0.TOL = brent_tolerance;
-				// Initially, estimate parameter for the no-recombination model
-				vector<double> param0(1,log10(initial_branch_length)), param(3);
-				param0 = Pow0.minimize(param0,powell_tolerance);
-				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
-				ClonalFrameRhoPerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported[i],pow(10.,param0[0]),min_branch_length);
-				// Setup optimization function
-				Powell Pow(cff);
-				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-				Pow.TOL = brent_tolerance;
-				// Now estimate parameters for the recombination model with total substitution rate fixed at this estimate
-				param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_import_ratio/(1.0-initial_import_ratio)); param[2] = log10(initial_import_divergence);
-				param = Pow.minimize(param,powell_tolerance);
-				// Then refine
-				const double import_ratio = 1.0/(1.0+pow(10.,-param[1]));
-				const double import_divergence = pow(10.,param[2]);
-				param.push_back(log10(pow(10.,param0[0])/(1.0+import_ratio/(1.0+import_ratio)*(2.0+import_divergence))));
-				param = Pow.minimize(param,powell_tolerance);
-				// Test if the recombination model is a significant improvement (2 log-likelihoods per additional parameter)
-				const bool LRT_pass = (-Pow.function_minimum>-Pow0.function_minimum+6.0);
-				// Ensure importation status is updated correctly
-				double final_branch_length = (LRT_pass) ? pow(10.,param[3]) : pow(10.,param0[0]);
-				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
-				const double final_rho_over_theta = (LRT_pass) ? pow(10.,param[0]) : 1e-20;
-				const double final_mean_import_length = (LRT_pass) ? (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta : 1e20;
-				const double final_import_divergence = (LRT_pass) ? final_branch_length*(2.0+pow(10.,param[2])) : 1e20;
-				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-				// Update branch length in the tree
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = final_branch_length;
-				if(LRT_pass) {
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "  L = " << -Pow.function_minimum << "* M = " << final_branch_length << " R = " << pow(10.,param[0]+param[3]) << " F = " << 1.0/(1.0+pow(10.,-param[1])) << " E = " << final_branch_length*(1.0+pow(10.,param[2])) << endl;
-					ML += -Pow.function_minimum;
-				} else {
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "* L = " << -Pow.function_minimum << "  M = " << final_branch_length << endl;
-					ML += -Pow0.function_minimum;
-				}
-			}
-			cout << "Log-likelihood after branch optimization is " << ML << endl;
-			
-			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-		} else if(LAPLACE_APPROX) {
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			// using the Laplace approximation to the likelihood and a "driving prior" to assist with the optimization (this ensures a proper posterior)
-			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(root_node);
-			vector< vector<double> > laplaceMLE(0);
-			vector< Matrix<double> > laplaceQ(0);
-			laplaceMLE = vector< vector<double> >(root_node,vector<double>(4));
-			laplaceQ = vector< Matrix<double> >(root_node,Matrix<double>(4,4));
-			int j,k;
-			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				const double initial_branch_length = pd/pd_den;
-				if(pd>=2.0) {
-					// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
-					const int PARAMETERIZATION = 3;		// Do not let this take other values without reviewing code
-					ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
-					cff.parameterization = PARAMETERIZATION;
-					// Now estimate parameters for the recombination model starting at the mean of the prior (or initial values), except the branch length
-					vector<double> param;
-					if(initial_values.size()==0) {
-						param = driving_prior_mean;
-						// Standard approach: initially equate the expected number of mutations and substitutions
-						param[3] = log10(initial_branch_length);
-						if(GUESS_INITIAL_M) {
-							// Alternative approach: apportion the expected number of mutations and substitutions proportionally among M and nu according to the prior
-							// E(S) = 1/(1+R*delta)*M + R*delta/(1+R*delta)*nu
-							//      = M * ( 1/(1+M*R/M*delta) + R/M*delta*nu/(1+M*R/M*delta) ) = M * ( 1 + nu*R/M*delta )/( 1 + M*R/M*delta )
-							// So let, and possibly iterate a few times
-							// M = S * ( 1 + M*R/M*delta )/( 1 + nu*R/M*delta )
-							// log(M) = log(S) + log(1+10^(logM+logR/M+logdelta)) - log(1+10^(lognu+logR/M+logdelta))
-							for(j=0;j<3;j++) param[3] = log10(initial_branch_length) + log(1.0+pow(10.,param[3]+param[0]+param[1])) - log(1.0+pow(10.,param[2]+param[0]+param[1]));
-							// In case it goes wrong for some reason..
-							if(param[3]!=param[3]) param[3] = log10(initial_branch_length);
-						}
-					} else {
-						param = initial_values;
-						param.push_back(log10(initial_branch_length));
-					}
-					if(PARAMETERIZATION==3) {
-						param = cff.convert_parameterization_1_to_3(param,global_min_branch_length);
-					}
-					clock_t pow_start_time = clock();
-					// Setup optimization function
-					int neval = cff.neval;
-					const string optimizer = (USE_NELDER_MEAD) ? "Nelder-Mead" : "Powell";
-					double ML_branch = 0.0;
-					Powell Pow(cff);
-					Amoeba Am(cff);
-					if(!USE_NELDER_MEAD) {
-						Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-						Pow.TOL = brent_tolerance;
-						param = Pow.minimize(param,powell_tolerance);
-						ML_branch = -Pow.function_minimum;
-					} else {
-						Am.coutput = SHOW_PROGRESS;
-						param = Am.minimize(param,1.0);
-						ML_branch = -Am.function_minimum;
-					}
-					if(PARAMETERIZATION==3) {
-						param = cff.convert_parameterization_3_to_0(param);
-					}
-					cout << optimizer << " gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << ML_branch << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-					if(false) {
-						// Attempt to refine using BFGS
-						param = driving_prior_mean;
-						param[3] = log10(initial_branch_length);
-						BFGS bfgs(cff);
-						bfgs.coutput = SHOW_PROGRESS;
-						clock_t bfgs_start_time = clock();
-						neval = cff.neval;
-						param = bfgs.minimize(param,powell_tolerance);
-						cout << "BFGS gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << -bfgs.function_minimum << " in " << (double)(clock()-bfgs_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-						// Get the approximate inverse Hessian
-						// laplaceQ[i] = bfgs.hessin;
-						cout << "BFGS gave marginal st devs = " << sqrt(laplaceQ[i][0][0]) << " " << sqrt(laplaceQ[i][1][1]) << " " << sqrt(laplaceQ[i][2][2]) << " " << sqrt(laplaceQ[i][3][3]) << endl;
-					}
-					// Approximate the likelihood by a multivariate Gaussian
-					// Interval over which to numerically compute second derivatives
-					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-					const double h = 0.1;
-					vector<double> paramQ;
-					// The maximum log-likelihood
-					int n_calc_Hessian = 0;
-					// Label for a goto statement
-				calculate_Hessian:
-					++n_calc_Hessian;
-					if(n_calc_Hessian==20) warning("Attempted Hessian calculation 20 times");
-					if(n_calc_Hessian==41) error("Attempted Hessian calculation 40 times");
-					if(n_calc_Hessian>1) {
-						// Re-optimize at adjusted parameter value
-						cout << "Re-optimizing" << endl;
-						if(PARAMETERIZATION==3) param = cff.convert_parameterization_0_to_3(param, global_min_branch_length);
-						param = (USE_NELDER_MEAD) ? Am.minimize(param) : Pow.minimize(param,powell_tolerance);
-						if(PARAMETERIZATION==3) param = cff.convert_parameterization_3_to_0(param);
-						ML_branch = (USE_NELDER_MEAD) ? -Am.function_minimum : -Pow.function_minimum;
-						cout << optimizer << " gave param = " << param[0] << " " << param[1] << " " << param[2] << " " << param[3] << " post = " << ML_branch << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
-					}
-					if(PARAMETERIZATION!=3) {
-						const double calcQ0 = -cff.f(param);
-						for(j=0;j<4;j++) {
-							for(k=0;k<j;k++) {
-								paramQ = param; paramQ[j] += h; paramQ[k] += h;
-								const double calcQa = -cff.f(paramQ);
-								if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-								const double calcQb = -cff.f(paramQ);
-								if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-								const double calcQc = -cff.f(paramQ);
-								if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-								const double calcQd = -cff.f(paramQ);
-								if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								const double calcQ = calcQa - calcQb - calcQc + calcQd;
-								laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
-							}
-							paramQ = param; paramQ[j] += 2.0*h;
-							const double calcQa = -cff.f(paramQ);
-							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] -= 2.0*h;
-							const double calcQb = -cff.f(paramQ);
-							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-							laplaceQ[i][j][j] = -calcQ/4.0/h/h;
-						}
-					} else {
-						const double calcQ0 = -cff.f(cff.convert_parameterization_0_to_3(param,global_min_branch_length));
-						for(j=0;j<4;j++) {
-							for(k=0;k<j;k++) {
-								paramQ = param; paramQ[j] += h; paramQ[k] += h;
-								const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-								if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-								const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-								if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-								const double calcQc = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-								if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-								const double calcQd = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-								if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian; }
-								const double calcQ = calcQa - calcQb - calcQc + calcQd;
-								laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
-							}
-							paramQ = param; paramQ[j] += 2.0*h;
-							const double calcQa = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							paramQ = param; paramQ[j] -= 2.0*h;
-							const double calcQb = -cff.f(cff.convert_parameterization_0_to_3(paramQ,global_min_branch_length));
-							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian; }
-							const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-							laplaceQ[i][j][j] = -calcQ/4.0/h/h;
-						}
-					}
-					// Store the point estimates
-					laplaceMLE[i] = param;
-					// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
-					const double final_rho_over_theta = pow(10.,param[0]);
-					const double final_mean_import_length = pow(10.,param[1]);
-					const double final_import_divergence = pow(10.,param[2]);
-					const double final_branch_length = (PARAMETERIZATION==1) ? pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))) : pow(10.,param[3]);
-					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-					// Update branch length in the tree
-					// Note this is unsafe in general because the corresponding node times are not adjusted
-					ctree.node[i].edge_time = final_branch_length;
-					// Output results to screen
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << -Pow.function_minimum << " R = " << final_rho_over_theta << " I = " << final_mean_import_length << " D = " << final_import_divergence << " M = " << final_branch_length << endl;
-					ML += ML_branch;
-				} else {
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " was too short for inference" << endl;
-					const double NaN = 1.0/0.0;
-					laplaceMLE[i] = vector<double>(4,NaN);
-					laplaceQ[i] = Matrix<double>(4,4,NaN);
-					vector<double> param;
-					if(initial_values.size()==0) {
-						param = driving_prior_mean;
-						param[3] = log10(initial_branch_length);
-					} else {
-						param = initial_values;
-						param.push_back(log10(initial_branch_length));
-					}
-					const double final_rho_over_theta = pow(10.,param[0]);
-					const double final_mean_import_length = pow(10.,param[1]);
-					const double final_import_divergence = pow(10.,param[2]);
-					const double final_branch_length = MAX(global_min_branch_length,pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))));
-					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-					// Update branch length in the tree
-					// Note this is unsafe in general because the corresponding node times are not adjusted
-					ctree.node[i].edge_time = final_branch_length;
-				}
-			}
-			cout << "Unnormalized log-posterior after branch optimization is " << ML << endl;
-			
-			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-			// Output the Laplace approximation
-			ofstream lout(laplace_out_file.c_str());
-			lout << "Branch";
-			for(j=0;j<4;j++) lout << "\t" << "P" << j;
-			for(j=0;j<4;j++) {
-				for(k=0;k<4;k++) {
-					lout << "\t" << "Q" << j << k;
-				}
-			}
-			lout << endl;
-			for(i=0;i<root_node;i++) {
-				lout << ctree_node_labels[i];
-				for(j=0;j<4;j++) lout << "\t" << laplaceMLE[i][j];
-				for(j=0;j<4;j++) {
-					for(k=0;k<4;k++) {
-						lout << "\t" << laplaceQ[i][j][k];
-					}
-				}
-				lout << endl;
-			}
-			lout.close();
-			cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
-		} else if(MCMC_PER_BRANCH) {
-			// For a given branch, infer by MCMC importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			vector< vector<ImportationState> > is_imported(root_node);
-			// Open files for writing
-			vector< ofstream* > mout(4);
-			vector< ofstream* > pout(4);
-			mout[0] = new ofstream(mcmc0_out_file.c_str());
-			mout[1] = new ofstream(mcmc1_out_file.c_str());
-			mout[2] = new ofstream(mcmc2_out_file.c_str());
-			mout[3] = new ofstream(mcmc3_out_file.c_str());
-			pout[0] = new ofstream(prop0_out_file.c_str());
-			pout[1] = new ofstream(prop1_out_file.c_str());
-			pout[2] = new ofstream(prop2_out_file.c_str());
-			pout[3] = new ofstream(prop3_out_file.c_str());
-			ofstream lout(loglik_out_file.c_str());
-			ofstream lpout(loglik_prop_out_file.c_str());
-			// For each branch
-			int j,k;
-			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				const double initial_branch_length = pd/pd_den;
-				// Object for the per-branch recombination model
-				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
-				// 4/6/14: start MCMC at prior mean except 4th element which is now the branch length (not expected divergence at unimported sites)
-				vector<double> param = driving_prior_mean;
-				param[3] = log10(initial_branch_length);
-				// Output preamble
-				for(j=0;j<4;j++) *mout[j] << ctree.node[i].id;
-				for(j=0;j<4;j++) *pout[j] << ctree.node[i].id;
-				lout << ctree.node[i].id;
-				lpout << ctree.node[i].id;
-				// Do MCMC
-				int iter;
-				const int niter = 1000;
-				double loglik = -cff.f(param);
-				double proposal_sd[4] = {0.5,0.5,0.5,0.02};
-				for(iter=0;iter<niter;iter++) {
-					for(j=0;j<4;j++) {
-						vector<double> new_param = param;
-						new_param[j] += ran.normal(0,proposal_sd[j]);
-						const double new_loglik = -cff.f(new_param);
-						const double alpha = new_loglik-loglik;
-						const bool accept = alpha>=0.0 || alpha>=log(ran.U());
-						if(accept) {
-							// Accept
-							param = new_param;
-							loglik = new_loglik;
-						} else {
-							// Reject (do nothing)
-						}
-						// Record
-						if(iter>=0 && (iter%1)==0) {
-							*mout[j] << "\t" << param[j];
-							*pout[j] << "\t" << new_param[j];
-							lout << "\t" << loglik;
-							lpout << "\t" << new_loglik;
-						}
-					}
-				}
-				// End of line
-				for(j=0;j<4;j++) *mout[j] << endl;
-				for(j=0;j<4;j++) *pout[j] << endl;
-				lout << endl;
-				lpout << endl;
-				
-				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << endl;
-/*				// NOT YET IMPLEMENTED
-				// Ensure importation status is updated correctly
-				double final_branch_length = (LRT_pass) ? pow(10.,param[3]) : pow(10.,param0[0]);
-				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
-				const double final_rho_over_theta = (LRT_pass) ? pow(10.,param[0]) : 1e-20;
-				const double final_mean_import_length = (LRT_pass) ? (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta : 1e20;
-				const double final_import_divergence = (LRT_pass) ? final_branch_length*(2.0+pow(10.,param[2])) : 1e20;
-				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-				// Update branch length in the tree
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = final_branch_length;
-				if(LRT_pass) {
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "  L = " << -Pow.function_minimum << "* M = " << final_branch_length << " R = " << pow(10.,param[0]+param[3]) << " F = " << 1.0/(1.0+pow(10.,-param[1])) << " E = " << final_branch_length*(1.0+pow(10.,param[2])) << endl;
-					ML += -Pow.function_minimum;
-				} else {
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "* L = " << -Pow.function_minimum << "  M = " << final_branch_length << endl;
-					ML += -Pow0.function_minimum;
-				}
-*/
-			}
-			// Close files
-			for(j=0;j<4;j++) {
-				mout[j]->close();
-				delete mout[j];
-				pout[j]->close();
-				delete pout[j];
-			}
-			lout.close();
-			lpout.close();
-			
-			// NOT YET IMPLEMENTED
-/*			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
- */
-		} else if(MCMC_JOINT) {
-			// For all branches jointly, infer by MCMC recombination parameters under the ClonalFrame model
-			cout << "Beginning MCMC. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			vector< vector<ImportationState> > is_imported(root_node);
-			// Open files for writing
-			vector< ofstream* > mout(4);
-			vector< ofstream* > pout(4);
-			mout[0] = new ofstream(mcmc0_out_file.c_str());
-			mout[1] = new ofstream(mcmc1_out_file.c_str());
-			mout[2] = new ofstream(mcmc2_out_file.c_str());
-			mout[3] = new ofstream(mcmc3_out_file.c_str());
-			pout[0] = new ofstream(prop0_out_file.c_str());
-			pout[1] = new ofstream(prop1_out_file.c_str());
-			pout[2] = new ofstream(prop2_out_file.c_str());
-			pout[3] = new ofstream(prop3_out_file.c_str());
-			ofstream lout(loglik_out_file.c_str());
-			ofstream lpout(loglik_prop_out_file.c_str());
-			// Minimum branch length
-			const double min_branch_length = global_min_branch_length;
-			// For each branch find good starting values for the branch lengths
-			int j,k;
-			vector<double> initial_branch_length(root_node);
-			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length (if !MCMC_INFER_BRANCH_LENGTHS these values will be fixed)
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				initial_branch_length[i] = pd/pd_den;
-			}
-			// Initialize the parameters at the driving prior mean or, in the case of the branch lengths, their crude estimates
-			vector<double> param(root_node+3), new_param;
-			for(i=0;i<3;i++) param[i] = driving_prior_mean[i];
-			for(i=0;i<root_node;i++) param[3+i] = log10(initial_branch_length[i]);
-			vector<double> partial_post(root_node), new_partial_post(root_node);
-			// Initialize the log likelihood class
-			ClonalFrameMCMCJointFunction cff(ctree.node,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported,min_branch_length,driving_prior_mean,driving_prior_precision,true,root_node);
-			cff.parameterization = (MCMC_INFER_BRANCH_LENGTHS) ? 1 : 0;
-			// Output preamble to files
-			*mout[0] << "rho_over_theta" << endl;
-			*mout[1] << "import_length" << endl;
-			*mout[2] << "import_divergence" << endl;
-			for(i=0;i<root_node;i++) {
-				if(i>0) *mout[3] << "\t";
-				*mout[3] << ctree.node[i].id;
-			}
-			*mout[3] << endl;
-			*pout[0] << "rho_over_theta" << endl;
-			*pout[1] << "import_length" << endl;
-			*pout[2] << "import_divergence" << endl;
-			for(i=0;i<root_node;i++) {
-				if(i>0) *pout[3] << "\t";
-				*pout[3] << ctree.node[i].id;
-			}
-			*pout[3] << endl;
-			lout << "posterior" << endl;
-			lpout << "posterior" << endl;
-			// Do MCMC			
-			int iter;
-			const int niter = 1000;
-			double loglik = cff.log_posterior(param,partial_post), new_loglik;
-			vector<double> proposal_sd(param.size(),0.1);
-			const int nmix_param = (MCMC_INFER_BRANCH_LENGTHS) ? param.size() : 3;
-			for(iter=0;iter<niter;iter++) {
-				for(j=0;j<nmix_param;j++) {
-					new_param = param;
-					new_param[j] += ran.normal(0,proposal_sd[j]);
-					if(j<3) {
-						new_loglik = cff.log_posterior(new_param,new_partial_post);
-					} else {
-						new_partial_post = partial_post;
-						new_loglik = cff.log_posterior(new_param,new_partial_post,j-3);
-					}
-					const double alpha = new_loglik-loglik;
-					const bool accept = alpha>=0.0 || alpha>=log(ran.U());
-					if(accept) {
-						// Accept
-						param = new_param;
-						loglik = new_loglik;
-						partial_post = new_partial_post;
-					} else {
-						// Reject (do nothing)
-					}
-				}
-				// Record
-				if(iter>=0 && (iter%1)==0) {
-					*mout[0] << param[0] << endl;
-					*mout[1] << param[1] << endl;
-					*mout[2] << param[2] << endl;
-					for(i=0;i<root_node;i++) {
-						if(i>0) *mout[3] << "\t";
-						*mout[3] << param[3+i];
-					}
-					*mout[3] << endl;
-					lout << loglik << endl;
-				}
-			}
-			
-			//cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << endl;
-			/*				// NOT YET IMPLEMENTED
-			 // Ensure importation status is updated correctly
-			 double final_branch_length = (LRT_pass) ? pow(10.,param[3]) : pow(10.,param0[0]);
-			 if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
-			 const double final_rho_over_theta = (LRT_pass) ? pow(10.,param[0]) : 1e-20;
-			 const double final_mean_import_length = (LRT_pass) ? (1.0/(1.0+pow(10.,-param[1])))/final_branch_length/final_rho_over_theta : 1e20;
-			 const double final_import_divergence = (LRT_pass) ? final_branch_length*(2.0+pow(10.,param[2])) : 1e20;
-			 maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-			 // Update branch length in the tree
-			 // Note this is unsafe in general because the corresponding node times are not adjusted
-			 ctree.node[i].edge_time = final_branch_length;
-			 if(LRT_pass) {
-			 cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "  L = " << -Pow.function_minimum << "* M = " << final_branch_length << " R = " << pow(10.,param[0]+param[3]) << " F = " << 1.0/(1.0+pow(10.,-param[1])) << " E = " << final_branch_length*(1.0+pow(10.,param[2])) << endl;
-			 ML += -Pow.function_minimum;
-			 } else {
-			 cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L0 = " << -Pow0.function_minimum << "* L = " << -Pow.function_minimum << "  M = " << final_branch_length << endl;
-			 ML += -Pow0.function_minimum;
-			 }
-			 */
-			// Close files
-			for(j=0;j<4;j++) {
-				mout[j]->close();
-				delete mout[j];
-				pout[j]->close();
-				delete pout[j];
-			}
-			lout.close();
-			lpout.close();
-
-			// NOT YET IMPLEMENTED
-			/*			// Output the importation status
-			 write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			 cout << "Wrote inferred importation status to " << import_out_file << endl;
-			 */
-		} else if(GRID_APPROX) {
-			// For a given branch, approximate the mean and covariance matrix of the posterior distribution by evaluating over a grid of points
-			// using the driving prior
-			const int nparam = 4;
-			const int ngrid = (int)grid_approx;
-			Matrix<double> grid(nparam,ngrid);
-			int i,j,k,l,m;
-			for(i=0;i<nparam;i++) {
-				// Create a uniform grid within the marginal 95% prior quantiles of each parameter
-				const double grid_beg = driving_prior_mean[i]-2.0/sqrt(driving_prior_precision[i]);
-				const double grid_end = driving_prior_mean[i]+2.0/sqrt(driving_prior_precision[i]);
-				const double grid_inc = (grid_end-grid_beg)/((double)ngrid-1.0);
-				for(j=0;j<ngrid;j++) {
-					grid[i][j] = grid_beg + ((double)j)*grid_inc;
-				}
-			}
-			cout << "Beginning grid approximation. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			vector< vector<ImportationState> > is_imported(root_node);
-			vector< vector<double> > Egrid(0);
-			vector< Matrix<double> > Vgrid(0);
-			Egrid = vector< vector<double> >(root_node,vector<double>(nparam,0.0));
-			Vgrid = vector< Matrix<double> >(root_node,Matrix<double>(nparam,nparam,0.0));
-			// Cycle over branches
-			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				const double initial_branch_length = pd/pd_den;
-				// Object for the per-branch recombination model: initial branch length set from no-recombination model estimate
-				ClonalFrameLaplacePerBranchFunction cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,is_imported[i],driving_prior_mean,driving_prior_precision);
-				// Force parameterization 1
-				cff.parameterization = 1;
-				// Evaluate the grid
-				vector< mydouble > evalpost(ngrid*ngrid*ngrid*ngrid);
-				mydouble denom = 0.0;
-				vector<double> param(4);
-				ofstream gout;
-				if(i==0) gout.open("/Users/wilson/temp/grid.txt");
-				char tab = '\t';
-				int ctr = 0;
-				for(j=0;j<ngrid;j++) {
-					param[0] = grid[0][j];
-					for(k=0;k<ngrid;k++) {
-						param[1] = grid[1][k];
-						for(l=0;l<ngrid;l++) {
-							param[2] = grid[2][l];
-							for(m=0;m<ngrid;m++,ctr++) {
-								param[3] = grid[3][m];
-								// Evaluate the unnormalized posterior at the grid point
-								evalpost[ctr].setlog(-cff.f(param));
-								// Update the running total
-								denom += evalpost[ctr];
-								if(i==0) gout << param[0] << tab << param[1] << tab << param[2] << tab << param[3] << tab << evalpost[ctr].LOG() << endl;
-							}
-						}
-					}
-				}
-				if(i==0) gout.close();
-				// Approximately normalize the posterior density evaluations
-				for(ctr=0;ctr<evalpost.size();ctr++) evalpost[ctr] /= denom;
-				// Calculate the mean and variance-covariance matrix for the branch				
-				ctr = 0;		
-				for(j=0;j<ngrid;j++) {
-					param[0] = grid[0][j];
-					for(k=0;k<ngrid;k++) {
-						param[1] = grid[1][k];
-						for(l=0;l<ngrid;l++) {
-							param[2] = grid[2][l];
-							for(m=0;m<ngrid;m++,ctr++) {
-								param[3] = grid[3][m];
-								// Cycle through the elements of the mean and covariance matrix
-								int ii,jj;
-								double unlog_evalpost = evalpost[ctr].todouble();
-								for(ii=0;ii<nparam;ii++) {
-									for(jj=ii+1;jj<nparam;jj++) {
-										double tmp = param[ii]*param[jj]*unlog_evalpost;
-										Vgrid[i][ii][jj] += tmp;
-										Vgrid[i][jj][ii] += tmp;
-									}
-									Vgrid[i][ii][ii] += param[ii]*param[ii]*unlog_evalpost;
-									Egrid[i][ii] += param[ii]*unlog_evalpost;
-								}
-							}
-						}
-					}
-				}
-				// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
-				//cff.f(Egrid[i]);
-				// Update branch length in the tree
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				//ctree.node[i].edge_time = final_branch_length;
-				// Output results to screen
-				cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " R = " << Egrid[i][0] << " I = " << Egrid[i][1] << " D = " << Egrid[i][2] << " M = " << Egrid[i][3] << endl;
-			}
-			
-			// Output the importation status
-			//write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			//cout << "Wrote inferred importation status to " << import_out_file << endl;
-			// Output the grid approximation
-			ofstream lout(laplace_out_file.c_str());
-			lout << "Branch";
-			for(j=0;j<4;j++) lout << "\t" << "E" << j;
-			for(j=0;j<4;j++) {
-				for(k=0;k<4;k++) {
-					lout << "\t" << "V" << j << k;
-				}
-			}
-			lout << endl;
-			for(i=0;i<root_node;i++) {
-				lout << ctree_node_labels[i];
-				for(j=0;j<4;j++) lout << "\t" << Egrid[i][j];
-				for(j=0;j<4;j++) {
-					for(k=0;k<4;k++) {
-						lout << "\t" << Vgrid[i][j][k];
-					}
-				}
-				lout << endl;
-			}
-			lout.close();
-			cout << "Wrote grid approximation information to " << laplace_out_file << endl;
-		} else if(VITERBI_TRAINING_OLD) {
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			// using the Laplace approximation to the likelihood
-			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(root_node);
-			vector< vector<double> > laplaceMLE(0);
-			vector< Matrix<double> > laplaceQ(0);
-			laplaceMLE = vector< vector<double> >(root_node,vector<double>(4));
-			laplaceQ = vector< Matrix<double> >(root_node,Matrix<double>(4,4));
-			int j,k;
-			for(i=0;i<root_node;i++) {
-				// Crudely re-estimate branch length: use this as the mean of the prior on branch length ????
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				const double initial_branch_length = pd/pd_den;
-				if(pd>=2.0) {
-					vector<double> param;
-					if(initial_values.size()==0) {
-						param = driving_prior_mean;
-						param[3] = log10(initial_branch_length);
-					} else {
-						param = initial_values;
-						param.push_back(log10(initial_branch_length));
-					}
-					clock_t pow_start_time = clock();
-					ClonalFrameViterbiTrainingPerBranch cff(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported[i],driving_prior_mean,driving_prior_precision);
-					param = cff.maximize_likelihood(param);
-					ML = cff.ML;
-					// Output results to screen
-					double branch_length = pow(10.,param[3]);
-					double rho_over_theta = pow(10.,param[0]);
-					double mean_import_length = pow(10.,param[1]);
-					double import_divergence = pow(10.,param[2]);
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
-					// Approximate the likelihood by a multivariate Gaussian
-					// Interval over which to numerically compute second derivatives
-					// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-					const double h = 0.1;
-					vector<double> paramQ;
-					// The maximum log-likelihood
-					int n_calc_Hessian = 0;
-					// Label for a goto statement
-				calculate_Hessian_Viterbi:
-					++n_calc_Hessian;
-					if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
-					if(n_calc_Hessian==21) error("Attempted Hessian calculation 20 times");
-					if(n_calc_Hessian>1) {
-						// Re-optimize at adjusted parameter value
-						cout << "Re-optimizing" << endl;
-						param = cff.maximize_likelihood(param);
-						branch_length = pow(10.,param[3]);
-						rho_over_theta = pow(10.,param[0]);
-						mean_import_length = pow(10.,param[1]);
-						import_divergence = pow(10.,param[2]);
-						ML = cff.ML;
-						cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " L = " << ML << " R = " << rho_over_theta << " I = " << mean_import_length << " D = " << import_divergence << " M = " << branch_length << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
-					}
-					const double calcQ0 = ML;
-					for(j=0;j<4;j++) {
-						for(k=0;k<j;k++) {
-							paramQ = param; paramQ[j] += h; paramQ[k] += h;
-							const double calcQa = cff.log_likelihood(paramQ);
-							if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
-							paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-							const double calcQb = cff.log_likelihood(paramQ);
-							if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
-							paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-							const double calcQc = cff.log_likelihood(paramQ);
-							if(calcQc>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
-							paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-							const double calcQd = cff.log_likelihood(paramQ);
-							if(calcQd>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
-							const double calcQ = calcQa - calcQb - calcQc + calcQd;
-							laplaceQ[i][j][k] = laplaceQ[i][k][j] = -calcQ/4.0/h/h;
-						}
-						paramQ = param; paramQ[j] += 2.0*h;
-						const double calcQa = cff.log_likelihood(paramQ);
-						if(calcQa>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
-						paramQ = param; paramQ[j] -= 2.0*h;
-						const double calcQb = cff.log_likelihood(paramQ);
-						if(calcQb>calcQ0) { param = paramQ; goto calculate_Hessian_Viterbi; }
-						const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-						laplaceQ[i][j][j] = -calcQ/4.0/h/h;
-					}
-					// Store the point estimates
-					laplaceMLE[i] = param;
-					// Update branch length in the tree
-					// Note this is unsafe in general because the corresponding node times are not adjusted
-					ctree.node[i].edge_time = pow(10.,param[3]);
-				} else {
-					cout << "Branch " << ctree_node_labels[i] << " B = " << initial_branch_length << " was too short for inference" << endl;
-					const double NaN = 1.0/0.0;
-					laplaceMLE[i] = vector<double>(4,NaN);
-					laplaceQ[i] = Matrix<double>(4,4,NaN);
-					vector<double> param;
-					if(initial_values.size()==0) {
-						param = driving_prior_mean;
-						param[3] = log10(initial_branch_length);
-					} else {
-						param = initial_values;
-						param.push_back(log10(initial_branch_length));
-					}
-					const double final_rho_over_theta = pow(10.,param[0]);
-					const double final_mean_import_length = pow(10.,param[1]);
-					const double final_import_divergence = pow(10.,param[2]);
-					const double final_branch_length = MAX(global_min_branch_length,pow(10.,param[3])/(1+final_rho_over_theta*final_mean_import_length*(final_import_divergence-pow(10.,param[3]))));
-					maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-					// Update branch length in the tree
-					// Note this is unsafe in general because the corresponding node times are not adjusted
-					ctree.node[i].edge_time = final_branch_length;
-				}
-			}
-			
-			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-			// Output the Laplace approximation
-			ofstream lout(laplace_out_file.c_str());
-			lout << "Branch";
-			for(j=0;j<4;j++) lout << "\t" << "P" << j;
-			for(j=0;j<4;j++) {
-				for(k=0;k<4;k++) {
-					lout << "\t" << "Q" << j << k;
-				}
-			}
-			lout << endl;
-			for(i=0;i<root_node;i++) {
-				lout << ctree_node_labels[i];
-				for(j=0;j<4;j++) lout << "\t" << laplaceMLE[i][j];
-				for(j=0;j<4;j++) {
-					for(k=0;k<4;k++) {
-						lout << "\t" << laplaceQ[i][j][k];
-					}
-				}
-				lout << endl;
-			}
-			lout.close();
-			cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
-		} else if(VITERBI_TRAINING) {
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			// using Viterbi training
-			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
-			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(root_node);
-			// Calculate the a and b parameters of the priors
-			vector<double> prior_a(4), prior_b(4);
-			for(i=0;i<4;i++) {
-				// Mean = a/b and variance = a/b/b so "precision" is b*b/a
-				// So b = precision*mean and a = b*mean
-				if(driving_prior_mean[i]<=0.0) error("VITERBI_TRAINING: driving_prior_mean must be positive");
-				if(driving_prior_precision[i]<=0.0) error("VITERBI_TRAINING: driving_prior_precision must be positive");
-				prior_b[i] = driving_prior_precision[i]*driving_prior_mean[i];
-				prior_a[i] = prior_b[i]*driving_prior_mean[i];
-			}
-			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
-			vector<double> param(3);
-			if(initial_values.size()==0) {
-				// Hard coded starting point
-				param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05;
-			} else {
-				param = initial_values;
-			}
-			// Do inference
-			clock_t pow_start_time = clock();
-			ClonalFrameViterbiTraining cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
-			param = cff.maximize_likelihood(param);
-			ML = cff.ML;
-			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
-			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
-			//cout << " Posterior 95% CIs: R = (" << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << "," << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << 
-			//") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) <<
-			//") D = (" << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << "," << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << ")" << endl;
-			for(i=0;i<root_node;i++) {
-				if(cff.informative[i]) {
-					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
-				}
-			}
-			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
-			ofstream vout(viterbi_out_file.c_str());
-			char tab = '\t';
-			vout << "Parameter" << tab << "Posterior Mean" << tab << /*"2.5% Quantile" << tab << "97.5% Quantile" << tab << */"a_post" << tab << "b_post" << endl;
-			vout << "R_over_M"	<< tab << param[0] << tab << /*gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << */cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
-			vout << "delta"		<< tab << param[1] << tab << /*1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << */cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
-			vout << "nu"		<< tab << param[2] << tab << /*gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << */cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
-			for(i=0;i<root_node;i++) {
-				if(cff.informative[i]) {
-					vout << ctree_node_labels[i] << tab << param[3+i] << tab << /*gamma_invcdf(0.025,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << gamma_invcdf(0.975,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << */cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
-				}
-			}
-			vout.close();
-			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else if(EM) {
 			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
 			// using Baum-Welch EM algorithm
 			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
 			cout << "B   uncorrected branch length" << endl;
 			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
+			cout << "R   R/theta per branch                                       (> 0)" << endl;
 			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
 			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
 			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
@@ -1615,21 +400,18 @@ int main (const int argc, const char* argv[]) {
 			// Calculate the a and b parameters of the priors
 			vector<double> prior_a(4), prior_b(4);
 			for(i=0;i<4;i++) {
-				// Mean = a/b and variance = a/b/b so "precision" is b*b/a
-				// So b = precision*mean and a = b*mean
-				if(driving_prior_mean[i]<=0.0) error("EM: driving_prior_mean must be positive");
-				if(driving_prior_precision[i]<=0.0) error("EM: driving_prior_precision must be positive");
-				prior_b[i] = driving_prior_precision[i]*driving_prior_mean[i];
-				prior_a[i] = prior_b[i]*driving_prior_mean[i];
+				// Mean = a/b and variance = a/b/b so sd = sqrt(a)/b
+				// So b = mean/sd/sd and a = b*mean
+				if(prior_mean[i]<=0.0) error("EM: prior_mean must be positive");
+				if(prior_sd[i]<=0.0) error("EM: prior_sd must be positive");
+				prior_b[i] = prior_mean[i]/prior_sd[i]/prior_sd[i];
+				prior_a[i] = prior_b[i]*prior_mean[i];
 			}
-			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
+			// Initial values for R_over_theta, mean_import_length and import_divergence from prior
 			vector<double> param(3);
-			if(initial_values.size()==0) {
-				// Hard coded starting point
-				param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05;
-			} else {
-				param = initial_values;
-			}
+			param[0] = initial_values[0];
+			param[1] = 1.0/initial_values[1];
+			param[2] = initial_values[2];
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameBaumWelch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
@@ -1637,24 +419,26 @@ int main (const int argc, const char* argv[]) {
 			ML = cff.ML;
 			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
-			//cout << " Posterior 95% CIs: R = (" << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << "," << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << 
-			//") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) <<
-			//") D = (" << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << "," << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << ")" << endl;
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
+					// Update branch length in the output tree
+					// Note this is unsafe in general because the corresponding node times are not adjusted
+					ctree.node[i].edge_time = param[3+i];
+				} else {
+					ctree.node[i].edge_time = global_min_branch_length;
 				}
 			}
 			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
 			ofstream vout(em_out_file.c_str());
 			char tab = '\t';
-			vout << "Parameter" << tab << "Posterior Mean" << tab << /*"2.5% Quantile" << tab << "97.5% Quantile" << tab << */"a_post" << tab << "b_post" << endl;
-			vout << "R_over_M"	<< tab << param[0] << tab << /*gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << tab << */cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
-			vout << "delta"		<< tab << param[1] << tab << /*1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << tab << */cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
-			vout << "nu"		<< tab << param[2] << tab << /*gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << tab << */cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
+			vout << "Parameter" << tab << "Posterior Mean" << tab << "Posterior Variance" << tab << "a_post" << tab << "b_post" << endl;
+			vout << "R/theta"	<< tab << param[0] << tab << param[0]*param[0]/cff.posterior_a[0] << tab << cff.posterior_a[0] << tab << cff.posterior_a[0]/param[0] << endl;
+			vout << "1/delta"	<< tab << 1./param[1] << tab << 1./param[1]/param[1]/cff.posterior_a[1] << tab << cff.posterior_a[1] << tab << cff.posterior_a[1]*param[1] << endl;
+			vout << "nu"		<< tab << param[2] << tab << param[2]*param[2]/cff.posterior_a[2] << tab << cff.posterior_a[2] << tab << cff.posterior_a[2]/param[2] << endl;
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
-					vout << ctree_node_labels[i] << tab << param[3+i] << tab << /*gamma_invcdf(0.025,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << gamma_invcdf(0.975,cff.posterior_a[3+i],cff.posterior_a[3+i]/param[3+i]) << tab << */cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
+					vout << ctree_node_labels[i] << tab << param[3+i] << tab << param[3+i]*param[3+i]/cff.posterior_a[3+i] << tab << cff.posterior_a[3+i] << tab << cff.posterior_a[3+i]/param[3+i] << endl;
 				}
 			}
 			vout.close();
@@ -1667,7 +451,7 @@ int main (const int argc, const char* argv[]) {
 				Matrix<double> sim = cff.simulate_posterior(param,emsim);
 				if(sim.nrows()!=3 || sim.ncols()!=emsim) error("ClonalFrameBaumWelch::simulate_posterior() produced unexpected results");
 				ofstream eout(emsim_out_file.c_str());
-				eout << "R_over_M" << tab << "delta" << tab << "nu" << endl;
+				eout << "R/theta" << tab << "delta" << tab << "nu" << endl;
 				for(i=0;i<emsim;i++) {
 					eout << sim[0][i] << tab << sim[1][i] << tab << sim[2][i] << endl;
 				}
@@ -1680,7 +464,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
 			cout << "B   uncorrected branch length" << endl;
 			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
+			cout << "R   R/theta per branch                                       (> 0)" << endl;
 			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
 			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
 			cout << "M   expected number of mutations per branch                  (> 0)" << endl;
@@ -1689,24 +473,22 @@ int main (const int argc, const char* argv[]) {
 			// Calculate the a and b parameters of the priors
 			vector<double> prior_a(5), prior_b(5);
 			for(i=0;i<4;i++) {
-				// Mean = a/b and variance = a/b/b so "precision" is b*b/a
-				// So b = precision*mean and a = b*mean
-				if(driving_prior_mean[i]<=0.0) error("EM: driving_prior_mean must be positive");
-				if(driving_prior_precision[i]<=0.0) error("EM: driving_prior_precision must be positive");
-				prior_b[i] = driving_prior_precision[i]*driving_prior_mean[i];
-				prior_a[i] = prior_b[i]*driving_prior_mean[i];
+				// Mean = a/b and variance = a/b/b so sd = sqrt(a)/b
+				// So b = mean/sd/sd and a = b*mean
+				if(prior_mean[i]<=0.0) error("EMBRANCH: prior_mean must be positive");
+				if(prior_sd[i]<=0.0) error("EMBRANCH: prior_sd must be positive");
+				prior_b[i] = prior_mean[i]/prior_sd[i]/prior_sd[i];
+				prior_a[i] = prior_b[i]*prior_mean[i];
 			}
 			// Set the prior on the fifth parameter
 			prior_a[4] = prior_b[4] = 1.0/embranch_dispersion;
 			// Initial values for rho_over_theta, mean_import_length and import_divergence from prior
 			// Note that the fourth value (mean branch length) is ignored and computed from the tree
 			vector<double> param(4);
-			if(initial_values.size()==0) {
-				// Hard coded starting point
-				param[0] = 0.1; param[1] = 1000.0; param[2] = 0.05; param[3] = 1.0e-5;
-			} else {
-				param = initial_values; param.push_back(1.0e-5);
-			}
+			param[0] = initial_values[0];
+			param[1] = 1.0/initial_values[1];
+			param[2] = initial_values[2];
+			param.push_back(1.0e-5);
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameBaumWelchRhoPerBranch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
@@ -1714,30 +496,30 @@ int main (const int argc, const char* argv[]) {
 			ML = cff.ML;
 			cout << "Mean parameters:" << endl;
 			cout << " L = " << ML << " R = " << cff.mean_param[0] << " I = " << 1.0/cff.mean_param[1] << " D = " << cff.mean_param[2] << " M = " << cff.mean_param[3] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
-			/*************************** UPDATED ONLY THIS FAR ************************/
-//			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
-//			//cout << " Posterior 95% CIs: R = (" << gamma_invcdf(0.025,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << "," << gamma_invcdf(0.975,cff.posterior_a[0],cff.posterior_a[0]/param[0]) << 
-//			//") I = (" << 1./gamma_invcdf(0.975,cff.posterior_a[1],cff.posterior_a[1]*param[1]) << "," << 1./gamma_invcdf(0.025,cff.posterior_a[1],cff.posterior_a[1]*param[1]) <<
-//			//") D = (" << gamma_invcdf(0.025,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << "," << gamma_invcdf(0.975,cff.posterior_a[2],cff.posterior_a[2]/param[2]) << ")" << endl;
 			cout << "Parameters per branch:" << endl;
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " R = " << cff.mean_param[0]*cff.full_param[i][0] << " I = " << 1.0/(cff.mean_param[1]*cff.full_param[i][1]) << " D = " << cff.mean_param[2]*cff.full_param[i][2] << " M = " << cff.mean_param[3]*cff.full_param[i][3] << endl;
+					// Update branch length in the output tree
+					// Note this is unsafe in general because the corresponding node times are not adjusted
+					ctree.node[i].edge_time = cff.mean_param[3]*cff.full_param[i][3];
+				} else {
+					ctree.node[i].edge_time = global_min_branch_length;
 				}
 			}
 			// Output the point estimates, 95% credible intervals, posterior_a and posterior_b parameters
 			ofstream vout(em_out_file.c_str());
 			char tab = '\t';
-			vout << "Parameter" << tab << "Branch" << tab << "Posterior Mean" << tab << "a_post" << tab << "b_post" << endl;
+			vout << "Parameter" << tab << "Branch" << tab << "Posterior Mean" << tab << "Posterior Variance" << tab << "a_post" << tab << "b_post" << endl;
 			int p;
-			string pname[4] = {"R_over_M","delta","nu","M"};
+			string pname[4] = {"R/theta","1/delta","nu","M"};
 			for(p=0;p<4;p++) {
-				vout << pname[p] << tab << "Mean" << tab <<cff.mean_param[p] << tab << "NA" << tab << "NA" << endl;
+				vout << pname[p] << tab << "Mean" << tab <<cff.mean_param[p] << tab << "NA" << tab << "NA" << tab << "NA" << endl;
 			}
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
 					for(p=0;p<4;p++) {
-						vout << pname[p] << tab << ctree_node_labels[i] << tab << cff.full_param[i][p] << tab << cff.posterior_a[i][p] << tab << cff.posterior_a[i][p]/cff.full_param[i][p] << endl;
+						vout << pname[p] << tab << ctree_node_labels[i] << tab << cff.full_param[i][p] << tab << cff.full_param[i][p]*cff.full_param[i][p]/cff.posterior_a[i][p] << tab << cff.posterior_a[i][p] << tab << cff.posterior_a[i][p]/cff.full_param[i][p] << endl;
 					}
 				}
 			}
@@ -1752,258 +534,15 @@ int main (const int argc, const char* argv[]) {
 //				Matrix<double> sim = cff.simulate_posterior(param,emsim);
 //				if(sim.nrows()!=3 || sim.ncols()!=emsim) error("ClonalFrameBaumWelch::simulate_posterior() produced unexpected results");
 //				ofstream eout(emsim_out_file.c_str());
-//				eout << "R_over_M" << tab << "delta" << tab << "nu" << endl;
+//				eout << "R/theta" << tab << "delta" << tab << "nu" << endl;
 //				for(i=0;i<emsim;i++) {
 //					eout << sim[0][i] << tab << sim[1][i] << tab << sim[2][i] << endl;
 //				}
 //				eout.close();				
 			}
-		} else if(PARTIAL_VITERBI) {
-			// Joint optimization of R/M, mean import length and import divergence over all branches
-			// using a general purpose algorithm in combination with the Viterbi algorithm for
-			// optimizing out the branch length independently for each branch
-			// The Laplace-type approach to estimating approximate confidence intervals is retained
-			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
-			cout << "B   uncorrected branch length" << endl;
-			cout << "L   maximum unnormalized log-posterior per branch" << endl;
-			cout << "R   rho/theta per branch                                     (> 0)" << endl;
-			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
-			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
-			double ML = 0.0;
-			vector< vector<ImportationState> > is_imported(root_node);
-			vector< vector<double> > laplaceMLE(0);
-			vector< Matrix<double> > laplaceQ(0);
-			laplaceMLE = vector< vector<double> >(1,vector<double>(4));
-			laplaceQ = vector< Matrix<double> >(1,Matrix<double>(4,4));
-			// Calculate the a and b parameters of the prior on branch length
-			// Mean = a/b and variance = a/b/b so "precision" is b*b/a
-			// So b = precision*mean and a = b*mean
-			if(driving_prior_mean[3]<=0.0) error("PARTIAL_VITERBI: driving_prior_mean[4] must be positive");
-			if(driving_prior_precision[3]<=0.0) error("PARTIAL_VITERBI: driving_prior_precision must be positive");
-			const double prior_b = driving_prior_precision[3]*driving_prior_mean[3];
-			const double prior_a = prior_b*driving_prior_mean[3];
-			// Pop back the mean and precision for the normal priors on the other parameters
-			driving_prior_mean.pop_back();
-			driving_prior_precision.pop_back();
-			// Initial values for rho_over_theta, mean_import_length and import_divergence specified or from prior
-			vector<double> param(3);
-			if(initial_values.size()==0) {
-				param = driving_prior_mean;
-			} else {
-				param = initial_values;
-			}
-			// Set up inference
-			ClonalFrameViterbiM cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,driving_prior_mean,driving_prior_precision,prior_a,prior_b,root_node,GUESS_INITIAL_M);
-			// Setup optimization function
-			int neval = 0;
-			const string optimizer = (USE_NELDER_MEAD) ? "Nelder-Mead" : "Powell";
-			Powell Pow(cff);
-			Amoeba Am(cff);
-			// Do inference
-			clock_t pow_start_time = clock();
-			if(!USE_NELDER_MEAD) {
-				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-				Pow.TOL = brent_tolerance;
-				param = Pow.minimize(param,powell_tolerance);
-				ML = -Pow.function_minimum;
-			} else {
-				Am.coutput = SHOW_PROGRESS;
-				param = Am.minimize(param,1.0);
-				ML = -Am.function_minimum;
-			}
-			cout << optimizer << " gave param = " << param[0] << " " << param[1] << " " << param[2] << " post = " << ML << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;
-			// Approximate the confidence intervals by assuming a multivariate Gaussian posterior
-			// Interval over which to numerically compute second derivatives
-			// Assumes a log-likelihood accuracy calculation of 0.001 and a curvature scale of 1
-			const double h = 0.1;
-			vector<double> paramQ;
-			// The maximum log-likelihood
-			int n_calc_Hessian = 0;
-			// Label for a goto statement
-		partial_viterbi_calculate_Hessian:
-			++n_calc_Hessian;
-			if(n_calc_Hessian==10) warning("Attempted Hessian calculation 10 times");
-			if(n_calc_Hessian==21) warning("Attempted Hessian calculation 20 times - giving up");
-			if(n_calc_Hessian>1 && n_calc_Hessian<21) {
-				// Re-optimize at adjusted parameter value
-				cout << "Re-optimizing" << endl;
-				param = (USE_NELDER_MEAD) ? Am.minimize(param) : Pow.minimize(param,powell_tolerance);
-				ML = (USE_NELDER_MEAD) ? -Am.function_minimum : -Pow.function_minimum;
-				cout << optimizer << " gave param = " << param[0] << " " << param[1] << " " << param[2] << " post = " << ML << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval-neval << " evaluations" << endl;					
-			}
-			const double calcQ0 = -cff.f(param);
-			int j,k;
-			for(j=0;j<3;j++) {
-				for(k=0;k<j;k++) {
-					paramQ = param; paramQ[j] += h; paramQ[k] += h;
-					const double calcQa = -cff.f(paramQ);
-					if(calcQa>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
-					paramQ = param; paramQ[j] += h; paramQ[k] -= h;
-					const double calcQb = -cff.f(paramQ);
-					if(calcQb>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
-					paramQ = param; paramQ[j] -= h; paramQ[k] += h;
-					const double calcQc = -cff.f(paramQ);
-					if(calcQc>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
-					paramQ = param; paramQ[j] -= h; paramQ[k] -= h;
-					const double calcQd = -cff.f(paramQ);
-					if(calcQd>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
-					const double calcQ = calcQa - calcQb - calcQc + calcQd;
-					laplaceQ[0][j][k] = laplaceQ[0][k][j] = -calcQ/4.0/h/h;
-				}
-				paramQ = param; paramQ[j] += 2.0*h;
-				const double calcQa = -cff.f(paramQ);
-				if(calcQa>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
-				paramQ = param; paramQ[j] -= 2.0*h;
-				const double calcQb = -cff.f(paramQ);
-				if(calcQb>calcQ0) { param = paramQ; goto partial_viterbi_calculate_Hessian; }
-				const double calcQ = calcQa + calcQb - 2.0*calcQ0;
-				laplaceQ[0][j][j] = -calcQ/4.0/h/h;
-			}
-			// Store the point estimates
-			laplaceMLE[0] = param;
-			// Ensure importation status is updated at the MAP parameter estimate (for now, this is affected by the driving prior)
-			const double final_rho_over_theta = pow(10.,param[0]);
-			const double final_mean_import_length = pow(10.,param[1]);
-			const double final_import_divergence = pow(10.,param[2]);
-			for(i=0;i<root_node;i++) {
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				const double final_branch_length = MAX(global_min_branch_length,cff.full_param[3+i]);
-				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-				// Update branch length in the tree
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = final_branch_length;
-				// Output results to screen
-				cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << final_branch_length << endl;
-			}
-			
-			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-			// Output the Laplace approximation
-			ofstream lout(laplace_out_file.c_str());
-			lout << "Branch";
-			for(j=0;j<3;j++) lout << "\t" << "P" << j;
-			for(j=0;j<3;j++) {
-				for(k=0;k<3;k++) {
-					lout << "\t" << "Q" << j << k;
-				}
-			}
-			lout << endl;
-			lout << "All branches";
-			for(j=0;j<3;j++) lout << "\t" << laplaceMLE[0][j];
-			for(j=0;j<3;j++) {
-				for(k=0;k<3;k++) {
-					lout << "\t" << laplaceQ[0][j][k];
-				}
-			}
-			lout << endl;
-			lout.close();
-			cout << "Wrote Laplace approximation information to " << laplace_out_file << endl;
-		} else if(SINGLE_RHO_VITERBI || SINGLE_RHO_FORWARD) {
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) AND recombination parameters under the ClonalFrame model
-			// SUBJECT to the constraints that the importation state have frequency < 0.5 AND the recombination divergence exceeds the branch length divergence
-			// For computational efficiency, branch lengths are set equal to the number of substitutions implied by the ancestral state reconstruction
-			cout << "Beginning parameter estimation" << endl;
-			vector< vector<ImportationState> > is_imported(root_node);
-			// Constrain the expected number of substitutions per branch according to the ancestral state reconstruction
-			vector<double> substitutions_per_branch(root_node,0);
-			for(i=0;i<root_node;i++) {
-				double pd = 1.0, pd_den = 2.0;
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				int j,k;
-				for(j=0,k=0;j<isBLC.size();j++) {
-					if(isBLC[j]) {
-						Nucleotide dec = node_nuc[dec_id][ipat[k]];
-						Nucleotide anc = node_nuc[anc_id][ipat[k]];
-						if(dec!=anc) ++pd;
-						++pd_den;
-						++k;
-					}
-				}
-				substitutions_per_branch[i] = pd/pd_den;
-			}
-			// Jointly estimate the recombination parameters across branches, subject to the fixed expected number of substitutions per branch
-			// Minimum branch length
-			const double min_branch_length = global_min_branch_length;
-			ClonalFrameSingleRho cff(SINGLE_RHO_VITERBI,ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,is_imported,substitutions_per_branch,min_branch_length,root_node);
-			// Setup optimization function
-			Powell Pow(cff);
-			Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-			Pow.TOL = brent_tolerance;
-			vector<double> param(3);
-			param[0] = log10(initial_rho_over_theta);
-			param[1] = log10(initial_mean_import_length);
-			param[2] = log10(initial_import_divergence);
-			param = Pow.minimize(param,powell_tolerance);
-			// Output results to screen
-			const double ML = -Pow.function_minimum;
-			const double final_rho_over_theta = cff.get_rho_over_theta(param);
-			const double final_mean_import_length = cff.get_mean_import_length(param);
-			const double final_import_divergence = cff.get_import_divergence(param);
-			cout << "Maximum log-likelihood = " << ML << " with parameter estimates: " << endl;
-			cout << "rho/theta              = " << final_rho_over_theta << endl;
-			cout << "mean import length     = " << final_mean_import_length << endl;
-			cout << "mean import divergence = " << final_import_divergence << endl;			
-			// Ensure importation status is updated correctly
-			for(i=0;i<root_node;i++) {
-				const int dec_id = ctree.node[i].id;
-				const int anc_id = ctree.node[i].ancestor->id;
-				double final_branch_length = cff.get_branch_length(substitutions_per_branch[i],param);
-				if(final_branch_length<min_branch_length) final_branch_length = min_branch_length;
-				// This part of the algorithm always uses the Viterbi algorithm
-				maximum_likelihood_ClonalFrame_branch_allsites(dec_id, anc_id, node_nuc, isBLC, ipat, kappa, empirical_nucleotide_frequencies, final_branch_length, final_rho_over_theta, final_mean_import_length, final_import_divergence, is_imported[i]);
-				// Update branch length in the tree - this will set it equal to the number of substitutions implied by the ancestral state reconstruction
-				// Note this operation is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = substitutions_per_branch[i];
-			}
-			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
 		} else {
-			// Estimate parameters with branch lengths fixed
-			// For a given branch, compute the maximum likelihood importation state (unimported vs imported) under the ClonalFrame model
-			ClonalFrameParameterFunction cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,MULTITHREAD,root_node);
-			vector<double> param(3);
-			param[0] = log10(initial_rho_over_theta); param[1] = log10(initial_mean_import_length); param[2] = log10(initial_import_divergence);
-			
-			// Maximize the likelihood of the parameters
-			Powell Pow(cff);
-			Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
-			Pow.TOL = brent_tolerance;
-			param = Pow.minimize(param,powell_tolerance);
-			// Ensure importation status is updated correctly
-			cff.f(param);
-			double rho_over_theta = pow(10.,param[0]);
-			double mean_import_length = pow(10.,param[1]);
-			double import_divergence = pow(10.,param[2]);
-			
-			cout << "Maximum log-likelihood of " << -Pow.function_minimum << " found in " << cff.neval << " iterations" << endl;
-			cout << "rho/theta         = " << rho_over_theta << endl;
-			cout << "Import length     = " << mean_import_length << endl;
-			cout << "Import divergence = " << import_divergence << endl;
-			
-			// Now estimate branch lengths
-			cout << "Beginning branch optimization:" << endl;
-			for(i=0;i<root_node;i++) {
-				ClonalFrameBranchLengthFunction cfblf(ctree.node[i],node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,EXCESS_DIVERGENCE_MODEL,rho_over_theta,mean_import_length,import_divergence,MULTITHREAD);
-				vector<double> paramBL(1,log10(ctree.node[i].edge_time));
-				Powell PowBL(cfblf);
-				PowBL.coutput = PowBL.brent.coutput = SHOW_PROGRESS;
-				PowBL.TOL = brent_tolerance;
-				paramBL = PowBL.minimize(paramBL,powell_tolerance);
-				// Update branch length in the tree
-				// Note this is unsafe in general because the corresponding node times are not adjusted
-				ctree.node[i].edge_time = pow(10.,paramBL[0]);
-				cout << "Branch length " << ctree_node_labels[i] << " = " << ctree.node[i].edge_time << endl;
-			}
-			cout << "Log-likelihood after branch optimization is " << -cff.f(param) << endl;
-			
-			// Output the importation status
-			write_importation_status(cff.is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
-			cout << "Wrote inferred importation status to " << import_out_file << endl;
-		} 
+			error("No option specified");
+		}
 	}
 	
 	// Output the tree with internal nodes automatically labelled, for cross-referencing with the reconstructed sequences
@@ -2021,7 +560,7 @@ marginal_tree convert_rooted_NewickTree_to_marginal_tree(NewickTree &newick, vec
 	for(i=0;i<n-1;i++) {
 		order.push_back("");
 	}
-
+	
 	marginal_tree tree;
 	// Identify the tips in the NewickTree
 	vector<NewickNode*> &allnodes = newick.allnodes;
@@ -2653,18 +1192,18 @@ void find_alignment_patterns(Matrix<Nucleotide> &nuc, vector<bool> &iscompat, ve
 }
 
 /* Use the following in Maple to generate this code (k is 1/transition:transversion ratio, i.e. k=1/kappa)
-
-M := Matrix([
-[-g-k*(c+t),g,k*c,k*t],
-[a,-a-k*(c+t),k*c,k*t],
-[k*a,k*g,-k*(a+g)-t,t],
-[k*a,k*g,c,-k*(a+g)-c]]);
-R:= simplify(-a*M[1,1]-g*M[2,2]-c*M[3,3]-t*M[4,4]);
-M:=simplify(M/R);
  
-P:=simplify(LinearAlgebra:-MatrixExponential(M,x));
-CodeGeneration:-C(subs([a=pi[1],g=pi[2],c=pi[3],t=pi[4]],P),optimize,resultname="ptrans[i]");
-
+ M := Matrix([
+ [-g-k*(c+t),g,k*c,k*t],
+ [a,-a-k*(c+t),k*c,k*t],
+ [k*a,k*g,-k*(a+g)-t,t],
+ [k*a,k*g,c,-k*(a+g)-c]]);
+ R:= simplify(-a*M[1,1]-g*M[2,2]-c*M[3,3]-t*M[4,4]);
+ M:=simplify(M/R);
+ 
+ P:=simplify(LinearAlgebra:-MatrixExponential(M,x));
+ CodeGeneration:-C(subs([a=pi[1],g=pi[2],c=pi[3],t=pi[4]],P),optimize,resultname="ptrans[i]");
+ 
  */ 
 vector< Matrix<double> > compute_HKY85_ptrans(const marginal_tree &ctree, const double kappa, const vector<double> &pi) {
 	const double k = 1.0/kappa;
@@ -2674,91 +1213,6 @@ vector< Matrix<double> > compute_HKY85_ptrans(const marginal_tree &ctree, const 
 	int i;
 	for(i=0;i<nnodes-1;i++) {
 		const double x = ctree.node[i].edge_time;
-		double t1 = pi[2] + pi[3];
-		double t2 = t1 * pi[0];
-		double t3 = t1 * pi[1];
-		double t4 = pi[0] * pi[1] + pi[2] * pi[3] + (t2 + t3) * k;
-		t4 = 0.1e1 / t4;
-		double t5 = -0.1e1 / 0.2e1;
-		double t6 = exp(t5 * (t1 * k + pi[0] + pi[1]) * x * t4);
-		double t7 = pi[2] + pi[3] + pi[0] + pi[1];
-		double t8 = exp(t5 * k * t7 * x * t4);
-		double t9 = pow(pi[1], 0.2e1);
-		double t10 = pow(pi[0], 0.2e1);
-		double t11 = pi[0] + pi[1];
-		double t12 = t7 * t6 - t1 * t8 - pi[0] - pi[1];
-		double t13 = t8 - 0.1e1;
-		double t14 = 0.1e1 / t11;
-		double t15 = 0.1e1 / t7;
-		double t16 = t13 * pi[2] * t15;
-		double t17 = t13 * pi[3] * t15;
-		t4 = exp(t5 * (t11 * k + pi[2] + pi[3]) * x * t4);
-		t5 = pow(pi[3], 0.2e1);
-		double t18 = pow(pi[2], 0.2e1);
-		t11 = t11 * t8;
-		t7 = -t11 + t7 * t4 - pi[3] - pi[2];
-		t1 = 0.1e1 / t1;
-		double t19 = t13 * pi[0] * t15;
-		t13 = t13 * pi[1] * t15;
-		ptrans[i][0][0] = (t6 * t9 + ((pi[0] + pi[3] + pi[2]) * t6 + pi[0]) * pi[1] + t2 * t8 + t10) * t14 * t15;
-		ptrans[i][0][1] = -pi[1] * t12 * t14 * t15;
-		ptrans[i][0][2] = -t16;
-		ptrans[i][0][3] = -t17;
-		ptrans[i][1][0] = -pi[0] * t12 * t14 * t15;
-		ptrans[i][1][1] = (t6 * t10 + ((pi[2] + pi[1] + pi[3]) * t6 + pi[1]) * pi[0] + t3 * t8 + t9) * t14 * t15;
-		ptrans[i][1][2] = -t16;
-		ptrans[i][1][3] = -t17;
-		ptrans[i][2][0] = -t19;
-		ptrans[i][2][1] = -t13;
-		ptrans[i][2][2] = (t4 * t5 + ((pi[0] + pi[2] + pi[1]) * t4 + pi[2]) * pi[3] + t11 * pi[2] + t18) * t1 * t15;
-		ptrans[i][2][3] = -t7 * pi[3] * t1 * t15;
-		ptrans[i][3][0] = -t19;
-		ptrans[i][3][1] = -t13;
-		ptrans[i][3][2] = -t7 * pi[2] * t1 * t15;
-		ptrans[i][3][3] = (t4 * t18 + ((pi[0] + pi[1] + pi[3]) * t4 + pi[3]) * pi[2] + t11 * pi[3] + t5) * t1 * t15;		
-	}
-	// For the root node, whose edge length is undefined/infinite
-	ptrans[nnodes-1][0][0] = pi[0];
-	ptrans[nnodes-1][1][0] = pi[0];
-	ptrans[nnodes-1][2][0] = pi[0];
-	ptrans[nnodes-1][3][0] = pi[0];
-	ptrans[nnodes-1][0][1] = pi[1];
-	ptrans[nnodes-1][1][1] = pi[1];
-	ptrans[nnodes-1][2][1] = pi[1];
-	ptrans[nnodes-1][3][1] = pi[1];
-	ptrans[nnodes-1][0][2] = pi[2];
-	ptrans[nnodes-1][1][2] = pi[2];
-	ptrans[nnodes-1][2][2] = pi[2];
-	ptrans[nnodes-1][3][2] = pi[2];
-	ptrans[nnodes-1][0][3] = pi[3];
-	ptrans[nnodes-1][1][3] = pi[3];
-	ptrans[nnodes-1][2][3] = pi[3];
-	ptrans[nnodes-1][3][3] = pi[3];
-	// Prevent any underflow problems
-	int j,l;
-	for(i=0;i<nnodes;i++) {
-		for(j=0;j<4;j++) {
-			for(l=0;l<4;l++) {
-				if(ptrans[i][j][l]>1.0) {
-					ptrans[i][j][l] = 1.0;
-				} else if(ptrans[i][j][l]<1.0e-100) {
-					ptrans[i][j][l] = 1.0e-100;
-				}
-			}
-		}
-	}
-	return ptrans;
-}
-
-vector< Matrix<double> > compute_HKY85_ptrans(const marginal_tree &ctree, const double kappa, const vector<double> &pi, const double import_divergence, const bool excess_divergence_model) {
-	const double k = 1.0/kappa;
-	const int nnodes = ctree.size;
-	Matrix<double> ptrans_element(4,4,0.0);
-	vector< Matrix<double> > ptrans(nnodes,ptrans_element);
-	int i;
-	for(i=0;i<nnodes-1;i++) {
-		double x = import_divergence;
-		if(excess_divergence_model) x += ctree.node[i].edge_time;
 		double t1 = pi[2] + pi[3];
 		double t2 = t1 * pi[0];
 		double t3 = t1 * pi[1];
@@ -3026,8 +1480,8 @@ double HKY85_expected_rate(const vector<double> &n, const double kappa, const ve
 
 
 /*	For a full description of this algorithm:
-	A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences
-	Tal Pupko, Itsik Peer, Ron Shamir, and Dan Graur. Mol. Biol. Evol. 17(6):890–896. 2000
+ A Fast Algorithm for Joint Reconstruction of Ancestral Amino Acid Sequences
+ Tal Pupko, Itsik Peer, Ron Shamir, and Dan Graur. Mol. Biol. Evol. 17(6):890–896. 2000
  */
 mydouble maximum_likelihood_ancestral_sequences(Matrix<Nucleotide> &nuc, marginal_tree &ctree, const double kappa, const vector<double> &pi, vector<int> &pat1, vector<int> &cpat, Matrix<Nucleotide> &node_sequence) {
 	mydouble ML(1.0);
@@ -3297,295 +1751,6 @@ void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, o
 	fout << endl;
 }
 
-mydouble maximum_likelihood_ClonalFrame_branch_allsites(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported) {
-	mydouble ML(0.0);
-	// Store the positions of **all** sites
-	is_imported = vector<ImportationState>(iscompat.size(),Unimported);
-	// subseq_ML[i][j] is, for position i, the subsequence maximum likelihood given the next position has state j = {Unimported,Imported}
-	Matrix<mydouble> subseq_ML(iscompat.size(),2);
-	// path_ML[i][j] is, for position i, the state of position i that maximizes the subsequence likelihood given the next position has state j = {Unimported,Imported}
-	Matrix<ImportationState> path_ML(iscompat.size(),2);
-	// Define an HKY85 emission probability matrix for Unimported sites
-	Matrix<mydouble> pemisUnimported;
-	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
-	// Define an HKY85 emission probability matrix for Imported sites
-	Matrix<mydouble> pemisImported;
-	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
-	// Recombination parameters
-	const double recrate = rho_over_theta*branch_length;
-	const double endrecrate = 1.0/mean_import_length;
-	const double totrecrate = recrate+endrecrate;	
-	// Equilibrium frequency of unimported and imported sites respectively
-	const double pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
-	// Define a transition probability matrix
-	Matrix<mydouble> ptrans(2,2,0.0);
-	// These probabilities do not change until (i==0)
-	ptrans[0][0] = (mydouble)(exp(-totrecrate)+pi[0]*(1-exp(-totrecrate)));
-	ptrans[0][1] = (mydouble)(pi[1]*(1-exp(-totrecrate)));
-	ptrans[1][1] = (mydouble)(exp(-totrecrate)+pi[1]*(1-exp(-totrecrate)));
-	ptrans[1][0] = (mydouble)(pi[0]*(1-exp(-totrecrate)));
-	// Beginning at the last variable site, calculate the subsequence maximum likelihood
-	int i,j;
-	for(i=iscompat.size()-1,j=ipat.size();i>=0;i--) {
-		if(i==0) {
-			ptrans[0][0] = pi[0];
-			ptrans[1][0] = pi[0];
-			ptrans[0][1] = pi[1];
-			ptrans[1][1] = pi[1];
-		}
-		// If the previous position's state (leftwards) is j, what is the maximum likelihood of the subsequence from the current position to the last (rightwards)?
-		// And what is the state k of the position that achieves that maximum value?
-		mydouble UU,UI,IU,II;
-		if(iscompat[i]) {
-			j--;
-			if(j<0) {
-				stringstream errTxt;
-				errTxt << "maximum_likelihood_ClonalFrame_branch_allsites(): internal inconsistency in tracking informative sites";
-				error(errTxt.str().c_str());
-			}
-			Nucleotide dec = node_nuc[dec_id][ipat[j]];
-			Nucleotide anc = node_nuc[anc_id][ipat[j]];
-			if(i<iscompat.size()-1) {
-				UU = ptrans[0][0]*pemisUnimported[anc][dec]*subseq_ML[i+1][0];
-				UI = ptrans[0][1]*  pemisImported[anc][dec]*subseq_ML[i+1][1];
-				IU = ptrans[1][0]*pemisUnimported[anc][dec]*subseq_ML[i+1][0];
-				II = ptrans[1][1]*  pemisImported[anc][dec]*subseq_ML[i+1][1];
-			} else {
-				UU = ptrans[0][0]*pemisUnimported[anc][dec];
-				UI = ptrans[0][1]*  pemisImported[anc][dec];
-				IU = ptrans[1][0]*pemisUnimported[anc][dec];
-				II = ptrans[1][1]*  pemisImported[anc][dec];
-			}					
-		} else {
-			if(i<iscompat.size()-1) {
-				UU = ptrans[0][0]*subseq_ML[i+1][0];
-				UI = ptrans[0][1]*subseq_ML[i+1][1];
-				IU = ptrans[1][0]*subseq_ML[i+1][0];
-				II = ptrans[1][1]*subseq_ML[i+1][1];
-			} else {
-				UU = ptrans[0][0];
-				UI = ptrans[0][1];
-				IU = ptrans[1][0];
-				II = ptrans[1][1];
-			}					
-		}
-		subseq_ML[i][0] = (UU>=UI) ? UU : UI;
-		path_ML[i][0]   = (UU>=UI) ? Unimported : Imported;
-		subseq_ML[i][1] = (IU>=II) ? IU : II;
-		path_ML[i][1]   = (IU>=II) ? Unimported : Imported;
-	}
-	// Beginning at the first variable site, identify the most likely path
-	// Sanity check
-	if(path_ML[0][0]!=path_ML[0][1]) {
-		stringstream errTxt;
-		errTxt << "maximum_likelihood_ClonalFrame_branch_allsites(): internal inconsistency when choosing the first importation state in the best path";
-		error(errTxt.str().c_str());
-	}
-	is_imported[0] = path_ML[0][0];
-	ML = subseq_ML[0][0];
-	for(i=1;i<iscompat.size();i++) {
-		const int prev = is_imported[i-1];
-		is_imported[i] = path_ML[i][prev];
-	}
-	
-	return ML;
-}
-
-mydouble maximum_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported) {
-	mydouble ML(0.0);
-	// Store the positions of compatible sites
-	vector<double> position(0);
-	int i;
-	for(i=0;i<iscompat.size();i++) {
-		if(iscompat[i]) {
-			position.push_back((double)i);
-		}
-	}
-	return maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported);
-}
-
-mydouble maximum_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported) {
-	mydouble ML(0.0);
-	const int npos = position.size();
-	is_imported = vector<ImportationState>(npos,Unimported);
-	// subseq_ML[i][j] is, for position i, the subsequence maximum likelihood given the next position has state j = {Unimported,Imported}
-	Matrix<mydouble> subseq_ML(npos,2);
-	// path_ML[i][j] is, for position i, the state of position i that maximizes the subsequence likelihood given the next position has state j = {Unimported,Imported}
-	Matrix<ImportationState> path_ML(npos,2);
-	// Define an HKY85 emission probability matrix for Unimported sites
-	Matrix<mydouble> pemisUnimported;
-	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
-	// Define an HKY85 emission probability matrix for Imported sites
-	Matrix<mydouble> pemisImported;
-	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
-	// Recombination parameters
-	const double recrate = rho_over_theta*branch_length;
-	const double endrecrate = 1.0/mean_import_length;
-	const double totrecrate = recrate+endrecrate;	
-	// Equilibrium frequency of unimported and imported sites respectively
-	const double pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
-	// Define a transition probability matrix
-	Matrix<mydouble> ptrans(2,2,0.0);
-	// Beginning at the last variable site, calculate the subsequence maximum likelihood
-	int i;
-	for(i=npos-1;i>=0;i--) {
-		if(i>0) {
-			const double expterm = exp(-totrecrate*(position[i]-position[i-1]));
-			ptrans[0][0] = (mydouble)(expterm+pi[0]*(1-expterm));
-			ptrans[0][1] = (mydouble)(pi[1]*(1-expterm));
-			ptrans[1][1] = (mydouble)(expterm+pi[1]*(1-expterm));
-			ptrans[1][0] = (mydouble)(pi[0]*(1-expterm));
-		} else {
-			ptrans[0][0] = pi[0];
-			ptrans[1][0] = pi[0];
-			ptrans[0][1] = pi[1];
-			ptrans[1][1] = pi[1];
-		}
-		Nucleotide dec = node_nuc[dec_id][ipat[i]];
-		Nucleotide anc = node_nuc[anc_id][ipat[i]];
-		// If the previous position's state (leftwards) is j, what is the maximum likelihood of the subsequence from the current position to the last (rightwards)?
-		// And what is the state k of the position that achieves that maximum value?
-		mydouble UU,UI,IU,II;
-		if(i<npos-1) {
-			UU = ptrans[0][0]*pemisUnimported[anc][dec]*subseq_ML[i+1][0];
-			UI = ptrans[0][1]*  pemisImported[anc][dec]*subseq_ML[i+1][1];
-			IU = ptrans[1][0]*pemisUnimported[anc][dec]*subseq_ML[i+1][0];
-			II = ptrans[1][1]*  pemisImported[anc][dec]*subseq_ML[i+1][1];
-		} else {
-			UU = ptrans[0][0]*pemisUnimported[anc][dec];
-			UI = ptrans[0][1]*  pemisImported[anc][dec];
-			IU = ptrans[1][0]*pemisUnimported[anc][dec];
-			II = ptrans[1][1]*  pemisImported[anc][dec];
-		}
-		subseq_ML[i][0] = (UU>=UI) ? UU : UI;
-		path_ML[i][0]   = (UU>=UI) ? Unimported : Imported;
-		subseq_ML[i][1] = (IU>=II) ? IU : II;
-		path_ML[i][1]   = (IU>=II) ? Unimported : Imported;
-	}
-	// Beginning at the first variable site, identify the most likely path
-	// Sanity check
-	if(path_ML[0][0]!=path_ML[0][1]) {
-		stringstream errTxt;
-		errTxt << "maximum_likelihood_ClonalFrame_branch(): internal inconsistency when choosing the first importation state in the best path";
-		error(errTxt.str().c_str());
-	}
-	is_imported[0] = path_ML[0][0];
-	ML = subseq_ML[0][0];
-	for(i=1;i<npos;i++) {
-		const int prev = is_imported[i-1];
-		is_imported[i] = path_ML[i][prev];
-	}
-	
-	return ML;
-}
-
-double marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence) {
-	// Force the mydouble version of the function to be used (defined below)
-	mydouble ret = mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence);
-	return ret.LOG();
-	// Store the positions of compatible sites
-	vector<double> position(0);
-	int i,npos=0;
-	for(i=0;i<iscompat.size();i++) {
-		if(iscompat[i]) {
-			position.push_back((double)i);
-			++npos;
-		}
-	}
-	// Define an HKY85 emission probability matrix for Unimported sites
-	Matrix<double> pemisUnimported;
-	pemisUnimported = dcompute_HKY85_ptrans(branch_length,kappa,pinuc);
-	// Define an HKY85 emission probability matrix for Imported sites
-	Matrix<double> pemisImported;
-	pemisImported = dcompute_HKY85_ptrans(import_divergence,kappa,pinuc);
-	// Recombination parameters
-	const double recrate = rho_over_theta*branch_length;
-	const double endrecrate = 1.0/mean_import_length;
-	const double totrecrate = recrate+endrecrate;	
-	// Storage
-	double aprev[2];
-	double a[2];
-	// Use these factorizations to avoid under/overflow
-	const double ftr = 1.0;
-	double sumlogsuma = 0.0;
-	// Equilibrium frequency of unimported and imported sites respectively
-	const double pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
-	// Beginning at the first variable site, calculate the subsequence marginal likelihood
-	for(i=0;i<npos;i++) {
-		Nucleotide dec = node_nuc[dec_id][ipat[i]];
-		Nucleotide anc = node_nuc[anc_id][ipat[i]];
-		if(i==0) {
-			a[0] = pi[0]*pemisUnimported[anc][dec];
-			a[1] = pi[1]*  pemisImported[anc][dec];
-		} else {
-			aprev[0] = a[0];
-			aprev[1] = a[1];
-			const double sumaprev = aprev[0]+aprev[1];
-			sumlogsuma += log(sumaprev);
-			const double prnotrans = exp(-totrecrate*(position[i]-position[i-1]));
-			const double prtrans = 1.0-prnotrans;
-			a[0] = (aprev[0]/sumaprev*prnotrans+pi[0]*prtrans)*pemisUnimported[anc][dec];
-			a[1] = (aprev[1]/sumaprev*prnotrans+pi[1]*prtrans)*  pemisImported[anc][dec];
-		}
-	}
-	// Output
-	const double loglik = log(a[0]+a[1])+sumlogsuma-(double)npos*log(ftr);
-	return loglik;
-}
-
-mydouble mydouble_marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence) {
-	// Store the positions of compatible sites
-	vector<double> position(0);
-	int i;
-	for(i=0;i<iscompat.size();i++) {
-		if(iscompat[i]) {
-			position.push_back((double)i);
-		}
-	}
-	return mydouble_marginal_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence);
-}
-	
-mydouble mydouble_marginal_likelihood_ClonalFrame_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence) {
-	const int npos = position.size();
-	// Define an HKY85 emission probability matrix for Unimported sites
-	Matrix<mydouble> pemisUnimported;
-	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
-	// Define an HKY85 emission probability matrix for Imported sites
-	Matrix<mydouble> pemisImported;
-	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
-	// Recombination parameters
-	const double recrate = rho_over_theta*branch_length;
-	const double endrecrate = 1.0/mean_import_length;
-	const double totrecrate = recrate+endrecrate;	
-	// Storage
-	mydouble aprev[2];
-	mydouble a[2];
-	// Equilibrium frequency of unimported and imported sites respectively
-	const mydouble pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
-	// Beginning at the first variable site, calculate the subsequence marginal likelihood
-	int i;
-	for(i=0;i<npos;i++) {
-		Nucleotide dec = node_nuc[dec_id][ipat[i]];
-		Nucleotide anc = node_nuc[anc_id][ipat[i]];
-		if(i==0) {
-			a[0] = pi[0]*pemisUnimported[anc][dec];
-			a[1] = pi[1]*  pemisImported[anc][dec];
-		} else {
-			aprev[0] = a[0];
-			aprev[1] = a[1];
-			const mydouble sumaprev = aprev[0]+aprev[1];
-			mydouble prnotrans;
-			prnotrans.setlog(-totrecrate*(position[i]-position[i-1]));
-			const mydouble prtrans = mydouble(1.0)-prnotrans;
-			a[0] = (aprev[0]*prnotrans+sumaprev*pi[0]*prtrans)*pemisUnimported[anc][dec];
-			a[1] = (aprev[1]*prnotrans+sumaprev*pi[1]*prtrans)*  pemisImported[anc][dec];
-		}
-	}
-	// Output
-	const mydouble ML = (a[0]+a[1]);
-	return ML;
-}
-
 mydouble likelihood_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<int> &pat1, const vector<int> &cpat, const double kappa, const vector<double> &pinuc, const double branch_length) {
 	mydouble ML(1.0);
 	const int npat = pat1.size();
@@ -3716,369 +1881,97 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 	}
 }
 
-// Given a path and ancestral states, calculate maximum likelihood estimates of M, nu, R and delta
-void maximum_likelihood_parameters_given_path(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<ImportationState> &is_imported, vector<double> &MLE) {
-	// Counters:
-	// Running total divergence at unimported, imported sites
-	double mutU=0.0, mutI=0.0;
-	// Running total number of transitions *to* unimported, imported regions
-	double numU=0.0, numI=0.0;
-	// Running total number of unimported, imported sites
-	double nsiU=0.0, nsiI=0.0;
-	// Running total length of unimported, imported regions
-	double lenU=0.0, lenI=0.0;
-	// Process the first site
-	ImportationState last_site = is_imported[0];
-	Nucleotide dec = node_nuc[dec_id][ipat[0]];
-	Nucleotide anc = node_nuc[anc_id][ipat[0]];
-	if(last_site==Unimported && anc!=dec) {
-		mutU += 1.0;
-		nsiU += 1.0;
-	} else if(last_site==Imported && anc!=dec) {
-		mutI += 1.0;
-		nsiI += 1.0;
-	}
-	// Iterate over sites
-	int i;
-	for(i=1;i<position.size();i++) {
-		ImportationState this_site = is_imported[i];
-		const double t = position[i]-position[i-1];
-		if(t<1000.0) {
-			if(last_site==Unimported && this_site==Unimported) {
-				lenU += t;
-			} else if(last_site==Unimported && this_site==Imported) {
-				numI += 1.0;
-				lenU += t;
-			} else if(last_site==Imported && this_site==Unimported) {
-				numU += 1.0;
-				lenI += t;
-			} else {
-				lenI += t;
-			}
+mydouble maximum_likelihood_ClonalFrame_branch_allsites(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported) {
+	mydouble ML(0.0);
+	// Store the positions of **all** sites
+	is_imported = vector<ImportationState>(iscompat.size(),Unimported);
+	// subseq_ML[i][j] is, for position i, the subsequence maximum likelihood given the next position has state j = {Unimported,Imported}
+	Matrix<mydouble> subseq_ML(iscompat.size(),2);
+	// path_ML[i][j] is, for position i, the state of position i that maximizes the subsequence likelihood given the next position has state j = {Unimported,Imported}
+	Matrix<ImportationState> path_ML(iscompat.size(),2);
+	// Define an HKY85 emission probability matrix for Unimported sites
+	Matrix<mydouble> pemisUnimported;
+	pemisUnimported = compute_HKY85_ptrans(branch_length,kappa,pinuc);
+	// Define an HKY85 emission probability matrix for Imported sites
+	Matrix<mydouble> pemisImported;
+	pemisImported = compute_HKY85_ptrans(import_divergence,kappa,pinuc);
+	// Recombination parameters
+	const double recrate = rho_over_theta*branch_length;
+	const double endrecrate = 1.0/mean_import_length;
+	const double totrecrate = recrate+endrecrate;	
+	// Equilibrium frequency of unimported and imported sites respectively
+	const double pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
+	// Define a transition probability matrix
+	Matrix<mydouble> ptrans(2,2,0.0);
+	// These probabilities do not change until (i==0)
+	ptrans[0][0] = (mydouble)(exp(-totrecrate)+pi[0]*(1-exp(-totrecrate)));
+	ptrans[0][1] = (mydouble)(pi[1]*(1-exp(-totrecrate)));
+	ptrans[1][1] = (mydouble)(exp(-totrecrate)+pi[1]*(1-exp(-totrecrate)));
+	ptrans[1][0] = (mydouble)(pi[0]*(1-exp(-totrecrate)));
+	// Beginning at the last variable site, calculate the subsequence maximum likelihood
+	int i,j;
+	for(i=iscompat.size()-1,j=ipat.size();i>=0;i--) {
+		if(i==0) {
+			ptrans[0][0] = pi[0];
+			ptrans[1][0] = pi[0];
+			ptrans[0][1] = pi[1];
+			ptrans[1][1] = pi[1];
 		}
-		last_site = this_site;
-		dec = node_nuc[dec_id][ipat[i]];
-		anc = node_nuc[anc_id][ipat[i]];
-		if(last_site==Unimported && anc==dec) {
-			nsiU += 1.0;
-		} else if(last_site==Unimported && anc!=dec) {
-			mutU += 1.0;
-			nsiU += 1.0;
-		} else if(last_site==Imported && anc==dec) {
-			nsiI += 1.0;
-		} else if(last_site==Imported && anc!=dec) {
-			mutI += 1.0;
-			nsiI += 1.0;
-		}
-	}
-	// Calculate (approximate) MLEs. Note these are approximate because they assume no more than a single event (substitution or transition) per observation.
-	MLE = vector<double>(4);
-	// Divergence at unimported sites (M)
-	MLE[0] = MIN(MAX(1.0e-7,mutU/nsiU),1.0-1.0e-7);
-	// Divergence at imported sites (nu)
-	MLE[1] = MIN(MAX(1.0e-7,mutI/nsiI),1.0-1.0e-7);
-	// Rate of recombination per unimported site (R)
-	MLE[2] = MIN(MAX(1.0e-7,numI/lenU),1.0-1.0e-7);
-	// Rate of termination of imported regions (1/delta)
-	MLE[3] = MIN(MAX(1.0e-7,numU/lenI),1.0-1.0e-7);
-	// Apply approximate corrections for multiple hits
-	for(i=0;i<4;i++) {
-		MLE[i] = -log(1-MLE[i]);
-	}
-}
-
-double Viterbi_training(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, double &branch_length, double &rho_over_theta, double &mean_import_length, double &import_divergence, vector<ImportationState> &is_imported, int &neval) {
-	// Store the positions of compatible sites
-	vector<double> position(0);
-	int i;
-	for(i=0;i<iscompat.size();i++) {
+		// If the previous position's state (leftwards) is j, what is the maximum likelihood of the subsequence from the current position to the last (rightwards)?
+		// And what is the state k of the position that achieves that maximum value?
+		mydouble UU,UI,IU,II;
 		if(iscompat[i]) {
-			position.push_back((double)i);
-		}
-	}
-	// Calculate the maximum likelihood importation state vector by the Viterbi algorithm
-	double ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported).LOG();
-	++neval;
-	// Iterate until the maximum likelihood improves by less than some threshold
-	const int maxit = 200;
-	const double threshold = 1.0e-6;
-	vector<double> MLE;
-	for(i=0;i<maxit;i++) {
-		// Calculate (approximate) MLEs of the model parameters given the Viterbi path
-		maximum_likelihood_parameters_given_path(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,is_imported,MLE);
-		// Identify the model parameters
-		branch_length = MLE[0];
-		rho_over_theta = MLE[2]/MLE[0];
-		mean_import_length = 1.0/MLE[3];
-		import_divergence = MLE[1];
-		// Update the likelihood
-		const double new_ML = maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported).LOG();
-		++neval;
-		// Test for no further improvement
-		if((new_ML-ML)<threshold) {
-			break;
-		} else if(new_ML<ML) {
-			//warning("Likelihood got worse in viterbi_training");
-		}
-		// Otherwise continue
-		ML = new_ML;
-	}
-	return ML;
-}
-
-// Given a path and ancestral states, calculate Bayesian estimates of M, nu, R and delta
-void maximum_likelihood_parameters_given_paths(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector< vector<ImportationState> > &is_imported, vector<double> &full_param, vector<double> &posterior_a) {
-	full_param = vector<double>(3+informative.size());
-	posterior_a = vector<double>(3+informative.size());
-	// Indicator: use posterior mean or mode estimates?
-	const bool use_mode = false;
-	// Counters:
-	// Running total divergence at imported sites
-	double mutI=0.0;
-	// Running total number of transitions *to* unimported, imported regions
-	double numU=0.0, numI=0.0;
-	// Running total number of imported sites
-	double nsiI=0.0;
-	// Running total length of unimported, imported regions
-	double lenU=0.0, lenI=0.0;
-	int br;
-	for(br=0;br<informative.size();br++) {
-		if(informative[br]) {
-			// Running total divergence at unimported per branch
-			double mutU_br=0.0;
-			// Running total number of transitions *to* imported regions per branch
-			double numI_br=0.0;
-			// Running total number of unimported sites per branch
-			double nsiU_br=0.0;
-			// Running total length of unimported regions per branch
-			double lenU_br=0.0;
-			// Process the first site
-			ImportationState last_site = is_imported[br][0];
-			const int dec_id = tree.node[br].id;
-			const int anc_id = tree.node[br].ancestor->id;
-			Nucleotide dec = node_nuc[dec_id][ipat[0]];
-			Nucleotide anc = node_nuc[anc_id][ipat[0]];
-			if(last_site==Unimported && anc!=dec) {
-				mutU_br += 1.0;
-				nsiU_br += 1.0;
-			} else if(last_site==Imported && anc!=dec) {
-				mutI += 1.0;
-				nsiI += 1.0;
+			j--;
+			if(j<0) {
+				stringstream errTxt;
+				errTxt << "maximum_likelihood_ClonalFrame_branch_allsites(): internal inconsistency in tracking informative sites";
+				error(errTxt.str().c_str());
 			}
-			// Iterate over sites
-			int i;
-			for(i=1;i<position.size();i++) {
-				ImportationState this_site = is_imported[br][i];
-				const double t = position[i]-position[i-1];
-				if(t<1000.0) {
-					if(last_site==Unimported && this_site==Unimported) {
-						lenU_br += t;
-					} else if(last_site==Unimported && this_site==Imported) {
-						numI_br += 1.0;
-						lenU_br += t;
-					} else if(last_site==Imported && this_site==Unimported) {
-						numU += 1.0;
-						lenI += t;
-					} else {
-						lenI += t;
-					}
-				}
-				last_site = this_site;
-				dec = node_nuc[dec_id][ipat[i]];
-				anc = node_nuc[anc_id][ipat[i]];
-				if(last_site==Unimported && anc==dec) {
-					nsiU_br += 1.0;
-				} else if(last_site==Unimported && anc!=dec) {
-					mutU_br += 1.0;
-					nsiU_br += 1.0;
-				} else if(last_site==Imported && anc==dec) {
-					nsiI += 1.0;
-				} else if(last_site==Imported && anc!=dec) {
-					mutI += 1.0;
-					nsiI += 1.0;
-				}
-			}
-			// Calculate Bayesian estimate of the per-branch mutation rate
-			// This is the mode or mean of a gamma posterior
-			full_param[3+br] = (use_mode) ? (prior_a[3]+mutU_br-1.0)/(prior_b[3]+nsiU_br) : (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
-			posterior_a[3+br] = (use_mode) ? (prior_a[3]+mutU_br-1.0) : (prior_a[3]+mutU_br);
-			// Update the parameters needed to estimate rho_over_theta across branches
-			numI += numI_br;
-			lenU += full_param[3+br]*lenU_br;
+			Nucleotide dec = node_nuc[dec_id][ipat[j]];
+			Nucleotide anc = node_nuc[anc_id][ipat[j]];
+			if(i<iscompat.size()-1) {
+				UU = ptrans[0][0]*pemisUnimported[anc][dec]*subseq_ML[i+1][0];
+				UI = ptrans[0][1]*  pemisImported[anc][dec]*subseq_ML[i+1][1];
+				IU = ptrans[1][0]*pemisUnimported[anc][dec]*subseq_ML[i+1][0];
+				II = ptrans[1][1]*  pemisImported[anc][dec]*subseq_ML[i+1][1];
+			} else {
+				UU = ptrans[0][0]*pemisUnimported[anc][dec];
+				UI = ptrans[0][1]*  pemisImported[anc][dec];
+				IU = ptrans[1][0]*pemisUnimported[anc][dec];
+				II = ptrans[1][1]*  pemisImported[anc][dec];
+			}					
+		} else {
+			if(i<iscompat.size()-1) {
+				UU = ptrans[0][0]*subseq_ML[i+1][0];
+				UI = ptrans[0][1]*subseq_ML[i+1][1];
+				IU = ptrans[1][0]*subseq_ML[i+1][0];
+				II = ptrans[1][1]*subseq_ML[i+1][1];
+			} else {
+				UU = ptrans[0][0];
+				UI = ptrans[0][1];
+				IU = ptrans[1][0];
+				II = ptrans[1][1];
+			}					
 		}
+		subseq_ML[i][0] = (UU>=UI) ? UU : UI;
+		path_ML[i][0]   = (UU>=UI) ? Unimported : Imported;
+		subseq_ML[i][1] = (IU>=II) ? IU : II;
+		path_ML[i][1]   = (IU>=II) ? Unimported : Imported;
 	}
-	// Calculate MAP estimate of rho_over_theta
-	full_param[0] = (use_mode) ? (prior_a[0]+numI-1.0)/(prior_b[0]+lenU) : (prior_a[0]+numI)/(prior_b[0]+lenU);
-	posterior_a[0] = (use_mode) ? (prior_a[0]+numI-1.0) : (prior_a[0]+numI);
-	// Calculate MAP estimate of mean_import_length (note this parameter is the reciprocal of the termination rate)
-	full_param[1] = (use_mode) ? (prior_b[1]+lenI)/(prior_a[1]+numU-1.0) : (prior_b[1]+lenI)/(prior_a[1]+numU);
-	posterior_a[1] = (use_mode) ? (prior_a[1]+numU-1.0) : (prior_a[1]+numU);
-	// Calculate MAP estimate of import_divergence
-	full_param[2] = (use_mode) ? (prior_a[2]+mutI-1.0)/(prior_b[2]+nsiI) : (prior_a[2]+mutI)/(prior_b[2]+nsiI);
-	posterior_a[2] = (use_mode) ? (prior_a[2]+mutI-1.0) : (prior_a[2]+mutI);
-}
-
-double Viterbi_training(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval, const bool coutput) {
-	int i;
-	// Initial parameters
-	double rho_over_theta = full_param[0];
-	double mean_import_length = full_param[1];
-	double import_divergence = full_param[2];
-	// Calculate the maximum likelihood importation state vector by the Viterbi algorithm
-	// Include the effect of the prior
-	double ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
-	for(i=0;i<informative.size();i++) {
-		if(informative[i]) {
-			ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
-			const int dec_id = tree.node[i].id;
-			const int anc_id = tree.node[i].ancestor->id;
-			const double branch_length = full_param[3+i];
-			ML += maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]).LOG();
-		}
+	// Beginning at the first variable site, identify the most likely path
+	// Sanity check
+	if(path_ML[0][0]!=path_ML[0][1]) {
+		stringstream errTxt;
+		errTxt << "maximum_likelihood_ClonalFrame_branch_allsites(): internal inconsistency when choosing the first importation state in the best path";
+		error(errTxt.str().c_str());
 	}
-	++neval;
-	if(coutput) {
-		cout << "params =";
-		for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-		cout << " ML = " << ML << endl;
+	is_imported[0] = path_ML[0][0];
+	ML = subseq_ML[0][0];
+	for(i=1;i<iscompat.size();i++) {
+		const int prev = is_imported[i-1];
+		is_imported[i] = path_ML[i][prev];
 	}
-	// Iterate until the maximum likelihood improves by less than some threshold
-	const int maxit = 200;
-	const double threshold = 1.0e-6;
-	vector<double> MLE;
-	int it;
-	for(it=0;it<maxit;it++) {
-		// Calculate Bayesian estimates of the model parameters given the Viterbi path
-		maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
-		// Identify the model parameters
-		rho_over_theta = full_param[0];
-		mean_import_length = full_param[1];
-		import_divergence = full_param[2];
-		// Update the likelihood
-		double new_ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
-		for(i=0;i<informative.size();i++) {
-			if(informative[i]) {
-				new_ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
-				const int dec_id = tree.node[i].id;
-				const int anc_id = tree.node[i].ancestor->id;
-				const double branch_length = full_param[3+i];
-				new_ML += maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]).LOG();
-			}
-		}
-		++neval;
-		if(coutput) {
-			cout << "params =";
-			for(int j=0;j<full_param.size();j++) cout << " " << full_param[j];
-			cout << " ML = " << new_ML << endl;
-		}
-		// Test for no further improvement
-		if(new_ML-ML< -threshold) {
-			cout << "Old likelihood = " << ML << " new likelihood = " << new_ML << endl;
-			//warning("Likelihood got worse in viterbi_training");
-		}
-		if((new_ML-ML)<threshold) {
-			break;
-		}
-		// Otherwise continue
-		ML = new_ML;
-	}
-	if(it==maxit) warning("Viterbi_training(): maximum number of iterations exceeded");
-	// Once more for debugging purposes
-//	maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
-	return ML;
-}
-
-double gamma_invcdf(const double p, const double alph, const double bet) {
-	if(p<0. || p>1.) error("gamma_invcdf(): bad p");
-	return invgammp(p,alph)/bet;
-}
-
-// Returns x such that P(a,x)=p for an argument p between 0 and 1
-double invgammp(const double p, const double a) {
-	int j;
-	double x,err,t,u,pp,lna1,afac,a1=a-1,gln;
-	const double EPS=1.e-8;
-	gln = lgamma(a);
-	if(a<=0.) error("invgammp(): a must be pos in invgammp");
-	if(p>=1.) return MAX(100.,a+100.*sqrt(a));
-	if(p<=0.) return 0.0;
-	if(a>1.) {
-		lna1 = log(a1);
-		afac = exp(a1*(lna1-1.)-gln);
-		pp = (p<0.5) ? p : 1.-p;
-		t = sqrt(-2.*log(pp));
-		x = (2.30753+t*0.27061)/(1.+t*(0.99229+t*0.04481))-t;
-		if(p<0.5) x = -x;
-		x = MAX(1.e-3,a*pow(1.-1./(9.*a)-x/(3.*sqrt(a)),3));
-	} else {
-		t = 1.0 - a*(0.253+a*0.12);
-		if(p<t) x = pow(p/t,1./a);
-		else x = 1.-log(1.-(p-t)/(1.-t));
-	}
-	for(j=0;j<12;j++) {
-		if(x<=0.0) return 0.0;
-		err = gammp(a,x) - p;
-		if(a>1.) t = afac*exp(-(x-a1)+a1*(log(x)-lna1));
-		else t = exp(-x+a1*log(x)-gln);
-		u = err/t;
-		x -= (t=u/(1.-0.5*MIN(1.,u*((a-1.)/x - 1))));
-		if(x<=0.) x = 0.5*(x+t);
-		if(fabs(t) < EPS*x) break;
-	}
-	return x;
-}
-
-// Viterbi training with respect to the M parameter only
-double ViterbiM(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, vector< vector<ImportationState> > &is_imported, int &neval) {
-	int i;
-	// Initial parameters
-	const double rho_over_theta = full_param[0];
-	const double mean_import_length = full_param[1];
-	const double import_divergence = full_param[2];
-	// Calculate the maximum likelihood importation state vector by the Viterbi algorithm
-	double ML = 0;
-	for(i=0;i<informative.size();i++) {
-		if(informative[i]) {
-			const int dec_id = tree.node[i].id;
-			const int anc_id = tree.node[i].ancestor->id;
-			const double branch_length = full_param[3+i];
-			ML += maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]).LOG();
-		}
-	}
-
-	// Iterate until the maximum likelihood improves by less than some threshold
-	const int maxit = 4;	// *** NB:- few iterations anticipated since only a single parameter is updated independently per branch ***
-	const double threshold = 1.0e-6;
-
-	for(i=0;i<maxit;i++) {
-		// Calculate Bayesian estimates of the model parameters given the Viterbi path
-		maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
-		// *** Revert the main model parameters (i.e. do not update these, only M) ***
-		full_param[0] = rho_over_theta;
-		full_param[1] =	mean_import_length;
-		full_param[2] = import_divergence;
-		// Update the likelihood
-		double new_ML = 0.0;
-		for(i=0;i<informative.size();i++) {
-			if(informative[i]) {
-				const int dec_id = tree.node[i].id;
-				const int anc_id = tree.node[i].ancestor->id;
-				const double branch_length = full_param[3+i];
-				new_ML += maximum_likelihood_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]).LOG();
-			}
-		}
-		// Test for no further improvement
-		if((new_ML-ML)<threshold) {
-			break;
-		} else if(new_ML<ML) {
-			//warning("Likelihood got worse in ViterbiM");
-		}
-		// Otherwise continue
-		ML = new_ML;
-	}
-	if(i==maxit) warning("ViterbiM(): maxit hit");
-	// Once more for debugging purposes
-//	maximum_likelihood_parameters_given_paths(tree,node_nuc,position,ipat,kappa,pinuc,informative,prior_a,prior_b,is_imported,full_param,posterior_a);
+	
 	return ML;
 }
 
@@ -4101,7 +1994,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 	denEmis = vector<double>(2,0.0);
 	numTrans = Matrix<double>(2,2,0.0);
 	denTrans = vector<double>(2,0.0);
-//	cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+	//	cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
 	const double endrecrate = 1.0/mean_import_length;
@@ -4176,12 +2069,12 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			const mydouble sumbnext = prtrans*(pi[0]*pemisU*bnext[0] + pi[1]*pemisI*bnext[1]);
 			b[0] = prnotrans*pemisU*bnext[0]+sumbnext;
 			b[1] = prnotrans*pemisI*bnext[1]+sumbnext;
-
+			
 			// Update the expected number of transitions and emissions
 			// Calculate the marginal probabilities that the hidden state is Unimported or Imported
-//			if(fabs((A[i][0]*b[0]+A[i][1]*b[1]).LOG()-ML.LOG())>1e-6) {
-//				cout << ML.LOG() << "\t" << (A[i][0]*b[0]+A[i][1]*b[1]).LOG() << endl;
-//			}
+			//			if(fabs((A[i][0]*b[0]+A[i][1]*b[1]).LOG()-ML.LOG())>1e-6) {
+			//				cout << ML.LOG() << "\t" << (A[i][0]*b[0]+A[i][1]*b[1]).LOG() << endl;
+			//			}
 			mydouble pU = A[i][0]*b[0];
 			mydouble pI = A[i][1]*b[1];
 			// NB:- pU+pI should always equal ML but just in case it introduces small errors
@@ -4211,7 +2104,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 						// Probability of transition from j to k given the data equals the joint likelihood of the data and transition from j to k, divided by marginal likelihood of the data
 						if(istrans) {
 							numTrans[j][k] += (A[i][j]*prtrans*pi[k]*pemis[k]*bnext[k]/MLi).todouble();		// Note the use of bnext, not b
-//							if(j==0 && k==1) cout << "pos = " << i << " numTrans[0][1] = " << numTrans[j][k].todouble() << endl; //(A[i][j]*ptrans[istrans]*pemis[k]*bnext[k]/ML).LOG() << endl;
+							//							if(j==0 && k==1) cout << "pos = " << i << " numTrans[0][1] = " << numTrans[j][k].todouble() << endl; //(A[i][j]*ptrans[istrans]*pemis[k]*bnext[k]/ML).LOG() << endl;
 						} else {
 							numTrans[j][k] += (A[i][j]*(prnotrans+prtrans*pi[k])*pemis[k]*bnext[k]/MLi).todouble();		// Note the use of bnext, not b
 						}
@@ -4223,7 +2116,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 		}
 	}
 	// Return the marginal likelihood
-//	cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+	//	cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
 	return ML;
 }
 
@@ -4496,8 +2389,8 @@ void forward_backward_simulate_expectations_ClonalFrame_branch(const int dec_id,
 }
 
 Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, int &neval, const bool coutput, const int nsim) {
-  // Storage for output: for each parameter, simulated values
-  Matrix<double> post(3,nsim,0.0);
+	// Storage for output: for each parameter, simulated values
+	Matrix<double> post(3,nsim,0.0);
 	// Storage for the simulated counts of transitions and emissions
 	vector<double> /*mutU(nsim,0.0), nsiU(nsim,0.0),*/ mutI(nsim,0.0), nsiI(nsim,0.0);
 	vector<double> numUI(nsim,0.0), lenU(nsim,0.0), numIU(nsim,0.0), lenI(nsim,0.0);
@@ -4523,11 +2416,11 @@ Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Ma
 				const double b = prior_b[3]+nsiU_br[sim];
 				const double sim_branch_length = ran.gamma(1.0/b,a);
 				numUI[sim] += numUI_br[sim];
-				 lenU[sim] += sim_branch_length*lenU_br[sim];
+				lenU[sim] += sim_branch_length*lenU_br[sim];
 				numIU[sim] += numIU_br[sim];
-				 lenI[sim] += lenI_br[sim];
-				 mutI[sim] += mutI_br[sim];
-				 nsiI[sim] += nsiI_br[sim];
+				lenI[sim] += lenI_br[sim];
+				mutI[sim] += mutI_br[sim];
+				nsiI[sim] += nsiI_br[sim];
 			}
 		}
 	}
@@ -4571,7 +2464,7 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 		if(informative[i]) {
 			// Include the effect of the prior (this is dubious - should instead compute loglikelihood of the pseudocounts)
 			ML += gamma_loglikelihood(full_param[i][0], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][1], prior_a[4], prior_b[4])
-				+ gamma_loglikelihood(full_param[i][2], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][3], prior_a[4], prior_b[4]);
+			+ gamma_loglikelihood(full_param[i][2], prior_a[4], prior_b[4]) + gamma_loglikelihood(full_param[i][3], prior_a[4], prior_b[4]);
 			const int dec_id = tree.node[i].id;
 			const int anc_id = tree.node[i].ancestor->id;
 			// Initial parameters
@@ -4589,11 +2482,11 @@ double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleot
 			lenU_br[i] = denTrans[0];
 			numU_br[i] = numTrans[1][0];
 			lenI_br[i] = denTrans[1];
-//			if(coutput) {
-//				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
-//				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
-//				cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
-//			}
+			//			if(coutput) {
+			//				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
+			//				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
+			//				cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
+			//			}
 		}
 	}
 	++neval;
