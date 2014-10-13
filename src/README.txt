@@ -14,7 +14,7 @@ likelihood algorithm implementing the ClonalFrame model that was described in:
     Inference of Bacterial Microevolution Using Multilocus Sequence Data
 	Xavier Didelot, and Daniel Falush. Genetics 175(3):1251-1266. 2007
 
-Syntax: ClonalFrameML newick_file fasta_file kappa output_file [OPTIONS]
+Syntax: ClonalFrameML newick_file fasta_file output_file [OPTIONS]
 
 newick_file  The tree specified in Newick format. It must be an unrooted bifurcating tree. All
              tips should be uniquely labelled and the internal nodes must not be labelled. Note that the
@@ -24,24 +24,8 @@ fasta_file   The nucleotide sequences specified in FASTA format, with labels exa
 			 the newick_file. The letter codes A, C, G and T are interpreted directly, U is converted
 			 to T, and N, -, ? and X are treated equivalently as ambiguity codes. No other codes are
 			 allowed.
-kappa        The transition:transversion ratio of the HKY85 model.
 output_file  The prefix for the output files, described below.
-
-The following options are available:
- -correct_branch_lengths        true (default) or false   Correct branch lengths using ClonalFrame model.
- -excess_divergence_model       true or false (default)   Use the 'excess divergence' model. Mandatory for two sequences.
- -ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases.
- -ignore_user_sites             sites_file                Ignore sites listed in whitespace-separated sites_file.
- -reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites.
- -use_incompatible_sites        true or false (default)   Use homoplasious and multiallelic sites to correct branch lengths.
- -brent_tolerance               tolerance (default .001)  Set the tolerance of the Brent routine.
- -powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine.
- -joint_branch_param            true or false (default)   Jointly optimize branch lengths and recombination parameters.
- -rho_per_branch                true or false (default)   Estimate recombination parameters separately for each branch.
- -rho_per_branch_no_lrt         true or false (default)   As above but suppress likelihood ratio test for recombination.
- -rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model.
- -show_progress                 true or false (default)   Output the progress of the maximum likelihood routines.
- -compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file.
+[OPTIONS]    Run ClonalFrameML with no arguments to see the options available.
 
 The program reports the empirical nucleotide frequencies and the joint log-likelihood of the reconstructed
 sequences for variable sites. Files are output with the following suffixes:

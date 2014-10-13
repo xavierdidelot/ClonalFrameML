@@ -15,9 +15,8 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with the myutils library. If not, see <http://www.gnu.org/licenses/>.
  *
- *  Parts of this code are taken from code in Numerical Recipes in C++
- *  WH Press, SA Teukolsky, WT Vetterling, BP Flannery (2002)
- *  from algorithms declared by them to be in the public domain.
+ *  Parts of this code are based on code in Numerical Recipes in C++
+ *  WH Press, SA Teukolsky, WT Vetterling, BP Flannery (2002).
  *
  */
 #ifndef _BRENT_MINIMISATION_
