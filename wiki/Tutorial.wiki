@@ -55,6 +55,80 @@ Rscript cfml_results.R output_prefix
 
 The result is a PDF file named `output_prefix.pdf`
 
+=ClonalFrame version 1 usage=
+=Example: standard model=
+
+Start by downloading the example files from [http://www.danielwilson.me.uk/files/cfml.tgz here]. Unzip on Mac/Linux as follows:
+
+{{{
+tar -xzvf cfml.tgz
+}}}
+
+The file contains the S. aureus FASTA file (Saureus.fasta), maximum likelihood tree (Saureus.phyML.newick), lists of core and non-core sites (Saureus.core-sites.txt and Saureus.non-core-sites.txt) and some R code (cfml_results_2.R).
+
+Run the standard `ClonalFrameML` analysis as follows. Note! This is a real-world example, and requires around 12 hours of run time.
+
+{{{
+./ClonalFrameML Saureus.phyML.newick Saureus.fasta example.output -kappa 4.967695 -emsim 100 -ignore_user_sites Saureus.non-core-sites.txt > example.log.txt
+}}}
+
+Note that the transition:transversion ratio of 4.967695 was estimated by PhyML. In this, the standard analysis, recombination parameters are shared by all branches, and the -emsim 100 option requests 100 pseudo-bootstrap replicates. The positions listed in the file specified by the -ignore_user_sites option lists any site that was not callable or present in all the genomes. These sites are treated as missing data, which is important since uncalled sites can cause artefactual clustering of substitutions.
+
+This analysis utilizes the default gamma priors, which are implemented as pseudocounts in the likelihood, and which can be modified using -prior_mean and -prior_sd. They specify the parameters in the following order: R/theta (relative rate of recombination to mutation), 1/delta (inverse mean DNA import length), nu (mean divergence of imported DNA) and mean branch length. The default values specify distributions with means of R/theta = 0.1, delta = 1000, nu = 0.1 and mean branch length of 0.0001. It may be advisable to change the latter to reflect the mean branch length in the PhyML tree. The default prior standard deviations equal the prior means. This produces priors that support values over roughly three orders of magnitude. Modest increases or decreases in prior_sd relative to prior_mean will be reflected by increases or decreases in the numbers of orders of magnitude over which the prior assigns reasonable support. It is not advisable to make prior_sd appreciably larger than prior_mean.
+
+Once the analysis has finished, a figure can be produced with an R script. The R script takes a list of the core sites (the complement of the non-core sites fed into ClonalFrameML):
+
+{{{
+Rscript cfml_results_2.R example.output core-sites.txt
+}}}
+
+This will generate a pdf similar to the figures in the paper.
+
+=Example: per-branch model=
+
+Run the `ClonalFrameML` analysis in which recombination parameters are estimated per branch as follows. Note! This is a real-world example, and requires around 12 hours of run time.
+
+{{{
+./ClonalFrameML Saureus.phyML.newick Saureus.fasta example2.output -kappa 4.967695 -em false -embranch true -embranch_dispersion 0.1 -ignore_user_sites Saureus.non-core-sites.txt -initial_values "0.141679 350.104 0.0147762" > example2.log.txt
+}}}
+
+This time -embranch is specified instead of -em. The -embranch_dispersion option specifies the constraint on the variability of recombination parameters among branches of the tree. It is on a scale of 0-1, with 0 being the most constrained (least dispersed). The -initial_values of R/theta, delta and nu can be set. It is advisable to run the simpler model first, and use the results to initialize the per-branch model. Again the R code can be used to generate a figure.
+
+=Full list of options=
+
+The options of `ClonalFrameML` are listed in full below:
+
+{{{
+Syntax: ClonalFrameML newick_file fasta_file output_file [OPTIONS]
+
+Options specifying the analysis type:
+-em                            true (default) or false   Estimate parameters by a Baum-Welch expectation maximization algorithm.
+-embranch                      true or false (default)   Estimate parameters for each branch using the EM algorithm.
+-rescale_no_recombination      true or false (default)   Rescale branch lengths for given sites with no recombination model.
+-imputation_only               true or false (default)   Perform only ancestral state reconstruction and imputation.
+Options affecting all analyses:
+-kappa                         value > 0 (default 2.0)   Relative rate of transitions vs transversions in substitution model
+-fasta_file_list               true or false (default)   Take fasta_file to be a white-space separated file list.
+-ignore_user_sites             sites_file                Ignore sites listed in whitespace-separated sites_file.
+-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases.
+-use_incompatible_sites        true (default) or false   Use homoplasious and multiallelic sites to correct branch lengths.
+-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines.
+-min_branch_length             value > 0 (default 1e-7)  Minimum branch length.
+-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites.
+Options affecting -em and -embranch:
+-prior_mean                    df "0.1 0.001 0.1 0.0001" Prior mean for R/theta, 1/delta, nu and M.
+-prior_sd                      df "0.1 0.001 0.1 0.0001" Prior standard deviation for R/theta, 1/delta, nu and M.
+-initial_values                default "0.1 0.001 0.05"  Initial values for R/theta, 1/delta and nu.
+-guess_initial_m               true (default) or false   Initialize M and nu jointly in the EM algorithms.
+-emsim                         value >= 0  (default 0)   Number of simulations to estimate uncertainty in the EM results.
+-embranch_dispersion           value > 0 (default .01)   Dispersion in parameters among branches in the -embranch model.
+Options affecting -rescale_no_recombination:
+-brent_tolerance               tolerance (default .001)  Set the tolerance of the Brent routine for -rescale_no_recombination.
+-powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine for -rescale_no_recombination.
+
+}}}
+
+=ClonalFrame version 0 usage (now superseded, see above)=
 =Example: standard model=
 
 Start by downloading the example files from [http://www.danielwilson.me.uk/files/cfml.tgz here]. Unzip on Mac/Linux as follows:
