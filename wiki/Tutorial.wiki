@@ -56,6 +56,8 @@ Rscript cfml_results.R output_prefix
 The result is a PDF file named `output_prefix.pdf`
 
 =ClonalFrame version 1 usage=
+*Note that some options and parameterizations have changed between version 0 and version 1, including specification of 1/delta (reciprocal mean DNA import length) in favour of delta. Please check command line arguments carefully.*
+
 =Example: standard model=
 
 Start by downloading the example files from [http://www.danielwilson.me.uk/files/cfml.tgz here]. Unzip on Mac/Linux as follows:
@@ -89,10 +91,10 @@ This will generate a pdf similar to the figures in the paper.
 Run the `ClonalFrameML` analysis in which recombination parameters are estimated per branch as follows. Note! This is a real-world example, and requires around 12 hours of run time.
 
 {{{
-./ClonalFrameML Saureus.phyML.newick Saureus.fasta example2.output -kappa 4.967695 -embranch true -embranch_dispersion 0.1 -ignore_user_sites Saureus.non-core-sites.txt -initial_values "0.141679 350.104 0.0147762" > example2.log.txt
+./ClonalFrameML Saureus.phyML.newick Saureus.fasta example2.output -kappa 4.967695 -embranch true -embranch_dispersion 0.1 -ignore_user_sites Saureus.non-core-sites.txt -initial_values "0.141679 0.002856294 0.0147762" > example2.log.txt
 }}}
 
-This time -embranch is specified instead of -em. The -embranch_dispersion option specifies the constraint on the variability of recombination parameters among branches of the tree. It is on a scale of 0-1, with 0 being the most constrained (least dispersed). The -initial_values of R/theta, delta and nu can be set. It is advisable to run the simpler model first, and use the results to initialize the per-branch model. Again the R code can be used to generate a figure.
+This time -embranch is specified instead of -em. The -embranch_dispersion option specifies the constraint on the variability of recombination parameters among branches of the tree. It is on a scale of 0-1, with 0 being the most constrained (least dispersed). The -initial_values of R/theta, 1/delta and nu can be set. It is advisable to run the simpler model first, and use the results to initialize the per-branch model. Again the R code can be used to generate a figure.
 
 =Full list of options=
 
