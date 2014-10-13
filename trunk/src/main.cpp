@@ -121,7 +121,8 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "powell_tolerance value out of range (0,0.1], default 0.001";
 		error(errTxt.str().c_str());
 	}
-	if(((int)RESCALE_NO_RECOMBINATION) + (int)EM +(int)EMBRANCH>1) {
+	if(!CORRECT_BRANCH_LENGTHS || EMBRANCH || RESCALE_NO_RECOMBINATION) EM = false;
+	if(((int)RESCALE_NO_RECOMBINATION + (int)EM +(int)EMBRANCH)>1) {
 		stringstream errTxt;
 		errTxt << "rescale_no_recombination, em and embranch are mutually incompatible";
 		error(errTxt.str().c_str());
@@ -488,7 +489,7 @@ int main (const int argc, const char* argv[]) {
 			param[0] = initial_values[0];
 			param[1] = 1.0/initial_values[1];
 			param[2] = initial_values[2];
-			param.push_back(1.0e-5);
+			param[3] = 1.0e-5;
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameBaumWelchRhoPerBranch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
