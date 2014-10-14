@@ -55,7 +55,7 @@ Rscript cfml_results.R output_prefix
 
 The result is a PDF file named `output_prefix.pdf`
 
-=ClonalFrame version 1 usage=
+=`ClonalFrameML` version 1 usage=
 *Note that some options and parameterizations have changed between version 0 and version 1, including specification of 1/delta (reciprocal mean DNA import length) in favour of delta. Please check command line arguments carefully.*
 
 =Example: standard model=
@@ -130,7 +130,7 @@ Options affecting -rescale_no_recombination:
 
 }}}
 
-=ClonalFrame version 0 usage (now superseded, see above)=
+=`ClonalFrameML` version 0 usage (now superseded, see above)=
 =Example: standard model=
 
 Start by downloading the example files from [http://www.danielwilson.me.uk/files/cfml.tgz here]. Unzip on Mac/Linux as follows:
