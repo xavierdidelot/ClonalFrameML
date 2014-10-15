@@ -47,7 +47,7 @@ This file contains the starting tree with all nodes labelled so that they can be
 
 =Graphical output=
 
-To produce a graphical representation of the `ClonalFrameML` output, use the following command:
+To produce a graphical representation of the `ClonalFrameML` output, use the following command. This requires R to be installed with the ape and phangorn packages.
 
 {{{
 Rscript cfml_results.R output_prefix
