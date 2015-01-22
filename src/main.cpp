@@ -24,7 +24,7 @@ int main (const int argc, const char* argv[]) {
 	// Output version number (There were 178 SVN revisions up to version 1.0)
 	cout << "ClonalFrameML version 1." << ClonalFrameML_SVNRevision-178 << endl;
 	// Process the command line arguments	
-	if(argc<5) {
+	if(argc<4) {
 		stringstream errTxt;
 		errTxt << "Syntax: ClonalFrameML newick_file fasta_file output_file [OPTIONS]" << endl;
 		errTxt << endl;
