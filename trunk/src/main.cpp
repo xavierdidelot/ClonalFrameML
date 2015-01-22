@@ -36,6 +36,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "Options affecting all analyses:" << endl;
 		errTxt << "-kappa                         value > 0 (default 2.0)   Relative rate of transitions vs transversions in substitution model" << endl;
 		errTxt << "-fasta_file_list               true or false (default)   Take fasta_file to be a white-space separated file list." << endl;
+		errTxt << "-xmfa_file                     true or false (default)   Take fasta_file to be a XMFA file."<<endl;
 		errTxt << "-ignore_user_sites             sites_file                Ignore sites listed in whitespace-separated sites_file." << endl;
 		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
 		errTxt << "-use_incompatible_sites        true (default) or false   Use homoplasious and multiallelic sites to correct branch lengths." << endl;
@@ -68,7 +69,7 @@ int main (const int argc, const char* argv[]) {
 	// Set default options
 	ArgumentWizard arg;
 	arg.case_sensitive = false;
-	string fasta_file_list="false", imputation_only="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
+	string fasta_file_list="false", xmfa_file="false", imputation_only="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="true", rescale_no_recombination="false";
 	string show_progress="false", compress_reconstructed_sites="true";
 	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
@@ -78,6 +79,7 @@ int main (const int argc, const char* argv[]) {
 	int emsim = 0;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
+	arg.add_item("xmfa_file",				TP_STRING, &xmfa_file);
 	arg.add_item("imputation_only",				TP_STRING, &imputation_only);
 	arg.add_item("ignore_incomplete_sites",		TP_STRING, &ignore_incomplete_sites);
 	arg.add_item("ignore_user_sites",			TP_STRING, &ignore_user_sites);
@@ -100,6 +102,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("kappa",						TP_DOUBLE, &kappa);
 	arg.read_input(argc-3,argv+3);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
+	bool XMFA_FILE					= string_to_bool(xmfa_file,"xmfa_file");
 	bool CORRECT_BRANCH_LENGTHS			= !string_to_bool(imputation_only,				"imputation_only");
 	bool IGNORE_INCOMPLETE_SITES		= string_to_bool(ignore_incomplete_sites,		"ignore_incomplete_sites");
 	bool RECONSTRUCT_INVARIANT_SITES	= string_to_bool(reconstruct_invariant_sites,	"reconstruct_invariant_sites");
@@ -224,7 +227,8 @@ int main (const int argc, const char* argv[]) {
 				fa.ntimes.push_back(fa1.ntimes[ni]);
 			}
 		}
-	} else {
+	} else if (XMFA_FILE) fa=readXMFA(fasta_file);
+	else {
 		fa.readFASTA_1pass(fasta_file);
 	}
 	cout << "Read " << fa.nseq << " sequences of length " << fa.lseq << " sites from " << fasta_file << endl;
