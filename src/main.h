@@ -25,6 +25,7 @@
 #include <coalescent_record.h>
 #include <sstream>
 #include <myutils.h>
+#include <xmfa.h>
 #include <fstream>
 #include <algorithm>
 #include <DNA.h>
