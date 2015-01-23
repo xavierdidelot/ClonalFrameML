@@ -227,7 +227,7 @@ int main (const int argc, const char* argv[]) {
 				fa.ntimes.push_back(fa1.ntimes[ni]);
 			}
 		}
-	} else if (XMFA_FILE) fa=readXMFA(fasta_file);
+	} else if (XMFA_FILE) readXMFA(fasta_file,&fa);
 	else {
 		fa.readFASTA_1pass(fasta_file);
 	}
