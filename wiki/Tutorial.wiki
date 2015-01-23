@@ -43,7 +43,7 @@ This file contains the bootstrapped values for the three parameters R/theta, nu 
 This file contains the list of reconstructed recombination events. There is one line for each event, the first column indicates the branch on which the event was found, and the second and third columns indicate the first and last genomic positions affected by the recombination event.
 
 ==labelled_tree.newick==
-This file contains the starting tree with all nodes labelled so that they can be referred to in other files.
+This file contains the output tree with all nodes labelled so that they can be referred to in other files.
 
 =Graphical output=
 
