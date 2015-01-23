@@ -21,11 +21,10 @@
 #include <DNA.h>
 
 void readXMFA(const char *filename,DNA * dna) {
+		string unlink="";
 		ifstream in(filename);
 		if(!in.is_open()) {
-			string errmsg = "readXMFA(): File ";
-			errmsg += string(filename);
-			errmsg += " not found";
+			string errmsg = "readXMFA(): File "+string(filename)+" not found";
 			error(errmsg.c_str());
 		}
 		
@@ -43,21 +42,14 @@ void readXMFA(const char *filename,DNA * dna) {
 			getline(in,s);
 			if(s.length()>0 && (s[0]=='>'||s[0]=='=')) {
 				if (block==0) dna->sequence.push_back("");
-				if (dna->nseq>=0) dna->sequence[dna->nseq]+=newseq;
+				if (dna->nseq>=0) dna->sequence[dna->nseq]+=unlink+newseq;
 				newseq = "";
-				if(s[0]=='>') {dna->nseq++;if (block==0) dna->label.push_back(s.substr(1));} else {block++;dna->nseq=-1;}
-				//if (block==0) dna->label.push_back(s.substr(1));
+				if(s[0]=='>') {dna->nseq++;if (block==0) dna->label.push_back(s.substr(1));} 
+				else {block++;dna->nseq=-1;if (block==1) unlink=string(1000,'N');}
 				} else newseq += s;
 		}
-		//dna->sequence.push_back(newseq);
 		dna->nseq=dna->sequence.size();
 		dna->lseq=dna->sequence[0].length();
 		in.close();
-		
-		for(int NSEQ=0;NSEQ<dna->nseq;NSEQ++) {
-			cout << dna->label[NSEQ] << endl;
-			cout << dna->sequence[NSEQ] << endl;
-		}
-
 }
 
