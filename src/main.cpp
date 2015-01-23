@@ -189,6 +189,7 @@ int main (const int argc, const char* argv[]) {
 	if(kappa<=0.0) error("-kappa must be positive");
 	
 	// Open the FASTA file(s)
+	vector<int> sites_to_ignore;
 	DNA fa;
 	if(FASTA_FILE_LIST) {
 		ifstream file_list(fasta_file);
@@ -227,7 +228,7 @@ int main (const int argc, const char* argv[]) {
 				fa.ntimes.push_back(fa1.ntimes[ni]);
 			}
 		}
-	} else if (XMFA_FILE) readXMFA(fasta_file,&fa);
+	} else if (XMFA_FILE) readXMFA(fasta_file,&fa,&sites_to_ignore);
 	else {
 		fa.readFASTA_1pass(fasta_file);
 	}
@@ -240,6 +241,7 @@ int main (const int argc, const char* argv[]) {
 	const int root_node = (is_rooted) ? ctree.size-1 : ctree.size-2;
 	// Open the list of sites to ignore
 	vector<bool> ignore_site(fa.lseq,false);
+	for (int i=0;i<sites_to_ignore.size();i++) ignore_site[sites_to_ignore[i]]=true;
 	if(ignore_user_sites!="") {
 		ifstream user_sites(ignore_user_sites.c_str());
 		int debug_last_elem = -1;
