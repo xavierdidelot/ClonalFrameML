@@ -57,13 +57,5 @@ void readXMFA(const char *filename,DNA * dna,vector<int> * sites_to_ignore) {
 		dna->nseq=dna->sequence.size();
 		dna->lseq=dna->sequence[0].length();
 		in.close();
-
-		/*for(int NSEQ=0;NSEQ<dna->nseq;NSEQ++) {
-			cout << dna->label[NSEQ] << endl;
-			cout << dna->sequence[NSEQ] << endl;
-		}
-		for(int i=0;i<sites_to_ignore->size();i++) cout<<(*sites_to_ignore)[i]<<" ";
-		cout<<endl;*/
-
 }
 
