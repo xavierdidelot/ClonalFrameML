@@ -16,7 +16,7 @@ main.o: main.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c -o main.o main.cpp
 
 version:
-	echo "#define ClonalFrameML_SVNRevision \c" > version.h; svn info | grep "Revision: " | cut -f 2 -d' ' >> version.h
+	echo -n "#define ClonalFrameML_SVNRevision " > version.h; svn info | grep "Revision: " | cut -f 2 -d' ' >> version.h
 
 clean:
 	rm $(OBJECTS)
