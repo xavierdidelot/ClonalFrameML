@@ -2,8 +2,7 @@
 
 =Input =
 
-There are two input files needed to run `ClonalFrameML`. The first one is a starting tree, which must be in [http://en.wikipedia.org/wiki/Newick_format Newick format]. The second one is an alignment of the sequences which can be either in [http://en.wikipedia.org/wiki/FASTA_format fasta format] or [
-http://darlinglab.org/mauve/user-guide/files.html extended multi fasta (XMFA) format]. There must be as many leaves in the tree as there are sequences in the alignment file, and the names of the leaves must match the names in the headers of the alignment file.
+There are two input files needed to run `ClonalFrameML`. The first one is a starting tree, which must be in [http://en.wikipedia.org/wiki/Newick_format Newick format]. The second one is an alignment of the sequences which can be either in [http://en.wikipedia.org/wiki/FASTA_format fasta format] or [http://darlinglab.org/mauve/user-guide/files.html extended multi fasta (XMFA) format]. There must be as many leaves in the tree as there are sequences in the alignment file, and the names of the leaves must match the names in the headers of the alignment file.
 
 The starting tree can be generated from the alignment for example using [http://sco.h-its.org/exelixis/web/software/raxml/index.html RAxML] or [http://www.atgc-montpellier.fr/phyml/ PhyML]. 
 
