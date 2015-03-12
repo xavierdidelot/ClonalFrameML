@@ -44,7 +44,7 @@ This file contains the output tree with all nodes labelled so that they can be r
 
 =Graphical output=
 
-To produce a graphical representation of the `ClonalFrameML` output, use the following command. This requires R to be installed with the ape and phangorn packages.
+To produce a graphical representation of the `ClonalFrameML` output, use the following command. This requires R to be installed with the ape and phangorn packages. The cfml_results.R script is available on the svn repository, and can be downloaded directly [https://clonalframeml.googlecode.com/svn/trunk/src/cfml_results.R here].
 
 {{{
 Rscript cfml_results.R output_prefix
