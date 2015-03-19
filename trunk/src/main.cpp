@@ -36,7 +36,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "Options affecting all analyses:" << endl;
 		errTxt << "-kappa                         value > 0 (default 2.0)   Relative rate of transitions vs transversions in substitution model" << endl;
 		errTxt << "-fasta_file_list               true or false (default)   Take fasta_file to be a white-space separated file list." << endl;
-		errTxt << "-xmfa_file                     true or false (default)   Take fasta_file to be a XMFA file."<<endl;
+		errTxt << "-xmfa_file                     true or false (default)   Take fasta_file to be an XMFA file."<<endl;
 		errTxt << "-ignore_user_sites             sites_file                Ignore sites listed in whitespace-separated sites_file." << endl;
 		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
 		errTxt << "-use_incompatible_sites        true (default) or false   Use homoplasious and multiallelic sites to correct branch lengths." << endl;
@@ -44,6 +44,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites." << endl;
 //		errTxt << "-compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file." << endl;	// Alternative not currently implemented, so not optional
+		errTxt << "-label_uncorrected_tree        true or false (default)   Regurgitate the uncorrected Newick tree with internal nodes labelled." << endl;
 		errTxt << "Options affecting -em and -embranch:" << endl;
 		errTxt << "-prior_mean                    df \"0.1 0.001 0.1 0.0001\" Prior mean for R/theta, 1/delta, nu and M." << endl;
 		errTxt << "-prior_sd                      df \"0.1 0.001 0.1 0.0001\" Prior standard deviation for R/theta, 1/delta, nu and M." << endl;
@@ -61,6 +62,7 @@ int main (const int argc, const char* argv[]) {
 	const char* fasta_file = argv[2];
 	const char* out_file = argv[3];
 	string tree_out_file = string(out_file) + ".labelled_tree.newick";
+	string oritree_out_file = string(out_file) + ".labelled_uncorrected_tree.newick";
 	string fasta_out_file = string(out_file) + ".ML_sequence.fasta";
 	string xref_out_file = string(out_file) + ".position_cross_reference.txt";
 	string import_out_file = string(out_file) + ".importation_status.txt";
@@ -73,13 +75,13 @@ int main (const int argc, const char* argv[]) {
 	string use_incompatible_sites="true", rescale_no_recombination="false";
 	string show_progress="false", compress_reconstructed_sites="true";
 	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
-	string guess_initial_m="true", em="true", embranch="false";
+	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, global_min_branch_length = 1.0e-7;
 	double embranch_dispersion = 0.01, kappa = 2.0;
 	int emsim = 0;
 	// Process options
 	arg.add_item("fasta_file_list",				TP_STRING, &fasta_file_list);
-	arg.add_item("xmfa_file",				TP_STRING, &xmfa_file);
+	arg.add_item("xmfa_file",					TP_STRING, &xmfa_file);
 	arg.add_item("imputation_only",				TP_STRING, &imputation_only);
 	arg.add_item("ignore_incomplete_sites",		TP_STRING, &ignore_incomplete_sites);
 	arg.add_item("ignore_user_sites",			TP_STRING, &ignore_user_sites);
@@ -100,9 +102,10 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("embranch",					TP_STRING, &embranch);
 	arg.add_item("embranch_dispersion",			TP_DOUBLE, &embranch_dispersion);
 	arg.add_item("kappa",						TP_DOUBLE, &kappa);
+	arg.add_item("label_uncorrected_tree",		TP_STRING, &label_original_tree);
 	arg.read_input(argc-3,argv+3);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
-	bool XMFA_FILE					= string_to_bool(xmfa_file,"xmfa_file");
+	bool XMFA_FILE						= string_to_bool(xmfa_file,						"xmfa_file");
 	bool CORRECT_BRANCH_LENGTHS			= !string_to_bool(imputation_only,				"imputation_only");
 	bool IGNORE_INCOMPLETE_SITES		= string_to_bool(ignore_incomplete_sites,		"ignore_incomplete_sites");
 	bool RECONSTRUCT_INVARIANT_SITES	= string_to_bool(reconstruct_invariant_sites,	"reconstruct_invariant_sites");
@@ -113,6 +116,7 @@ int main (const int argc, const char* argv[]) {
 	bool GUESS_INITIAL_M				= string_to_bool(guess_initial_m,				"guess_initial_m");
 	bool EM								= string_to_bool(em,							"em");
 	bool EMBRANCH						= string_to_bool(embranch,						"embranch");
+	bool LABEL_ORIGINAL_TREE			= string_to_bool(label_original_tree,			"label_uncorrected_tree");
 	bool MULTITHREAD = false;
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
@@ -239,6 +243,10 @@ int main (const int argc, const char* argv[]) {
 	const bool is_rooted = (newick.root.dec.size()==2);
 	marginal_tree ctree = (is_rooted) ? convert_rooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels) : convert_unrooted_NewickTree_to_marginal_tree(newick,fa.label,ctree_node_labels);
 	const int root_node = (is_rooted) ? ctree.size-1 : ctree.size-2;
+	// If requested, regurgitate the input tree with the internal nodes labelled, before anything is done to the branch lengths
+	if(LABEL_ORIGINAL_TREE) {
+		write_newick(ctree,ctree_node_labels,oritree_out_file.c_str());
+	}
 	// Open the list of sites to ignore
 	vector<bool> ignore_site(fa.lseq,false);
 	for (int i=0;i<sites_to_ignore.size();i++) ignore_site[sites_to_ignore[i]]=true;
