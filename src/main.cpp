@@ -1092,6 +1092,7 @@ NewickTree read_Newick(const char* newick_file) {
 	}
 	string snewick;
 	std::getline(fnewick,snewick);	
+	if (!snewick.empty()&&*snewick.rbegin()=='\r') snewick.erase(snewick.length()-1,1);
 	fnewick.close();
 	return NewickTree(snewick);
 }

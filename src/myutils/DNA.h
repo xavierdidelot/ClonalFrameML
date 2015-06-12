@@ -120,6 +120,7 @@ public:
 			str = in2.get();
 			if((char)str=='>') {
 				getline(in2,junk);
+				if (!junk.empty()&&*junk.rbegin()=='\r') junk.erase(junk.length()-1,1);
 				while(!in2.eof()) {
 					str = in2.get();
 					if((char)str=='>') break;
@@ -145,6 +146,7 @@ public:
 			if(in3.eof()) error("Cannot find sequences!");
 			if((char)str=='>') {
 				getline(in3,label[NSEQ]);
+				if (!label[NSEQ].empty()&&*label[NSEQ].rbegin()=='\r') label[NSEQ].erase(label[NSEQ].length()-1,1);
 				break;
 			}
 		}
@@ -158,6 +160,7 @@ public:
 			if((char)str=='>') {
 				++NSEQ;
 				getline(in3,label[NSEQ]);
+				if (!label[NSEQ].empty()&&*label[NSEQ].rbegin()=='\r') label[NSEQ].erase(label[NSEQ].length()-1,1);
 				LSEQ=0;
 			}
 		}
@@ -183,6 +186,7 @@ public:
 		lseq = -1;
 		string s;
 		getline(in1,s);
+		if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
 		if(s.length()>0 && s[0]!='>') {
 			string errmsg = "DNA::readFASTA_1pass(): File ";
 			errmsg += string(filename);
@@ -193,6 +197,7 @@ public:
 		string newseq = "";
 		while(!in1.eof()) {
 			getline(in1,s);
+			if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
 			if(s.length()>0 && s[0]=='>') {
 				if(lseq==-1) lseq = newseq.length();
 				if(newseq.length()!=lseq) {
@@ -852,5 +857,7 @@ public:
 		return '?';
 	}
 };
+
+
 
 #endif // _DNA_H_

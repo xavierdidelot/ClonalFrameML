@@ -32,6 +32,7 @@ void readXMFA(const char *filename,DNA * dna,vector<int> * sites_to_ignore) {
 		int block=0;
 		string s;
 		getline(in,s);
+		if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
 		if(s.length()>0 && s[0]!='>') {
 			string errmsg = "readXMFA(): File "+string(filename)+" did not begin with '>'";
 			error(errmsg.c_str());
@@ -40,6 +41,7 @@ void readXMFA(const char *filename,DNA * dna,vector<int> * sites_to_ignore) {
 		string newseq = "";
 		while(!in.eof()) {
 			getline(in,s);
+			if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
 			if(s.length()>0 && (s[0]=='>'||s[0]=='=')) {
 				if (block==0) dna->sequence.push_back("");
 				if (dna->nseq>=0) {
