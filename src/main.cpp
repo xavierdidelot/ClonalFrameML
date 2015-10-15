@@ -21,8 +21,7 @@
 
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();
-	// Output version number (There were 178 SVN revisions up to version 1.0)
-	cout << "ClonalFrameML version 1." << ClonalFrameML_SVNRevision-178 << endl;
+	cout << "ClonalFrameML " << ClonalFrameML_GITRevision << endl;
 	// Process the command line arguments	
 	if(argc<4) {
 		stringstream errTxt;
