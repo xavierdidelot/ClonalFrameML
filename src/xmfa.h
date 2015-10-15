@@ -31,7 +31,7 @@ void readXMFA(const char *filename,DNA * dna,vector<int> * sites_to_ignore) {
 		dna->nseq = 0;
 		int block=0;
 		string s;
-		getline(in,s);
+		getline(in,s);while (s.empty()||*s.begin()=='#') getline(in,s); 
 		if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
 		s.erase(remove(s.begin(),s.end(),' '),s.end());
 		s=s.substr(0,s.find(":"));
@@ -42,7 +42,7 @@ void readXMFA(const char *filename,DNA * dna,vector<int> * sites_to_ignore) {
 		dna->label.push_back(s.substr(1));
 		string newseq = "";
 		while(!in.eof()) {
-			getline(in,s);
+			getline(in,s);if (s.empty()||*s.begin()=='#') continue; 
 			if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
 			s.erase(remove(s.begin(),s.end(),' '),s.end());
 			s=s.substr(0,s.find(":"));
