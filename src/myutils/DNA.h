@@ -69,7 +69,7 @@ public:
 	}
 	DNA(const char* filename) {
 		coutput = false;
-		readFASTA(filename);
+		readFASTA_1pass(filename);
 		init();
 	}
 	DNA& init() {
@@ -87,7 +87,7 @@ public:
 		intToBase[5] = '-';
 		return *this;
 	}
-	DNA& readFASTA(const char* filename) {
+	/*DNA& readFASTA(const char* filename) {
 		ifstream in1(filename);
 		if(!in1.is_open()) {
 			string errmsg = "DNA::readFASTA(): File ";
@@ -172,7 +172,7 @@ public:
 		}
 		
 		return *this;
-	}
+	}*/
 	DNA& readFASTA_1pass(const char* filename) {
 		ifstream in1(filename);
 		if(!in1.is_open()) {
@@ -187,6 +187,7 @@ public:
 		string s;
 		getline(in1,s);
 		if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
+		s.erase(remove(s.begin(),s.end(),' '),s.end());
 		if(s.length()>0 && s[0]!='>') {
 			string errmsg = "DNA::readFASTA_1pass(): File ";
 			errmsg += string(filename);
@@ -198,6 +199,7 @@ public:
 		while(!in1.eof()) {
 			getline(in1,s);
 			if (!s.empty()&&*s.rbegin()=='\r') s.erase(s.length()-1,1);
+			s.erase(remove(s.begin(),s.end(),' '),s.end());
 			if(s.length()>0 && s[0]=='>') {
 				if(lseq==-1) lseq = newseq.length();
 				if(newseq.length()!=lseq) {
