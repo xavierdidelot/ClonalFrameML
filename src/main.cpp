@@ -1093,6 +1093,13 @@ NewickTree read_Newick(const char* newick_file) {
 	std::getline(fnewick,snewick);	
 	if (!snewick.empty()&&*snewick.rbegin()=='\r') snewick.erase(snewick.length()-1,1);
 	fnewick.close();
+	//Remove all internal node names from snewick
+	int pos=snewick.find_first_of(")");
+	while (pos>0) {
+	snewick.erase(snewick.begin()+pos+1,snewick.begin()+snewick.find_first_of(":",pos));
+	pos=snewick.find_first_of(")",pos+1);
+	}
+	snewick.append(";");
 	return NewickTree(snewick);
 }
 
