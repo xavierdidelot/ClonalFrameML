@@ -1096,7 +1096,9 @@ NewickTree read_Newick(const char* newick_file) {
 	//Remove all internal node names from snewick
 	int pos=snewick.find_first_of(")");
 	while (pos>0) {
-	snewick.erase(snewick.begin()+pos+1,snewick.begin()+snewick.find_first_of(":",pos));
+	int nd=snewick.find_first_of(":",pos);
+	if (nd==string::npos) nd=snewick.size();
+	snewick.erase(snewick.begin()+pos+1,snewick.begin()+nd);
 	pos=snewick.find_first_of(")",pos+1);
 	}
 	snewick.append(";");
