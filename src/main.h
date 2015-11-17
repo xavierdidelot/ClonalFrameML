@@ -386,6 +386,7 @@ public:
 		error("Not implemented yet");
 //		if(!(param.size()==3+informative.size())) error("ClonalFrameBaumWelchRhoPerBranch::simulate_posterior(): 3 arguments required");
 //		return Baum_Welch_simulate_posterior(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,param,neval,coutput,nsim);
+		return Matrix<double>(0,0,0);
 	}
 };
 
