@@ -75,7 +75,8 @@ void write_importation_status(vector< vector<ImportationState> > &imported, vect
 void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node);
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node);
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node);
-double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput);
+double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput, double &priorL);
+double Baum_Welch0(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, const vector<double> &posterior_a, const bool coutput);
 double gamma_loglikelihood(const double x, const double a, const double b);
 Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, int &neval, const bool coutput, const int nsim);
 double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &mean_param, Matrix<double> &full_param, Matrix<double> &posterior_a, int &neval, const bool coutput);
@@ -164,7 +165,7 @@ public:
 	const vector<double> &pi;
 	vector< vector<ImportationState> > &is_imported;
 	// True member variable
-	double ML;
+	double ML,ML0,priorL;
 	double PR;
 	int neval;
 	const vector<double> prior_a;
@@ -211,6 +212,7 @@ public:
 				}
 			}
 			initial_branch_length[i] = pd/pd_den;
+//			initial_branch_length[i] = tree.node[i].edge_time;
 			informative[i] = (pd>=2.0) ? true : false;			
 		}
 	}
@@ -242,7 +244,7 @@ public:
 			full_param.push_back(ibl);
 		}
 		// Iterate
-		ML = Baum_Welch(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,neval,coutput);
+		ML = Baum_Welch(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,neval,coutput,priorL);
 		// Update importation status for all branches **for ALL SITES**, including uninformative ones
 		for(i=0;i<initial_branch_length.size();i++) {
 			const int dec_id = tree.node[i].id;
@@ -253,6 +255,7 @@ public:
 			const double branch_length = (informative[i]) ? full_param[3+i] : initial_branch_length[i];
 			maximum_likelihood_ClonalFrame_branch_allsites(dec_id,anc_id,node_nuc,iscompat,ipat,kappa,pi,branch_length,rho_over_theta,mean_import_length,import_divergence,is_imported[i]);
 		}
+		ML0 = Baum_Welch0(tree,node_nuc,which_compat,ipat,kappa,pi,informative,prior_a,prior_b,full_param,posterior_a,coutput);
 		return full_param;
 	}
 	Matrix<double> simulate_posterior(const vector<double> &param, const int nsim) {

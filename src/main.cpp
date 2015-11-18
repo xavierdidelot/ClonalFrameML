@@ -405,6 +405,7 @@ int main (const int argc, const char* argv[]) {
 			cout << "Beginning branch optimization. Key to parameters (and constraints):" << endl;
 			cout << "B   uncorrected branch length" << endl;
 			cout << "L   maximum unnormalized log-posterior per branch" << endl;
+			cout << "P   contribution of the prior to L" << endl;
 			cout << "R   R/theta per branch                                       (> 0)" << endl;
 			cout << "I   mean DNA import length per branch                        (> 0)" << endl;
 			cout << "D   divergence of DNA imported by recombination              (> 0)" << endl;			
@@ -431,8 +432,14 @@ int main (const int argc, const char* argv[]) {
 			ClonalFrameBaumWelch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
 			param = cff.maximize_likelihood(param);
 			ML = cff.ML;
-			cout << " L = " << ML << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
+			cout << " L = " << ML << " P = " << cff.priorL << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
 			cout << " Posterior alphas: R = " << cff.posterior_a[0] << " I = " << cff.posterior_a[1] << " D = " << cff.posterior_a[2] << endl;
+			const double cfmlLLR = ML-cff.priorL-cff.ML0;
+			if(cfmlLLR>6.0) {
+				cout << " ClonalFrameML log-likelihood ratio of " << cfmlLLR << " indicates evidence for recombination" << endl;
+			} else {
+				cout << " WARNING: ClonalFrameML log-likelihood ratio of " << cfmlLLR << " indicates lack of evidence for recombination" << endl;
+			}
 			for(i=0;i<root_node;i++) {
 				if(cff.informative[i]) {
 					cout << "Branch " << ctree_node_labels[i] << " B = " << cff.initial_branch_length[i] << " M = " << param[3+i] << endl;
@@ -2144,7 +2151,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 	return ML;
 }
 
-double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput) {
+double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput, double &priorL) {
 	int i;
 	if(coutput) cout << setprecision(9);
 	// Initial parameters
@@ -2162,10 +2169,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	double lenU=0.0, lenI=0.0;	// Running total length of unimported, imported regions
 	// Calculate the marginal likelihood and expected number of transitions and emissions by the forward-backward algorithm
 	// Include the effect of the prior
-	double ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
+	double ML = 0.0;
+	priorL = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
 	for(i=0;i<informative.size();i++) {
 		if(informative[i]) {
-			ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
+			priorL += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
 			const int dec_id = tree.node[i].id;
 			const int anc_id = tree.node[i].ancestor->id;
 			const double branch_length = full_param[3+i];
@@ -2191,6 +2199,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 			}
 		}
 	}
+	ML += priorL;
 	++neval;
 	// Update estimates of the recombination parameters
 	full_param[0] = (prior_a[0]+numI)/(prior_b[0]+lenU);
@@ -2207,7 +2216,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	// Iterate until the maximum likelihood improves by less than some threshold
 	const int maxit = 200;
 	const double threshold = 1.0e-2;
-	vector<double> MLE;
+	double new_ML;
 	int it;
 	for(it=0;it<maxit;it++) {
 		// Identify the model parameters
@@ -2216,10 +2225,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		import_divergence = full_param[2];
 		// Update the likelihood
 		mutI=0.0; numU=0.0; numI=0.0; nsiI=0.0; lenU=0.0; lenI=0.0;
-		double new_ML = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
+		priorL = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
+		new_ML = 0.;
 		for(i=0;i<informative.size();i++) {
 			if(informative[i]) {
-				new_ML += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
+				priorL += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
 				const int dec_id = tree.node[i].id;
 				const int anc_id = tree.node[i].ancestor->id;
 				const double branch_length = full_param[3+i];
@@ -2245,6 +2255,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 				}
 			}
 		}
+		new_ML += priorL;
 		++neval;
 		// Update estimates of the recombination parameters
 		full_param[0] = (prior_a[0]+numI)/(prior_b[0]+lenU);
@@ -2263,6 +2274,7 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 			//cout << "Old likelihood = " << ML << " delta = " << new_ML-ML << endl;
 			//warning("Likelihood got worse in Baum_Welch");
 		} else if(fabs(new_ML-ML)<threshold) {
+			ML = new_ML;
 			break;
 		}
 		// Otherwise continue
@@ -2271,6 +2283,59 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	if(it==maxit) warning("Baum_Welch(): maximum number of iterations reached");
 	// Once more for debugging purposes
 	// mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans);
+	if(coutput) {
+		cout << "MAP = " << ML << " priorL = " << priorL << " ML = " << ML-priorL << endl;
+	}
+	return ML;
+}
+
+double Baum_Welch0(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, const vector<double> &posterior_a, const bool coutput) {
+	int i;
+	if(coutput) cout << setprecision(9);
+	// Initial parameters: use constants corresponding to zero recombination to avoid numerical inconsistencies
+	const double rho_over_theta = 0.0;
+	const double mean_import_length = 100.;
+	const double import_divergence = .01;
+	// Storage for the expected number of transitions and emissions in the HMM
+	Matrix<double> numEmiss(2,2), numTrans(2,2);
+	vector<double> denEmiss(2),   denTrans(2);
+	// Counters
+	double mutI=0.0;			// Running total divergence at imported sites
+	double numU=0.0, numI=0.0;	// Running total number of transitions *to* unimported, imported regions
+	double nsiI=0.0;			// Running total number of imported sites
+	double lenU=0.0, lenI=0.0;	// Running total length of unimported, imported regions
+	// Calculate the marginal likelihood and expected number of transitions and emissions by the forward-backward algorithm
+	// Include no effect of the prior
+	double ML = 0;
+	for(i=0;i<informative.size();i++) {
+		if(informative[i]) {
+			const int dec_id = tree.node[i].id;
+			const int anc_id = tree.node[i].ancestor->id;
+			// Utilize branch lengths from input tree
+			const double branch_length = tree.node[i].edge_time;
+			ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+			// Do not update estimate of the branch length
+			const double mutU_br = numEmiss[0][1];
+			const double nsiU_br = denEmiss[0];
+			// Increment counters for the other expectations
+			mutI += numEmiss[1][1];
+			nsiI += denEmiss[1];
+			const double numI_br = numTrans[0][1];
+			const double lenU_br = denTrans[0];
+			numI += numI_br;
+			lenU += full_param[3+i]*lenU_br;
+			numU += numTrans[1][0];
+			lenI += denTrans[1];
+			if(coutput) {
+				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
+				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
+				cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
+			}
+		}
+	}
+	if(coutput) {
+		cout << "ML0 = " << ML << endl;
+	}
 	return ML;
 }
 
