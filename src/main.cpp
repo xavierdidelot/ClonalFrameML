@@ -74,7 +74,7 @@ int main (const int argc, const char* argv[]) {
 	string use_incompatible_sites="true", rescale_no_recombination="false";
 	string show_progress="false", compress_reconstructed_sites="true";
 	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
-	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false";
+	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false", chr_name="chr";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, global_min_branch_length = 1.0e-7;
 	double embranch_dispersion = 0.01, kappa = 2.0;
 	int emsim = 0;
@@ -87,6 +87,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("reconstruct_invariant_sites", TP_STRING, &reconstruct_invariant_sites);
 	arg.add_item("use_incompatible_sites",		TP_STRING, &use_incompatible_sites);
 	arg.add_item("brent_tolerance",				TP_DOUBLE, &brent_tolerance);
+	arg.add_item("chromosome_name",				TP_STRING, &chr_name);
 	arg.add_item("powell_tolerance",			TP_DOUBLE, &powell_tolerance);
 	arg.add_item("rescale_no_recombination",	TP_STRING, &rescale_no_recombination);
 	arg.add_item("show_progress",				TP_STRING, &show_progress);
@@ -464,7 +465,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			vout.close();
 			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node,chr_name);
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 			
 			// If required, simulate under the point estimates and output posterior samples of the parameters
