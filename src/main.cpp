@@ -64,7 +64,7 @@ int main (const int argc, const char* argv[]) {
 	string oritree_out_file = string(out_file) + ".labelled_uncorrected_tree.newick";
 	string fasta_out_file = string(out_file) + ".ML_sequence.fasta";
 	string xref_out_file = string(out_file) + ".position_cross_reference.txt";
-	string import_out_file = string(out_file) + ".importation_status.txt";
+	string import_out_file = string(out_file) + ".importation_status.bed";
 	string em_out_file = string(out_file) + ".em.txt";
 	string emsim_out_file = string(out_file) + ".emsim.txt";
 	// Set default options
@@ -1860,18 +1860,18 @@ void write_importation_status(vector< vector<ImportationState> > &imported, vect
 	}	
 }
 
-void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node) {
+void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node,  const char* chr_name) {
 	ofstream fout(file_name);
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_importation_status_intervals(): could not open file " << file_name << " for writing";
 		error(errTxt.str().c_str());
 	}
-	write_importation_status_intervals(imported,all_node_names,isBLC,compat,fout,root_node);
+	write_importation_status_intervals(imported,all_node_names,isBLC,compat,fout,root_node, chr_name);
 	fout.close();
 }
 
-void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node) {
+void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node,  const char* chr_name) {
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_importation_status_intervals(): could not open file stream for writing";
@@ -1897,7 +1897,7 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 		for(pos=1;pos<imported[i].size();pos++) {
 			if(in_interval) {
 				if(imported[i][pos]==Unimported) {
-					fout << all_node_names[i] << tab << interval_beg+1 << tab << pos << endl;
+					fout << chr_name << tab << interval_beg+1 << tab << pos << tab << all_node_names[i] << endl;
 					in_interval = false;
 				}
 			} else {
@@ -1908,7 +1908,7 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 			}
 		}
 		if(in_interval) {
-			fout << all_node_names[i] << tab << interval_beg+1 << tab << pos << endl;
+			fout << chr_name << tab << interval_beg+1 << tab << pos << tab << all_node_names[i] << endl;
 		}
 	}
 }
