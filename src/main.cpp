@@ -40,6 +40,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
 		errTxt << "-use_incompatible_sites        true (default) or false   Use homoplasious and multiallelic sites to correct branch lengths." << endl;
 		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
+		errTxt << "-chromosome_name               name, eg \"chr\"            Output importation status file in BED format using given chromosome name." << endl;
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites." << endl;
 //		errTxt << "-compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file." << endl;	// Alternative not currently implemented, so not optional
@@ -64,7 +65,7 @@ int main (const int argc, const char* argv[]) {
 	string oritree_out_file = string(out_file) + ".labelled_uncorrected_tree.newick";
 	string fasta_out_file = string(out_file) + ".ML_sequence.fasta";
 	string xref_out_file = string(out_file) + ".position_cross_reference.txt";
-	string import_out_file = string(out_file) + ".importation_status.bed";
+	string import_out_file = string(out_file) + ".importation_status.txt";
 	string em_out_file = string(out_file) + ".em.txt";
 	string emsim_out_file = string(out_file) + ".emsim.txt";
 	// Set default options
@@ -74,7 +75,7 @@ int main (const int argc, const char* argv[]) {
 	string use_incompatible_sites="true", rescale_no_recombination="false";
 	string show_progress="false", compress_reconstructed_sites="true";
 	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
-	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false", chr_name="chr";
+	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false", chr_name="";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, global_min_branch_length = 1.0e-7;
 	double embranch_dispersion = 0.01, kappa = 2.0;
 	int emsim = 0;
@@ -465,7 +466,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			vout.close();
 			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node,chr_name);
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node,chr_name.c_str());
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 			
 			// If required, simulate under the point estimates and output posterior samples of the parameters
@@ -547,7 +548,7 @@ int main (const int argc, const char* argv[]) {
 			}
 			vout.close();
 			// Output the importation status
-			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node);
+			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node,chr_name.c_str());
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
 			
 			// If required, simulate under the point estimates and output posterior samples of the parameters
@@ -1888,7 +1889,9 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 		error(errTxt.str().c_str());
 	}
 	const char tab = '\t';
-	fout << "Node" << tab << "Beg" << tab << "End" << endl;
+	if (strlen(chr_name)==0) 
+		fout << "Node" << tab << "Beg" << tab << "End" << endl;
+	else fout << "Chr" << tab << "Beg" << tab << "End" << tab << "Node" << endl;
 	int i,pos;
 	for(i=0;i<root_node;i++) {
 		// Identify intervals
@@ -1897,7 +1900,9 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 		for(pos=1;pos<imported[i].size();pos++) {
 			if(in_interval) {
 				if(imported[i][pos]==Unimported) {
-					fout << chr_name << tab << interval_beg+1 << tab << pos << tab << all_node_names[i] << endl;
+					if (strlen(chr_name)==0) 
+						fout << all_node_names[i] << tab << interval_beg+1 << tab << pos << endl;
+					else fout << chr_name << tab << interval_beg+1 << tab << pos << tab << all_node_names[i] << endl;
 					in_interval = false;
 				}
 			} else {
@@ -1908,7 +1913,9 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 			}
 		}
 		if(in_interval) {
-			fout << chr_name << tab << interval_beg+1 << tab << pos << tab << all_node_names[i] << endl;
+			if (strlen(chr_name)==0)
+				fout << all_node_names[i] << tab << interval_beg+1 << tab << pos << endl;
+			else fout << chr_name << tab << interval_beg+1 << tab << pos << tab << all_node_names[i] << endl;
 		}
 	}
 }
