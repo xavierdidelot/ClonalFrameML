@@ -1891,7 +1891,7 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 	const char tab = '\t';
 	if (strlen(chr_name)==0) 
 		fout << "Node" << tab << "Beg" << tab << "End" << endl;
-	else fout << "Chr" << tab << "Beg" << tab << "End" << tab << "Node" << endl;
+	//else fout << "Chr" << tab << "Beg" << tab << "End" << tab << "Node" << endl;
 	int i,pos;
 	for(i=0;i<root_node;i++) {
 		// Identify intervals
