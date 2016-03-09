@@ -18,7 +18,7 @@
  *
  */
 
-#include <DNA.h>
+#include "myutils/DNA.h"
 
 void readXMFA(const char *filename,DNA * dna,vector<int> * sites_to_ignore) {
 		string unlink=string(1000,'N');

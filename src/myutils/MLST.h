@@ -21,10 +21,10 @@
 
 #pragma warning(disable: 4786)
 
-#include <myerror.h>
-#include <vector.h>
-#include <matrix.h>
-#include <DNA.h>
+#include "myutils/myerror.h"
+#include "myutils/vector.h"
+#include "myutils/matrix.h"
+#include "myutils/DNA.h"
 
 using namespace myutils;
 

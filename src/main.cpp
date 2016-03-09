@@ -17,7 +17,7 @@
  *  along with the myutils library. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include <main.h>
+#include "main.h"
 
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();

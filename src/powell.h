@@ -25,8 +25,8 @@
 #include <vector>
 #include <math.h>
 #include <limits>
-#include <myutils.h>
-#include <brent.h>
+#include "myutils/myutils.h"
+#include "brent.h"
 
 #pragma warning( disable : 4355 )
 

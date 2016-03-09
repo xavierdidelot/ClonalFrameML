@@ -30,9 +30,9 @@
 #ifndef _MYUTILS_CENSUS_H_
 #define _MYUTILS_CENSUS_H_
 
-#include <myerror.h>
-#include <vector.h>
-#include <utils.h>
+#include "myutils/myerror.h"
+#include "myutils/vector.h"
+#include "myutils/utils.h"
 #include <iostream>
 //#include <myutils.h>
 
