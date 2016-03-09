@@ -20,7 +20,7 @@
 #define _EFFECTIVE_SAMPLE_SIZE_H_
 
 #include <math.h>
-#include <vector.h>
+#include "myutils/vector.h"
 
 namespace myutils {
 	inline double effectiveSampleSize(double* statistic, const int samples) {

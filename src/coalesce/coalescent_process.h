@@ -26,15 +26,15 @@
 #include <iomanip>
 using namespace std;
 
-#include <matrix.h>
+#include "myutils/matrix.h"
 using myutils::Matrix;
-#include <random.h>
+#include "myutils/random.h"
 using myutils::Random;
-#include <myerror.h>
+#include "myutils/myerror.h"
 using myutils::error;
-#include <coalescent_record.h>
-#include <coalescent_control.h>
-#include <mutation.h>
+#include "coalesce/coalescent_record.h"
+#include "coalesce/coalescent_control.h"
+#include "coalesce/mutation.h"
 
 class ptr_vector
 {

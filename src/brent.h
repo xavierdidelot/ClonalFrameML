@@ -23,7 +23,7 @@
 #define _BRENT_MINIMISATION_
 
 #include <limits>
-#include <myerror.h>
+#include "myutils/myerror.h"
 
 using namespace std;
 

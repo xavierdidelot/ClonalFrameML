@@ -19,8 +19,8 @@
 #ifndef _APPROXDF_H_
 #define _APPROXDF_H_
 
-#include <vector.h>
-#include <myerror.h>
+#include "myutils/vector.h"
+#include "myutils/myerror.h"
 #include <math.h>
 
 namespace myutils {

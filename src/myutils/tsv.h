@@ -20,14 +20,14 @@
 #define _TSV_H_
 
 #pragma warning(disable: 4786)
-#include <myerror.h>
+#include "myutils/myerror.h"
 using myutils::error;
 #include <fstream>
 #include <string>
 #include <iostream>
 #include <vector>
 #include <map>
-#include <matrix.h>
+#include "myutils/matrix.h"
 using myutils::Matrix;
 using namespace std;
 

@@ -28,8 +28,8 @@
 
 using namespace std;
 
-#include <matrix.h>
-#include <controlwizard.h>
+#include "myutils/matrix.h"
+#include "myutils/controlwizard.h"
 using myutils::Matrix;
 using myutils::ControlWizard;
 using myutils::TP_UNRECOGNISED;

@@ -19,8 +19,8 @@
 #ifndef _HRCOALESCENT_H_
 #define _HRCOALESCENT_H_
 
-#include <coalescent_control.h>
-#include <coalescent_process.h>
-#include <coalescent_record.h>
+#include "coalesce/coalescent_control.h"
+#include "coalesce/coalescent_process.h"
+#include "coalesce/coalescent_record.h"
 
 #endif
