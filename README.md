@@ -6,13 +6,7 @@ This is the homepage of ClonalFrameML, a software package that performs efficien
 
 ClonalFrameML is a maximum likelihood implementation of the Bayesian software [ClonalFrame](http://www.xavierdidelot.xtreemhost.com/clonalframe.htm) which was previously described by [Didelot and Falush (2007)](http://www.genetics.org/cgi/content/abstract/175/3/1251). The recombination model underpinning ClonalFrameML is exactly the same as for ClonalFrame, but this new implementation is a lot faster, is able to deal with much larger genomic dataset, and does not suffer from MCMC convergence issues. A scientific paper describing ClonalFrameML in detail has been published, see [Didelot X, Wilson DJ (2015) ClonalFrameML: Efficient Inference of Recombination in Whole Bacterial Genomes. PLoS Comput Biol 11(2): e1004041. doi:10.1371/journal.pcbi.1004041](http://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1004041).
 
-# Download #
-
-You can download an executable for Mac from [here](http://www.danielwilson.me.uk/ClonalFrameML/ClonalFrameML.Mac.10.7.5).
-
-You can download an executable for Linux Ubuntu from [here](http://www.danielwilson.me.uk/ClonalFrameML/ClonalFrameML.Ubuntu.12.04.2.LTS).
-
-You can download a snapshot of the source code from [here](http://www.danielwilson.me.uk/ClonalFrameML/ClonalFrameML-sourcecode.zip).
+# Download and Installation #
 
 You can obtain the most up to date version of ClonalFrameML by downloading and compiling the C++ source code via GIT using the command:
 ```
@@ -21,19 +15,10 @@ git clone https://github.com/xavierdidelot/ClonalFrameML
 
 Please note that the code for ClonalFrameML is distributed under the terms of the GNU GPL v3 license, for more details see https://www.gnu.org/copyleft/gpl.html
 
-# Installation #
-
-If you download executables, you do not need to compile the source code. If you download the ClonalFrameML source code as described above, you can compile it using the following command:
+You can compile the code using the following command:
 
 ```
-cd clonalframeml/src
-make
-```
-
-or
-
-```
-cd clonalframeml/src
+cd ClonalFrameML/src
 ./make.sh
 ```
 
