@@ -299,60 +299,45 @@ int main (const int argc, const char* argv[]) {
 	}
 	
 	// IMPUTATION AND RECONSTRUCTION OF ANCESTRAL STATES
-	if(true) {
-		// Convert FASTA file to internal representation of nucleotides for Branch Length Correction
-		vector<double> empirical_nucleotide_frequencies(4,0.25);
-		Matrix<Nucleotide> nuc = FASTA_to_nucleotide(fa,empirical_nucleotide_frequencies,isIRAS);
-		// Identify and count unique patterns
-		vector<string> pat;				// Pattern as string of AGCTNs
-		vector<int> pat1, cpat, ipat;	// First example of each pattern, number of sites with that pattern, the pattern at each (compatible) site (-1 otherwise)
-		vector<bool> nuc_ispoly(nuc.ncols(),true);
-		find_alignment_patterns(nuc,nuc_ispoly,pat,pat1,cpat,ipat);
-		// Storage for the MLE of the nucleotide sequence at every node
-		Matrix<Nucleotide> node_nuc;
-		// Sanity check: are all branch lengths non-negative
-		for(i=0;i<ctree_node_labels.size();i++) {
-			if(ctree.node[i].edge_time<0.0) {
-				stringstream errTxt;
-				errTxt << "Negative branch length of " << ctree.node[i].edge_time << " found for branch " << ctree_node_labels[i];
-				error(errTxt.str().c_str());
-			}
+	// Convert FASTA file to internal representation of nucleotides for Branch Length Correction
+	vector<double> empirical_nucleotide_frequencies(4,0.25);
+	Matrix<Nucleotide> nuc = FASTA_to_nucleotide(fa,empirical_nucleotide_frequencies,isIRAS);
+	// Identify and count unique patterns
+	vector<string> pat;				// Pattern as string of AGCTNs
+	vector<int> pat1, cpat, ipat;	// First example of each pattern, number of sites with that pattern, the pattern at each (compatible) site (-1 otherwise)
+	vector<bool> nuc_ispoly(nuc.ncols(),true);
+	find_alignment_patterns(nuc,nuc_ispoly,pat,pat1,cpat,ipat);
+	// Storage for the MLE of the nucleotide sequence at every node
+	Matrix<Nucleotide> node_nuc;
+	// Sanity check: are all branch lengths non-negative
+	for(i=0;i<ctree_node_labels.size();i++) {
+		if(ctree.node[i].edge_time<0.0) {
+			stringstream errTxt;
+			errTxt << "Negative branch length of " << ctree.node[i].edge_time << " found for branch " << ctree_node_labels[i];
+			error(errTxt.str().c_str());
 		}
-		// Begin by computing the joint maximum likelihood ancestral sequences
-		mydouble ML = maximum_likelihood_ancestral_sequences(nuc,ctree,kappa,empirical_nucleotide_frequencies,pat1,cpat,node_nuc);
-		
-		cout << "IMPUTATION AND RECONSTRUCTION OF ANCESTRAL STATES:" << endl;
-		cout << "Analysing " << nIRAS << " sites" << endl;
-		// Report the estimated equilibrium frequencies
-		cout << "Empirical nucleotide frequencies:   A " << round(1000*empirical_nucleotide_frequencies[Adenine])/10 << "%   C " << round(1000*empirical_nucleotide_frequencies[Cytosine])/10;
-		cout << "%   G " << round(1000*empirical_nucleotide_frequencies[Guanine])/10 << "%   T " << round(1000*empirical_nucleotide_frequencies[Thymine])/10 << "%" << endl;
-		// Report the ML
-		cout << "Maximum log-likelihood for imputation and ancestral state reconstruction = " << ML.LOG() << endl;
-		
-		if(!COMPRESS_RECONSTRUCTED_SITES) cout << "WARNING: -compress_reconstructed_sites=false not yet implemented, ignoring." << endl;
-		// Output the ML reconstructed sequences
-		write_ancestral_fasta(node_nuc, ctree_node_labels, fasta_out_file.c_str());
-		// For every position in the original FASTA file, output the corresponding position in the output FASTA file, or -1 (not included)
-		write_position_cross_reference(isIRAS, ipat, xref_out_file.c_str());
-		cout << "Wrote imputed and reconstructed ancestral states to " << fasta_out_file << endl;
-		cout << "Wrote position cross-reference file to " << xref_out_file << endl;
 	}
+	// Begin by computing the joint maximum likelihood ancestral sequences
+	mydouble ML = maximum_likelihood_ancestral_sequences(nuc,ctree,kappa,empirical_nucleotide_frequencies,pat1,cpat,node_nuc);
+	
+	cout << "IMPUTATION AND RECONSTRUCTION OF ANCESTRAL STATES:" << endl;
+	cout << "Analysing " << nIRAS << " sites" << endl;
+	// Report the estimated equilibrium frequencies
+	cout << "Empirical nucleotide frequencies:   A " << round(1000*empirical_nucleotide_frequencies[Adenine])/10 << "%   C " << round(1000*empirical_nucleotide_frequencies[Cytosine])/10;
+	cout << "%   G " << round(1000*empirical_nucleotide_frequencies[Guanine])/10 << "%   T " << round(1000*empirical_nucleotide_frequencies[Thymine])/10 << "%" << endl;
+	// Report the ML
+	cout << "Maximum log-likelihood for imputation and ancestral state reconstruction = " << ML.LOG() << endl;
+	
+	if(!COMPRESS_RECONSTRUCTED_SITES) cout << "WARNING: -compress_reconstructed_sites=false not yet implemented, ignoring." << endl;
+	// Output the ML reconstructed sequences
+	write_ancestral_fasta(node_nuc, ctree_node_labels, fasta_out_file.c_str());
+	// For every position in the original FASTA file, output the corresponding position in the output FASTA file, or -1 (not included)
+	write_position_cross_reference(isIRAS, ipat, xref_out_file.c_str());
+	cout << "Wrote imputed and reconstructed ancestral states to " << fasta_out_file << endl;
+	cout << "Wrote position cross-reference file to " << xref_out_file << endl;
 	
 	// BRANCH LENGTH CORRECTION
 	if(CORRECT_BRANCH_LENGTHS) {
-		// Convert FASTA file to internal representation of nucleotides for Branch Length Correction
-		vector<double> empirical_nucleotide_frequencies(4,0.25);
-		Matrix<Nucleotide> nuc = FASTA_to_nucleotide(fa,empirical_nucleotide_frequencies,isBLC);
-		// Identify and count unique patterns
-		vector<string> pat;				// Pattern as string of AGCTNs
-		vector<int> pat1, cpat, ipat;	// First example of each pattern, number of sites with that pattern, the pattern at each (compatible) site (-1 otherwise)
-		vector<bool> nuc_ispoly(nuc.ncols(),true);
-		find_alignment_patterns(nuc,nuc_ispoly,pat,pat1,cpat,ipat);
-		// Storage for the MLE of the nucleotide sequence at every node
-		Matrix<Nucleotide> node_nuc;
-		// Begin by computing the joint maximum likelihood ancestral sequences
-		mydouble ML = maximum_likelihood_ancestral_sequences(nuc,ctree,kappa,empirical_nucleotide_frequencies,pat1,cpat,node_nuc);
-		
 		cout << "BRANCH LENGTH CORRECTION/RECOMBINATION ANALYSIS:" << endl;
 		cout << "Analysing " << nBLC << " sites" << endl;
 		// Report the estimated equilibrium frequencies
@@ -565,7 +550,7 @@ int main (const int argc, const char* argv[]) {
 			}
 		} else {
 			error("No option specified");
-		}
+ 		}
 	}
 	
 	// Output the tree with internal nodes automatically labelled, for cross-referencing with the reconstructed sequences
