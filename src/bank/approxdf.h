@@ -1,3 +1,4 @@
+NOTREACHED
 /*  Copyright 2012 Daniel Wilson.
  *
  *  approxdf.h

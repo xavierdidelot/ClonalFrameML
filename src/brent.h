@@ -97,7 +97,7 @@ public:
 	};
 
 	double rootfind(double x1, double x2, double tol) {
-	  //Using Brent¢s method, find the root of a function func known to lie between x1 and x2. The
+	  //Using Brentï¿½s method, find the root of a function func known to lie between x1 and x2. The
 	  //root, returned as zbrent, will be refined until its accuracy is tol.
 	  int iter;
 	  double a=x1,b=x2,c=x2,d,e,min1,min2;

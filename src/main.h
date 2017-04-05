@@ -22,21 +22,22 @@
 #include <iostream>
 #include <string.h>
 #include "myutils/newick.h"
-#include "coalesce/coalesce.h"
+//#include "coalesce/coalesce.h"
 #include "coalesce/coalescent_record.h"
 #include <sstream>
-#include "myutils/myutils.h"
+//#include "myutils/myutils.h"
 #include "xmfa.h"
 #include <fstream>
 #include <algorithm>
 #include "myutils/DNA.h"
 #include "myutils/mydouble.h"
-#include "coalesce/mutation.h"
+//#include "coalesce/mutation.h"
 #include "powell.h"
 #include "myutils/argumentwizard.h"
 #include <time.h>
 #include "myutils/random.h"
 #include <limits>
+#include <iomanip>
 #include "version.h"
 
 using std::cout;
