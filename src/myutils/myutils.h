@@ -46,7 +46,7 @@
 #include "myutils/pause.h"
 #include "myutils/sort.h"
 
-/*#include "controlwizard.h" /* has problems in Linux with pointers */
-/*#include "pause.h"	/* removed because conio.h is not standard */
+//#include "controlwizard.h" /* has problems in Linux with pointers */
+//#include "pause.h"	/* removed because conio.h is not standard */
 
 #endif

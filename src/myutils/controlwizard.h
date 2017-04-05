@@ -613,7 +613,7 @@ protected:
 		int i;
 		for(i=0;i<(int)words.size();i++)
 			ptr->push_back(atoi(words[i].c_str()));
-		if(coutput)printf("%s read in %d elements\n",label.c_str(),ptr->size());
+		if(coutput)printf("%s read in %lu elements\n",label.c_str(),ptr->size());
 	}
 	RTRV function_get_vector_double(std::ifstream &infile, std::string &label)
 	{
@@ -626,7 +626,7 @@ protected:
 		int i;
 		for(i=0;i<(int)words.size();i++)
 			ptr->push_back(atof(words[i].c_str()));
-		if(coutput)printf("%s read in %d elements\n",label.c_str(),ptr->size());
+		if(coutput)printf("%s read in %lu elements\n",label.c_str(),ptr->size());
 	}
 	RTRV function_get_external_vector_double(std::ifstream &infile, std::string &label)
 	{
@@ -652,7 +652,7 @@ protected:
 		int i;
 		for(i=0;i<(int)words.size();i++)
 			ptr->push_back(words[i]);
-		if(coutput)printf("%s read in %d elements\n",label.c_str(),ptr->size());
+		if(coutput)printf("%s read in %lu elements\n",label.c_str(),ptr->size());
 	}
 };
 };

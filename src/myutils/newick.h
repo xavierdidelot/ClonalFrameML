@@ -40,7 +40,7 @@ public:
 	NewickNode(string token, NewickNode *anc_in) {
 		initialize();
 		anc = anc_in;
-		if(!anc==0) {
+		if(anc!=0) {
 			// Get pointer to allnodes
 			allnodes = anc->allnodes;
 			// Add self to list of descendants

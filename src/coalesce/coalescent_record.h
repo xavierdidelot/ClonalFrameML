@@ -178,7 +178,7 @@ public:
 		return &node[id];
 	}
 	int get_k() {return k;};
-	void error(char* error_text)
+	void error(const char* error_text)
 	{
 		printf("Error in marginal_tree::%s\n",error_text);
 		printf("Exiting to system");

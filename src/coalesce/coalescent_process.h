@@ -1085,21 +1085,22 @@ protected:
 		}
 		else {
 		}
-		/*Choose 1st lineage to coalesce*
+		/*
+		//Choose 1st lineage to coalesce
 		int lin1=ran->discrete(0,ARG_k-2);
-		/*Do not choose FIXED_NODEs *
+		//Do not choose FIXED_NODEs
 		while(active_node[lin1]->flag==ap_node::FIXED_NODE) lin1 = ran->discrete(0,ARG_k-2);
 		class ap_node *ap_node1=active_node[lin1];
 		deactivate_node(lin1);
-		/*Choose 2nd lineage to coalesce*
+		//Choose 2nd lineage to coalesce
 		int lin2=ran->discrete(0,ARG_k-2);
 		if(lin2==lin1)lin2=ARG_k-1;
 		class ap_node *ap_node2=active_node[lin2];
-		/*Sort out fnode stuff*
+		//Sort out fnode stuff
 		new_node->flag = ap_node2->flag;
 		new_node->ctree_id = ap_node2->ctree_id;
 		if(new_node->ctree_id>-1) fnode[new_node->ctree_id] = new_node;
-		/*Finally, deactivate*
+		//Finally, deactivate
 		deactivate_node(lin2);*/
 
 		if((new_node->id==ap_node1->id)||(new_node->id==ap_node2->id)

@@ -124,7 +124,7 @@ public:
 	}
 	int nrows(){return protected_nrows;}
 	int ncols(){return protected_ncols;}
-	void error(char* error_text)
+	void error(const char* error_text)
 	{
 		printf("Run-time error in Matrix::");
 		printf("%s%\n", error_text);

@@ -216,14 +216,14 @@ public:
 	double LOG() const {
 		return _log;
 	}
-	/* Caution: ^ has lower precedence than /*+- */
+	/* Caution: ^ has lower precedence than /+-* */
 	mydouble operator^(const double &dbl) const {
 		mydouble a;
 		if(_zero) a.setzero();
 		else a.setlog(_log * dbl);
 		return a;
 	}
-	/* Caution: ^ has lower precedence than /*+- */
+	/* Caution: ^ has lower precedence than /+-* */
 	mydouble operator^(const mydouble &mydbl) const {
 		mydouble a;
 		if(_zero) a.setzero();
@@ -308,7 +308,7 @@ inline mydouble pow(const mydouble &_X, const mydouble &_Y) {
 inline mydouble pow(const mydouble &_X, const double &_Y) {
 	return _X^_Y;
 }
-/* Caution: ^ has lower precedence than /*+- */
+/* Caution: ^ has lower precedence than /+-* */
 inline mydouble operator^(const double dbl, const mydouble &mydbl) {
 	mydouble a(dbl);
 	return a ^= mydbl;

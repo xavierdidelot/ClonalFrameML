@@ -176,10 +176,10 @@ public:
 
 		return *this;
 	}
-	void error(char* error_text)
+	void error(const char* error_text)
 	{
 		printf("\nRun-time error in Control::");
-		printf("%s%\n", error_text);
+		printf("%s\n", error_text);
 		printf("Exiting to system...\n");
 		exit(13);
 	}
