@@ -34,6 +34,7 @@
 #include "myutils/myutils.h"
 #include <map>
 #include <sstream>
+#include <algorithm>
 
 using namespace std;
 using namespace myutils;
