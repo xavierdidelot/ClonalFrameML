@@ -338,6 +338,19 @@ int main (const int argc, const char* argv[]) {
 	
 	// BRANCH LENGTH CORRECTION
 	if(CORRECT_BRANCH_LENGTHS) {
+		// Convert FASTA file to internal representation of nucleotides for Branch Length Correction
+		vector<double> empirical_nucleotide_frequencies(4,0.25);
+		Matrix<Nucleotide> nuc = FASTA_to_nucleotide(fa,empirical_nucleotide_frequencies,isBLC);
+		// Identify and count unique patterns
+		vector<string> pat;				// Pattern as string of AGCTNs
+		vector<int> pat1, cpat, ipat;	// First example of each pattern, number of sites with that pattern, the pattern at each (compatible) site (-1 otherwise)
+		vector<bool> nuc_ispoly(nuc.ncols(),true);
+		find_alignment_patterns(nuc,nuc_ispoly,pat,pat1,cpat,ipat);
+		// Storage for the MLE of the nucleotide sequence at every node
+		Matrix<Nucleotide> node_nuc;
+		// Begin by computing the joint maximum likelihood ancestral sequences
+		mydouble ML = maximum_likelihood_ancestral_sequences(nuc,ctree,kappa,empirical_nucleotide_frequencies,pat1,cpat,node_nuc);
+
 		cout << "BRANCH LENGTH CORRECTION/RECOMBINATION ANALYSIS:" << endl;
 		cout << "Analysing " << nBLC << " sites" << endl;
 		// Report the estimated equilibrium frequencies
