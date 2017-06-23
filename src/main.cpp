@@ -55,7 +55,8 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "Options affecting -rescale_no_recombination:" << endl;
 		errTxt << "-brent_tolerance               tolerance (default .001)  Set the tolerance of the Brent routine for -rescale_no_recombination." << endl;
 		errTxt << "-powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine for -rescale_no_recombination." << endl;
-		error(errTxt.str().c_str());
+		cout << errTxt.str().c_str()<<endl;
+		return 0;
 	}
 	// Process required arguments
 	const char* newick_file = argv[1];
