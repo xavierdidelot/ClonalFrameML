@@ -22,6 +22,7 @@
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();
 	cout << "ClonalFrameML " << ClonalFrameML_GITRevision << endl;
+	if (argc==2 && (strcmp(argv[1],"-version")==0||strcmp(argv[1],"-v")==0)) return 0;
 	// Process the command line arguments	
 	if(argc<4) {
 		stringstream errTxt;
