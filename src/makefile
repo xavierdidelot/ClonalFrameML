@@ -1,7 +1,6 @@
 # Make file for ClonalFrameML
 CC = g++
-CFLAGS = -O3 -I./ -I./myutils -I./coalesce
-LDFLAGS = 
+CFLAGS += -O3 -I./ -I./myutils -I./coalesce
 OBJECTS = main.o
 HEADERS = main.h brent.h powell.h version.h
 
@@ -19,4 +18,4 @@ version:
 	/bin/echo "#define ClonalFrameML_GITRevision \"`git describe --tags`\"" > version.h
 
 clean:
-	rm $(OBJECTS)
+	rm -f $(OBJECTS)
