@@ -1,0 +1,65 @@
+prod
+install.packages("/Users/jessiewu/Documents/research/gwas/svn/gwas_methods/bugwas/rpackage/build/bugwas_0.0.0.9000.tar.gz", repos = NULL, type="source")
+lin_loc
+library(bugwas)
+lin_loc
+?lin_loc
+strsplit
+create.dir
+dir.create
+?unlink
+sortDskPath="/home/wilson/C++/read_dsk/sort_dsk"#
+final.kmer31.total.txt = "/home/wu/gwas/github/test/kmerGWAS/testKmersFromFasta/kmersC00002649.kmer31.total.txt"#
+final.kmer31.txt.gz = "/home/wu/gwas/github/test/kmerGWAS/testKmersFromFasta/kmersC00002649.kmer31.txt.gz"#
+paste(c(sortDskPath, full_dodsk,"2>",final.kmer31.total.txt, "| gzip -c >", final.kmer31.txt.gz), collapse=" ")
+full_dodsk="C00002649_R00000022_gyrA.solid_kmers_binary"#
+sortDskPath="/home/wilson/C++/read_dsk/sort_dsk"#
+final.kmer31.total.txt = "/home/wu/gwas/github/test/kmerGWAS/testKmersFromFasta/kmersC00002649.kmer31.total.txt"#
+final.kmer31.txt.gz = "/home/wu/gwas/github/test/kmerGWAS/testKmersFromFasta/kmersC00002649.kmer31.txt.gz"#
+paste(c(sortDskPath, full_dodsk,"2>",final.kmer31.total.txt, "| gzip -c >", final.kmer31.txt.gz), collapse=" ")
+message("hi","there")
+?strsplit
+unlink(c("a","b"))
+touppercase
+uppervas
+uppercase
+toupper
+"a" =c("a", "b")
+"a" ==c("a", "b")
+?any
+emb.df = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsEMBNoMissingComid.txt",#
+what=character(0), sep="\n")
+inh.df = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsINHNoMissingComid.txt",#
+what=character(0), sep="\n")
+pza.id = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsPZANoMissingComid.txt",#
+what=character(0), sep="\n")
+rif.id = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsRIFNoMissingComid.txt",#
+what=character(0), sep="\n")
+unique(c(emb.id, inh.id, pza.id, rif.id))
+emb.id = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsEMBNoMissingComid.txt",#
+what=character(0), sep="\n")#
+#
+inh.id = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsINHNoMissingComid.txt",#
+what=character(0), sep="\n")#
+#
+pza.id = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsPZANoMissingComid.txt",#
+what=character(0), sep="\n")#
+#
+rif.id = scan(file="/Users/jessiewu/Documents/research/gwas/mtub1954FastaPathsRIFNoMissingComid.txt",#
+what=character(0), sep="\n")
+ids = unique(c(emb.id, inh.id, pza.id, rif.id))
+length(ids)
+?union
+union
+ids = union(c(emb.id, inh.id), c(pza.id, rif.id))
+length(ids)
+ids = unique(c(emb.id, inh.id, pza.id, rif.id))
+write(file="/Users/jessiewu/Documents/research/gwas/mtubComid.txt",#
+nColumns= 1, sep="\n")
+?write
+write(file="/Users/jessiewu/Documents/research/gwas/mtubComid.txt",#
+ncolumns= 1, sep="\n")
+ids = unique(c(emb.id, inh.id, pza.id, rif.id))
+write(ids, file="/Users/jessiewu/Documents/research/gwas/mtubComid.txt",#
+ncolumns= 1, sep="\n")
+length(ids)

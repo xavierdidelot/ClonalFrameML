@@ -162,7 +162,7 @@ public:
 	      b += SIGN(tol1,xm);
 	    fb=BrentFunc.f(b);
 	  }
-	  myutils::warning("Maximum number of iterations exceeded in zbrent");
+	  warning("Maximum number of iterations exceeded in zbrent");
 	  return 0.0; //Never get here.
 	}
 protected:
@@ -492,7 +492,7 @@ protected:
 				}
 			}
 		}
-		myutils::error("Brent: Too many iterations");
+		error("Brent: Too many iterations");
 		xmin=x;
 		return fx;
 	}

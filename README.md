@@ -1,5 +1,8 @@
 # ClonalFrameML
 
+# Rdev branch #
+This branch is for the development of a ClonalFrameML R package. The following is from the README.md for the master ClonalFrameML GitHub repository, only parts are relevant to this branch.
+
 # Introduction #
 
 This is the homepage of ClonalFrameML, a software package that performs efficient inference of recombination in bacterial genomes. ClonalFrameML was created by [Xavier Didelot](http://www.imperial.ac.uk/medicine/people/x.didelot/) and [Daniel Wilson](http://www.danielwilson.me.uk/). ClonalFrameML can be applied to any type of aligned sequence data, but is especially aimed at analysis of whole genome sequences. It is able to compare hundreds of whole genomes in a matter of hours on a standard Desktop computer. There are three main outputs from a run of ClonalFrameML: a phylogeny with branch lengths corrected to account for recombination, an estimation of the key parameters of the recombination process, and a genomic map of where recombination took place for each branch of the phylogeny.

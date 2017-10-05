@@ -23,7 +23,7 @@
 #include <math.h>
 #include "myutils/myerror.h"
 
-using myutils::error;
+//using myutils::error;
 
 /*	This class behaves to the user like a non-negative double, but
 	is stored internally as the natural logarithm. Standard mathematical
@@ -70,7 +70,7 @@ public:
 	/*Assignment operator*/
 	mydouble& operator=(const double &_doub) {
 		_zero = false;
-		if(_doub<0.0) myutils::error("mydouble::operator=(const double&): cannot assign a negative number");
+		if(_doub<0.0) error("mydouble::operator=(const double&): cannot assign a negative number");
 		if(_doub==0.0) setzero();
 		else _log = log(_doub);
 		return *this;
@@ -191,7 +191,7 @@ public:
 			/* diff must always be positive */
 			double diff = _log - mydbl._log;
 			if(diff==0.0) a.setzero();
-			else if(diff<0.0) myutils::error("mydouble::operator-(const mydouble&) cannot handle negative numbers");
+			else if(diff<0.0) error("mydouble::operator-(const mydouble&) cannot handle negative numbers");
 			else a.setlog(_log + log(1.0 - exp(-diff)));
 		}
 		return a;
@@ -206,7 +206,7 @@ public:
 			/* diff must always be positive */
 			double diff = _log - mydbl._log;
 			if(diff==0.0) setzero();
-			else if(diff<0.0) myutils::error("mydouble::operator-=(const mydouble&) cannot handle negative numbers");
+			else if(diff<0.0) error("mydouble::operator-=(const mydouble&) cannot handle negative numbers");
 			else _log += log(1.0 - exp(-diff));
 		}
 		return *this;

@@ -16,11 +16,11 @@
 
 using std::vector;
 using std::string;
-using myutils::error;
+//using myutils::error;
 using std::stringstream;
 using std::endl;
 using std::cout;
-using myutils::warning;
+//using myutils::warning;
 
 namespace myutils
 {

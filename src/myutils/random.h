@@ -374,7 +374,9 @@ public:
 	}
 	double binomial(const int n, const double pp)
 	{
+#ifndef PI
 		const double PI=3.141592653589793238;
+#endif
 		int j;
 		// Static members made class members 13/04/09
 		//static int nold=(-1);
@@ -770,7 +772,9 @@ public:
 	}
 	double poisson(const double xm)
 	{
+#ifndef PI
 		const double PI=3.141592653589793238;
+#endif
 		// Static members made class members 13/04/09
 		//static double sq,alxm,g,oldm=(-1.0);
 		double em,t,y;

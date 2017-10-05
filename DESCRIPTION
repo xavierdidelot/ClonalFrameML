@@ -1,0 +1,9 @@
+Package: ClonalFrameML
+Type: Package
+Title: This is a test
+Version: 1.0
+Date: 2017-10-04
+Author: Daniel Wilson
+Maintainer: Daniel Wilson <yourfault@somewhere.net>
+Description: It's really just a test
+License: Public domain

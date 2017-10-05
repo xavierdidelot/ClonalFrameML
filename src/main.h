@@ -43,7 +43,7 @@
 using std::cout;
 using myutils::NewickTree;
 using std::stringstream;
-using myutils::error;
+//using myutils::error;
 using myutils::ArgumentWizard;
 using myutils::DATA_TYPE;
 

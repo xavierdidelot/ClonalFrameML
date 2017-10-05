@@ -34,6 +34,7 @@
 
 namespace myutils
 {
+#ifndef error
 	inline void error(const char* error_text)
 	{
 		printf("ERROR: ");
@@ -43,14 +44,17 @@ namespace myutils
 #endif
 		exit(13);
 	}
+#endif
 
+#ifndef warning
 	inline void warning(const char* warning_text)
 	{
 		printf("WARNING: ");
 		printf("%s\n", warning_text);
 		return;
 	}
-
+#endif
+	
 };
 
 #endif
