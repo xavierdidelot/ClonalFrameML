@@ -10,7 +10,7 @@
 #define _NEWICK_H_
 #include <vector>
 #include <string>
-#include "myutils/myerror.h"
+#include "myerror.h"
 #include <sstream>
 #include <iostream>
 

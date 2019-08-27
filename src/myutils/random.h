@@ -28,11 +28,11 @@
 #include <cmath>
 #include <time.h>
 #include <vector>
-#include "myutils/vector.h"
-#include "myutils/matrix.h"
-#include "myutils/lotri_matrix.h"
+#include "vector.h"
+#include "matrix.h"
+#include "lotri_matrix.h"
 
-#include "myutils/myerror.h"
+#include "myerror.h"
 
 namespace myutils {
 class Random {

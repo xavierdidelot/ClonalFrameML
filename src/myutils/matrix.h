@@ -27,8 +27,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "myutils/vector.h"
-#include "myutils/utils.h"
+#include "vector.h"
+#include "utils.h"
 
 /****************************************************************/
 /*						myutils::Matrix							*/

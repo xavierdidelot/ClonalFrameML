@@ -1,7 +1,7 @@
-/*  Copyright 2013 Daniel Wilson and Xavier Didelot.
- *
+/*  
  *  xmfa.h
  *  Part of ClonalFrameML
+ *
  *
  *  ClonalFrameML is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by

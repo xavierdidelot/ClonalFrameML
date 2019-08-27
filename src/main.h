@@ -1,5 +1,4 @@
-/*  Copyright 2013 Daniel Wilson and Xavier Didelot.
- *
+/*  
  *  main.h
  *  Part of ClonalFrameML
  *
@@ -22,23 +21,20 @@
 #include <iostream>
 #include <string.h>
 #include "myutils/newick.h"
-//#include "coalesce/coalesce.h"
 #include "coalesce/coalescent_record.h"
 #include <sstream>
-//#include "myutils/myutils.h"
 #include "xmfa.h"
 #include <fstream>
 #include <algorithm>
 #include "myutils/DNA.h"
 #include "myutils/mydouble.h"
-//#include "coalesce/mutation.h"
 #include "powell.h"
 #include "myutils/argumentwizard.h"
 #include <time.h>
 #include "myutils/random.h"
 #include <limits>
 #include <iomanip>
-#include "version.h"
+#define ClonalFrameML_version "v1.12"
 
 using std::cout;
 using myutils::NewickTree;

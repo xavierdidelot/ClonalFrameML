@@ -1,8 +1,4 @@
-
 src/ClonalFrameML
-
 src/main.o
-
-src/version.h
-
+src/main
 src/.vscode/*

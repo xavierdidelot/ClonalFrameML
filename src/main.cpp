@@ -1,5 +1,4 @@
-/*  Copyright 2013 Daniel Wilson and Xavier Didelot.
- *
+/*  
  *  main.cpp
  *  Part of ClonalFrameML
  *
@@ -21,7 +20,7 @@
 
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();
-	cout << "ClonalFrameML " << ClonalFrameML_GITRevision << endl;
+	cout << "ClonalFrameML " << ClonalFrameML_version << endl;
 	if (argc==2 && (strcmp(argv[1],"-version")==0||strcmp(argv[1],"-v")==0)) return 0;
 	// Process the command line arguments	
 	if(argc<4) {

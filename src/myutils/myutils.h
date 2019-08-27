@@ -27,26 +27,12 @@
 
 #pragma warning(disable: 4786)
 
-/*Includes all header files in the myutils directory*/
-/*#include "cmatrix.h"
+#include "myerror.h"
+#include "utils.h"
+#include "vector.h"
 #include "matrix.h"
+#include "lotri_matrix.h"
 #include "random.h"
-#include "error.h"
 #include "DNA.h"
-#include "vector.h"*/
-
-#include "myutils/myerror.h"
-#include "myutils/utils.h"
-//#include "myutils/cmatrix.h"
-#include "myutils/vector.h"
-#include "myutils/matrix.h"
-#include "myutils/lotri_matrix.h"
-#include "myutils/random.h"
-#include "myutils/DNA.h"
-//#include "myutils/pause.h"
-//#include "myutils/sort.h"
-
-//#include "controlwizard.h" /* has problems in Linux with pointers */
-//#include "pause.h"	/* removed because conio.h is not standard */
 
 #endif
