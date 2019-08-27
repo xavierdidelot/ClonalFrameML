@@ -64,15 +64,12 @@ void write_newick(const marginal_tree &ctree, const vector<string> &all_node_nam
 void write_newick(const marginal_tree &ctree, const vector<string> &all_node_names, ofstream &fout);
 void write_newick_node(const mt_node *node, const vector<string> &all_node_names, ofstream &fout);
 void write_ancestral_fasta(Matrix<Nucleotide> &nuc, vector<string> &all_node_names, const char* file_name);
-void write_ancestral_fasta(Matrix<Nucleotide> &nuc, vector<string> &all_node_names, ofstream &fout);
+void write_filtered_fasta(vector< vector<ImportationState> > &imported, DNA * fa,vector<bool> & ignore_site, const char* file_name);
 void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, const char* file_name);
 void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, ofstream &fout);
 mydouble likelihood_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<int> &pat1, const vector<int> &cpat, const double kappa, const vector<double> &pinuc, const double branch_length);
 bool string_to_bool(const string s, const string label="");
-void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node);
-void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node);
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node,const char* chr_name);
-void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node, const char* chr_name);
 double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &full_param, vector<double> &posterior_a, int &neval, const bool coutput, double &priorL);
 double Baum_Welch0(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, const vector<double> &posterior_a, const bool coutput);
 double gamma_loglikelihood(const double x, const double a, const double b);

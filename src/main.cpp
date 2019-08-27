@@ -43,7 +43,6 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-chromosome_name               name, eg \"chr\"            Output importation status file in BED format using given chromosome name." << endl;
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites." << endl;
-//		errTxt << "-compress_reconstructed_sites  true (default) or false   Reduce the number of columns in the output FASTA file." << endl;	// Alternative not currently implemented, so not optional
 		errTxt << "-label_uncorrected_tree        true or false (default)   Regurgitate the uncorrected Newick tree with internal nodes labelled." << endl;
 		errTxt << "Options affecting -em and -embranch:" << endl;
 		errTxt << "-prior_mean                    df \"0.1 0.001 0.1 0.0001\" Prior mean for R/theta, 1/delta, nu and M." << endl;
@@ -52,6 +51,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-guess_initial_m               true (default) or false   Initialize M and nu jointly in the EM algorithms." << endl;
 		errTxt << "-emsim                         value >= 0  (default 0)   Number of simulations to estimate uncertainty in the EM results." << endl;
 		errTxt << "-embranch_dispersion           value > 0 (default .01)   Dispersion in parameters among branches in the -embranch model." << endl;
+		errTxt << "-output_filtered               true of false (default)   Output a filtered alignment including only non-recombinant sites." << endl;
 		errTxt << "Options affecting -rescale_no_recombination:" << endl;
 		errTxt << "-brent_tolerance               tolerance (default .001)  Set the tolerance of the Brent routine for -rescale_no_recombination." << endl;
 		errTxt << "-powell_tolerance              tolerance (default .001)  Set the tolerance of the Powell routine for -rescale_no_recombination." << endl;
@@ -65,6 +65,7 @@ int main (const int argc, const char* argv[]) {
 	string tree_out_file = string(out_file) + ".labelled_tree.newick";
 	string oritree_out_file = string(out_file) + ".labelled_uncorrected_tree.newick";
 	string fasta_out_file = string(out_file) + ".ML_sequence.fasta";
+	string fasta_filtered_file = string(out_file) + ".filtered.fasta";
 	string xref_out_file = string(out_file) + ".position_cross_reference.txt";
 	string import_out_file = string(out_file) + ".importation_status.txt";
 	string em_out_file = string(out_file) + ".em.txt";
@@ -74,7 +75,8 @@ int main (const int argc, const char* argv[]) {
 	arg.case_sensitive = false;
 	string fasta_file_list="false", xmfa_file="false", imputation_only="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="true", rescale_no_recombination="false";
-	string show_progress="false", compress_reconstructed_sites="true";
+	string show_progress="false";
+	string output_filtered="false";
 	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
 	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false", chr_name="";
 	double brent_tolerance = 1.0e-3, powell_tolerance = 1.0e-3, global_min_branch_length = 1.0e-7;
@@ -93,7 +95,6 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("powell_tolerance",			TP_DOUBLE, &powell_tolerance);
 	arg.add_item("rescale_no_recombination",	TP_STRING, &rescale_no_recombination);
 	arg.add_item("show_progress",				TP_STRING, &show_progress);
-	arg.add_item("compress_reconstructed_sites",TP_STRING, &compress_reconstructed_sites);	
 	arg.add_item("min_branch_length",			TP_DOUBLE, &global_min_branch_length);
 	arg.add_item("prior_mean",					TP_STRING, &string_prior_mean);
 	arg.add_item("prior_sd",					TP_STRING, &string_prior_sd);
@@ -105,6 +106,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("embranch_dispersion",			TP_DOUBLE, &embranch_dispersion);
 	arg.add_item("kappa",						TP_DOUBLE, &kappa);
 	arg.add_item("label_uncorrected_tree",		TP_STRING, &label_original_tree);
+	arg.add_item("output_filtered",				TP_STRING, &output_filtered);
 	arg.read_input(argc-3,argv+3);
 	bool FASTA_FILE_LIST				= string_to_bool(fasta_file_list,				"fasta_file_list");
 	bool XMFA_FILE						= string_to_bool(xmfa_file,						"xmfa_file");
@@ -114,11 +116,11 @@ int main (const int argc, const char* argv[]) {
 	bool USE_INCOMPATIBLE_SITES			= string_to_bool(use_incompatible_sites,		"use_incompatible_sites");
 	bool RESCALE_NO_RECOMBINATION		= string_to_bool(rescale_no_recombination,		"rescale_no_recombination");
 	bool SHOW_PROGRESS					= string_to_bool(show_progress,					"show_progress");
-	bool COMPRESS_RECONSTRUCTED_SITES	= string_to_bool(compress_reconstructed_sites,	"compress_reconstructed_sites");
 	bool GUESS_INITIAL_M				= string_to_bool(guess_initial_m,				"guess_initial_m");
 	bool EM								= string_to_bool(em,							"em");
 	bool EMBRANCH						= string_to_bool(embranch,						"embranch");
 	bool LABEL_ORIGINAL_TREE			= string_to_bool(label_original_tree,			"label_uncorrected_tree");
+	bool OUTPUT_FILTERED				= string_to_bool(output_filtered,				"output_filtered");
 	bool MULTITHREAD = false;
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
@@ -329,7 +331,6 @@ int main (const int argc, const char* argv[]) {
 	// Report the ML
 	cout << "Maximum log-likelihood for imputation and ancestral state reconstruction = " << ML.LOG() << endl;
 	
-	if(!COMPRESS_RECONSTRUCTED_SITES) cout << "WARNING: -compress_reconstructed_sites=false not yet implemented, ignoring." << endl;
 	// Output the ML reconstructed sequences
 	write_ancestral_fasta(node_nuc, ctree_node_labels, fasta_out_file.c_str());
 	// For every position in the original FASTA file, output the corresponding position in the output FASTA file, or -1 (not included)
@@ -467,6 +468,11 @@ int main (const int argc, const char* argv[]) {
 			// Output the importation status
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node,chr_name.c_str());
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
+			if (OUTPUT_FILTERED) {			
+				// Output the filtered alignment
+				write_filtered_fasta(is_imported, &fa, ignore_site, fasta_filtered_file.c_str());
+				cout << "Wrote filtered alignment to " << fasta_filtered_file << endl;
+			}
 			
 			// If required, simulate under the point estimates and output posterior samples of the parameters
 			if(emsim>0) {
@@ -549,6 +555,11 @@ int main (const int argc, const char* argv[]) {
 			// Output the importation status
 			write_importation_status_intervals(is_imported,ctree_node_labels,isBLC,compat,import_out_file.c_str(),root_node,chr_name.c_str());
 			cout << "Wrote inferred importation status to " << import_out_file << endl;
+			if (OUTPUT_FILTERED) {
+				// Output the filtered alignment
+				write_filtered_fasta(is_imported, &fa, ignore_site, fasta_filtered_file.c_str());
+				cout << "Wrote filtered alignment to " << fasta_filtered_file << endl;
+			}
 			
 			// If required, simulate under the point estimates and output posterior samples of the parameters
 			if(emsim>0) {
@@ -1722,17 +1733,7 @@ void write_ancestral_fasta(Matrix<Nucleotide> &nuc, vector<string> &all_node_nam
 		errTxt << "write_ancestral_fasta(): could not open file " << file_name << " for writing";
 		error(errTxt.str().c_str());
 	}
-	write_ancestral_fasta(nuc,all_node_names,fout);
-	fout.close();
-}
-
-void write_ancestral_fasta(Matrix<Nucleotide> &nuc, vector<string> &all_node_names, ofstream &fout) {
 	static const char AGCTN[5] = {'A','G','C','T','N'};
-	if(!fout) {
-		stringstream errTxt;
-		errTxt << "write_ancestral_fasta(): could not open file stream for writing";
-		error(errTxt.str().c_str());
-	}
 	if(nuc.nrows()!=all_node_names.size()) {
 		stringstream errTxt;
 		errTxt << "write_ancestral_fasta(): number of sequences (" << nuc.nrows() << ") does not equal number of node labels (" << all_node_names.size() << ")";
@@ -1746,6 +1747,30 @@ void write_ancestral_fasta(Matrix<Nucleotide> &nuc, vector<string> &all_node_nam
 		}
 		fout << endl;
 	}	
+	fout.close();
+}
+
+void write_filtered_fasta(vector< vector<ImportationState> > &imported, DNA * fa,vector<bool> &ignore_site, const char* file_name) {
+	ofstream fout(file_name);
+	if(!fout) {
+		stringstream errTxt;
+		errTxt << "write_filtered_fasta(): could not open file " << file_name << " for writing";
+		error(errTxt.str().c_str());
+	}
+	int n,pos;
+	vector<bool> tokeep(fa->lseq);
+	for (pos=0;pos<fa->lseq;pos++) {
+		tokeep[pos]=true;
+		if (ignore_site[pos]) tokeep[pos]=false;
+		for (n=0;n<imported.size();n++) if(imported[n][pos]==Imported) tokeep[pos]=false;
+	}
+	for(n=0;n<fa->nseq;n++)
+	{
+		fout << ">" << fa->label[n] << endl;
+		for(pos=0;pos<fa->lseq;pos++)
+			if (tokeep[pos]) fout << fa->sequence[n][pos];
+		fout << endl;
+	}	fout.close();
 }
 
 void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, const char* file_name) {
@@ -1753,16 +1778,6 @@ void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, c
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_position_cross_reference(): could not open file " << file_name << " for writing";
-		error(errTxt.str().c_str());
-	}
-	write_position_cross_reference(iscompat,ipat,fout);
-	fout.close();
-}
-
-void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, ofstream &fout) {
-	if(!fout) {
-		stringstream errTxt;
-		errTxt << "write_position_cross_reference(): could not open file stream for writing";
 		error(errTxt.str().c_str());
 	}
 	int i,j,pat;
@@ -1781,6 +1796,7 @@ void write_position_cross_reference(vector<bool> &iscompat, vector<int> &ipat, o
 		fout << pat+1;
 	}
 	fout << endl;
+	fout.close();
 }
 
 mydouble likelihood_branch(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<int> &pat1, const vector<int> &cpat, const double kappa, const vector<double> &pinuc, const double branch_length) {
@@ -1811,70 +1827,11 @@ bool string_to_bool(const string s, const string label) {
 	return false;
 }
 
-void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node) {
-	ofstream fout(file_name);
-	if(!fout) {
-		stringstream errTxt;
-		errTxt << "write_importation_status(): could not open file " << file_name << " for writing";
-		error(errTxt.str().c_str());
-	}
-	write_importation_status(imported,all_node_names,isBLC,compat,fout,root_node);
-	fout.close();
-}
-
-void write_importation_status(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node) {
-	if(!fout) {
-		stringstream errTxt;
-		errTxt << "write_importation_status(): could not open file stream for writing";
-		error(errTxt.str().c_str());
-	}
-	if(imported.size()!=root_node) {
-		stringstream errTxt;
-		errTxt << "write_importation_status(): number of lineages (" << imported.size() << ") does not equal the number of non-root node labels (" << root_node << ")";
-		error(errTxt.str().c_str());
-	}
-	if(all_node_names.size()<root_node) {
-		stringstream errTxt;
-		errTxt << "write_importation_status(): number of non-root lineages (" << root_node << ") exceeds the number of node labels (" << all_node_names.size() << ")";
-		error(errTxt.str().c_str());
-	}
-	int i,pos;
-	for(i=0;i<root_node;i++) {
-		fout << ">" << all_node_names[i] << endl;
-		int k = 0;
-		for(pos=0;pos<isBLC.size();pos++) {
-			if(isBLC[pos]) {
-				// If used in branch length correction, 0 (unimported), 1 (imported), 2 (homoplasy/multiallelic unimported), 3 (homoplasy/multiallelic imported)
-				int out = 2*(compat[pos]>0) + (int)imported[i][k];
-				fout << out;
-				++k;
-			} else if(compat[pos]<=0) {
-				// If compatible but not used in branch length correction, 4
-				fout << 4;
-			} else {
-				// If homoplasy/multiallelic and not used in branch length correction, 5
-				fout << 5;
-			}
-		}
-		fout << endl;
-	}	
-}
-
 void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, const char* file_name, const int root_node,  const char* chr_name) {
 	ofstream fout(file_name);
 	if(!fout) {
 		stringstream errTxt;
 		errTxt << "write_importation_status_intervals(): could not open file " << file_name << " for writing";
-		error(errTxt.str().c_str());
-	}
-	write_importation_status_intervals(imported,all_node_names,isBLC,compat,fout,root_node, chr_name);
-	fout.close();
-}
-
-void write_importation_status_intervals(vector< vector<ImportationState> > &imported, vector<string> &all_node_names, vector<bool> &isBLC, vector<int> &compat, ofstream &fout, const int root_node,  const char* chr_name) {
-	if(!fout) {
-		stringstream errTxt;
-		errTxt << "write_importation_status_intervals(): could not open file stream for writing";
 		error(errTxt.str().c_str());
 	}
 	if(imported.size()!=root_node) {
@@ -1917,6 +1874,7 @@ void write_importation_status_intervals(vector< vector<ImportationState> > &impo
 			else fout << chr_name << tab << interval_beg+1 << tab << pos << tab << all_node_names[i] << endl;
 		}
 	}
+	fout.close();
 }
 
 mydouble maximum_likelihood_ClonalFrame_branch_allsites(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported) {
