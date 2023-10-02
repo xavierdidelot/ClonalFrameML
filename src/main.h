@@ -1,4 +1,4 @@
-/*  
+/*
  *  main.h
  *  Part of ClonalFrameML
  *
@@ -6,12 +6,12 @@
  *  it under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
- *  
+ *
  *  ClonalFrameML is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  *  GNU Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with ClonalFrameML. If not, see <http://www.gnu.org/licenses/>.
  *
@@ -77,12 +77,16 @@ Matrix<double> Baum_Welch_simulate_posterior(const marginal_tree &tree, const Ma
 double Baum_Welch_Rho_Per_Branch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, vector<double> &mean_param, Matrix<double> &full_param, Matrix<double> &posterior_a, int &neval, const bool coutput);
 mydouble maximum_likelihood_ClonalFrame_branch_allsites(const int dec_id, const int anc_id, const Matrix<Nucleotide> &node_nuc, const vector<bool> &iscompat, const vector<int> &ipat, const double kappa, const vector<double> &pi, const double branch_length, const double rho_over_theta, const double mean_import_length, const double import_divergence, vector<ImportationState> &is_imported);
 
-class orderNewickNodesByStatusLabelAndAge : public std::binary_function<size_t,size_t,bool> {
+class orderNewickNodesByStatusLabelAndAge {
 public:
+  using first_argument_type = size_t;
+  using second_argument_type = size_t;
+  using result_type = bool;
+	
 	const vector<NewickNode*> &root2tip;	// temporary ordering of Newick nodes from root to tips
 	const vector<double> &ageroot2tip;		// corresponding age of each node in root2tip
 	const vector<size_t> &labelorder;		// The position where each node comes in the label order (for tips; the label is ignored for internal nodes)
-	orderNewickNodesByStatusLabelAndAge(const vector<NewickNode*> &root2tip_in, const vector<double> &ageroot2tip_in, const vector<size_t> &labelorder_in) : 
+	orderNewickNodesByStatusLabelAndAge(const vector<NewickNode*> &root2tip_in, const vector<double> &ageroot2tip_in, const vector<size_t> &labelorder_in) :
 	root2tip(root2tip_in), ageroot2tip(ageroot2tip_in), labelorder(labelorder_in) {
 	}
 	// Test if i is less than j
@@ -128,7 +132,7 @@ public:
 	double min_branch_length;
 public:
 	ClonalFrameRescaleBranchFunction(const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<int> &_pat1, const vector<int> &_cpat, const double _kappa,
-									const vector<double> &_pi, const bool _multithread, const double _crude_branch_length, const double _min_branch_length) : 
+									const vector<double> &_pi, const bool _multithread, const double _crude_branch_length, const double _min_branch_length) :
 	node(_node), node_nuc(_node_nuc), pat1(_pat1), cpat(_cpat), kappa(_kappa), pi(_pi), neval(0),
 	multithread(_multithread), crude_branch_length(_crude_branch_length), min_branch_length(_min_branch_length) {};
 	double f(const vector<double>& x) {
@@ -175,9 +179,9 @@ public:
 	bool coutput;
 public:
 	ClonalFrameBaumWelch(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-							   const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
-							   const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m, const bool _coutput=false) : 
-	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+							   const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported,
+							   const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m, const bool _coutput=false) :
+	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa),
 	pi(_pi), neval(0), is_imported(_is_imported),
 	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m),
 	coutput(_coutput) {
@@ -208,7 +212,7 @@ public:
 			}
 			initial_branch_length[i] = pd/pd_den;
 //			initial_branch_length[i] = tree.node[i].edge_time;
-			informative[i] = (pd>=2.0) ? true : false;			
+			informative[i] = (pd>=2.0) ? true : false;
 		}
 	}
 	vector<double> maximize_likelihood(const vector<double> &param) {
@@ -293,9 +297,9 @@ public:
 	bool coutput;
 public:
 	ClonalFrameBaumWelchRhoPerBranch(const marginal_tree &_tree, const Matrix<Nucleotide> &_node_nuc, const vector<bool> &_iscompat, const vector<int> &_ipat, const double _kappa,
-						 const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported, 
-						 const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m, const bool _coutput=false) : 
-	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa), 
+						 const vector<double> &_pi, vector< vector<ImportationState> > &_is_imported,
+						 const vector<double> &_prior_a, const vector<double> &_prior_b, const int _root_node, const bool _guess_initial_m, const bool _coutput=false) :
+	tree(_tree), node_nuc(_node_nuc), iscompat(_iscompat), ipat(_ipat), kappa(_kappa),
 	pi(_pi), neval(0), is_imported(_is_imported),
 	prior_a(_prior_a), prior_b(_prior_b), root_node(_root_node), initial_branch_length(_root_node), informative(_root_node), guess_initial_m(_guess_initial_m),
 	coutput(_coutput) {
@@ -325,7 +329,7 @@ public:
 				}
 			}
 			initial_branch_length[i] = pd/pd_den;
-			informative[i] = (pd>=2.0) ? true : false;			
+			informative[i] = (pd>=2.0) ? true : false;
 		}
 	}
 	void maximize_likelihood(const vector<double> &param) {
