@@ -33,6 +33,13 @@ make
 
 Compilation requires a C++ compiler, such as [GCC](https://gcc.gnu.org/), to be installed. Running the bundled R scripts requires [R](http://cran.r-project.org/) to be installed with the ape and phangorn packages.
 
+## Run on test data
+
+The following command can be used to test that ClonalFrameML was correctly installed:
+```
+ClonalFrameML testdata/test.nwk testdata/test.fasta testdata/out
+```
+
 ## User guide
 
 The user guide for ClonalFrameML is available [here](https://github.com/xavierdidelot/clonalframeml/wiki).
