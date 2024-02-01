@@ -34,7 +34,7 @@
 #include "myutils/random.h"
 #include <limits>
 #include <iomanip>
-#define ClonalFrameML_version "v1.12"
+#define ClonalFrameML_version "v1.13"
 
 using std::cout;
 using myutils::NewickTree;
