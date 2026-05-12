@@ -1,6 +1,7 @@
 # Makefile for ClonalFrameML
 CC = g++
-CFLAGS += -O3
+CFLAGS += -O3 -fopenmp
+LDFLAGS += -fopenmp
 OBJECTS = main.o
 HEADERS = main.h brent.h powell.h
 
