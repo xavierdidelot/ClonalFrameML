@@ -17,6 +17,9 @@
  *
  */
 #include "main.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();
@@ -40,6 +43,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
 		errTxt << "-use_incompatible_sites        true (default) or false   Use homoplasious and multiallelic sites to correct branch lengths." << endl;
 		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
+		errTxt << "-num_threads                   value >=1 (default 1)     Number of threads to use in multithreaded parts of the code." << endl;
 		errTxt << "-chromosome_name               name, eg \"chr\"            Output importation status file in BED format using given chromosome name." << endl;
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites." << endl;
@@ -76,6 +80,7 @@ int main (const int argc, const char* argv[]) {
 	string fasta_file_list="false", xmfa_file="false", imputation_only="false", ignore_incomplete_sites="false", ignore_user_sites="", reconstruct_invariant_sites="false";
 	string use_incompatible_sites="true", rescale_no_recombination="false";
 	string show_progress="false";
+	int num_threads = 1;
 	string output_filtered="false";
 	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
 	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false", chr_name="";
@@ -95,6 +100,7 @@ int main (const int argc, const char* argv[]) {
 	arg.add_item("powell_tolerance",			TP_DOUBLE, &powell_tolerance);
 	arg.add_item("rescale_no_recombination",	TP_STRING, &rescale_no_recombination);
 	arg.add_item("show_progress",				TP_STRING, &show_progress);
+	arg.add_item("num_threads",					TP_INT,    &num_threads);
 	arg.add_item("min_branch_length",			TP_DOUBLE, &global_min_branch_length);
 	arg.add_item("prior_mean",					TP_STRING, &string_prior_mean);
 	arg.add_item("prior_sd",					TP_STRING, &string_prior_sd);
@@ -122,6 +128,12 @@ int main (const int argc, const char* argv[]) {
 	bool LABEL_ORIGINAL_TREE			= string_to_bool(label_original_tree,			"label_uncorrected_tree");
 	bool OUTPUT_FILTERED				= string_to_bool(output_filtered,				"output_filtered");
 	bool MULTITHREAD = false;
+	if(num_threads<1) {
+		error("num_threads must be at least 1");
+	}
+	#ifdef _OPENMP
+	omp_set_num_threads(num_threads);
+	#endif
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
 		errTxt << "brent_tolerance value out of range (0,0.1], default 0.001";
@@ -145,9 +157,6 @@ int main (const int argc, const char* argv[]) {
 	}
 	if(CORRECT_BRANCH_LENGTHS && !(RESCALE_NO_RECOMBINATION || EM || EMBRANCH)) {
 		error("One of -em, -embranch or -rescale_no_recombination must be specified when imputation_only=false");
-	}
-	if(MULTITHREAD) {
-		cout << "WARNING: multithreaded version not implemented, ignoring." << endl;
 	}
 	if(global_min_branch_length<=0.0) {
 		error("Minimum branch length must be positive");
@@ -1997,7 +2006,7 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 	// Recombination parameters
 	const double recrate = rho_over_theta*branch_length;
 	const double endrecrate = 1.0/mean_import_length;
-	const double totrecrate = recrate+endrecrate;	
+	const double totrecrate = recrate+endrecrate;
 	// Transient storage
 	mydouble aprev[2];
 	mydouble a[2];
@@ -2005,6 +2014,13 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 	const mydouble pi[2] = {endrecrate/totrecrate,recrate/totrecrate};
 	// Beginning at the first variable site, calculate the subsequence marginal likelihood
 	int i;
+	// Precompute obs (0 same, 1 different) for emission counting
+	vector<unsigned char> obs(npos);
+	for(i=0;i<npos;i++) {
+		const Nucleotide dec = node_nuc[dec_id][ipat[i]];
+		const Nucleotide anc = node_nuc[anc_id][ipat[i]];
+		obs[i] = (unsigned char)(dec != anc);
+	}
 	for(i=0;i<npos;i++) {
 		Nucleotide dec = node_nuc[dec_id][ipat[i]];
 		Nucleotide anc = node_nuc[anc_id][ipat[i]];
@@ -2027,7 +2043,12 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 	}
 	// Record the marginal likelihood for output later
 	const mydouble ML = (a[0]+a[1]);
-	// Second pass: backward algorithm
+
+	// Second pass: backward algorithm, storing posterior probabilities for parallel reduction
+	vector<double> gamma((size_t)npos*2,0.0);
+	vector<double> xi((npos>=2) ? (size_t)(npos-1)*4 : 0,0.0);
+	vector<double> dist((npos>=2) ? (size_t)(npos-1) : 0,0.0);
+	vector<unsigned char> dist_ok((npos>=2) ? (size_t)(npos-1) : 0,0);
 	mydouble bnext[2];
 	mydouble b[2];
 	// Beginning at the last variable site, calculate the marginal likelihood of the 3prime sites
@@ -2035,25 +2056,6 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 		if(i==(npos-1)) {
 			b[0] = mydouble(1.0);
 			b[1] = mydouble(1.0);
-			
-			// Update the expected number of emissions
-			mydouble pU = A[i][0]*b[0];
-			mydouble pI = A[i][1]*b[1];
-			// NB:- pU+pI should always equal ML but just in case it introduces small errors
-			const mydouble MLi = pU + pI;
-			pU /= MLi;
-			pI /= MLi;
-			const double ppost[2]  = {pU.todouble(),1.0-pU.todouble()};
-			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
-			int j;
-			// NB:- *** obs refers to the PRESENT site !!! ***
-			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
-			for(j=0;j<2;j++) {
-				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
-				numEmis[j][obs] += ppost[j];
-				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
-				denEmis[j]      += ppost[j];		// NB:- the denominator is the same for both observation states
-			}			
 		} else {
 			bnext[0] = b[0];
 			bnext[1] = b[1];
@@ -2068,54 +2070,90 @@ mydouble mydouble_forward_backward_expectations_ClonalFrame_branch(const int dec
 			const mydouble sumbnext = prtrans*(pi[0]*pemisU*bnext[0] + pi[1]*pemisI*bnext[1]);
 			b[0] = prnotrans*pemisU*bnext[0]+sumbnext;
 			b[1] = prnotrans*pemisI*bnext[1]+sumbnext;
-			
-			// Update the expected number of transitions and emissions
-			// Calculate the marginal probabilities that the hidden state is Unimported or Imported
-			//			if(fabs((A[i][0]*b[0]+A[i][1]*b[1]).LOG()-ML.LOG())>1e-6) {
-			//				cout << ML.LOG() << "\t" << (A[i][0]*b[0]+A[i][1]*b[1]).LOG() << endl;
-			//			}
-			mydouble pU = A[i][0]*b[0];
-			mydouble pI = A[i][1]*b[1];
-			// NB:- pU+pI should always equal ML but just in case it introduces small errors
-			const mydouble MLi = pU + pI;
-			pU /= MLi;
-			pI /= MLi;
-			const double ppost[2]  = {pU.todouble(),1.0-pU.todouble()};
-			// Increment the numerator and denominator of the expected number of emissions from state j to observation k
-			int j;
-			// NB:- *** obs refers to the PRESENT site !!! ***
-			const int obs = (int)(node_nuc[dec_id][ipat[i]]!=node_nuc[anc_id][ipat[i]]);		// 0 = same, 1 = different
-			for(j=0;j<2;j++) {
-				// Total number of emissions from j to k equals indicator of actual observation k (0 or 1) weighted by probability the site was in state j
-				numEmis[j][obs] += ppost[j];
-				// Total number of possible emissions from j to k equals the number of sites, each weighted by probability the site was in state j
-				denEmis[j]      += ppost[j];		// NB:- the denominator is the same for both observation states
-			}
-			// Increment the numerator and denominator of the expected number of transitions from state j to state k
-			// Impose maximum adjacent site distance of 1kb (needed for small-p Poisson approximation to heterogeneous bernoulli)
-			const mydouble pemis[2]  = {pemisU,pemisI};
-			const double dist = position[i+1]-position[i];
-			if(dist<=1000.) {
-				int k;
+
+			// Store transition expectations for parallel reduction
+			const double d = position[i+1]-position[i];
+			dist[(size_t)i] = d;
+			if(d<=1000.) {
+				dist_ok[(size_t)i] = 1;
+				const mydouble pemis[2]  = {pemisU,pemisI};
+				mydouble pU_i = A[i][0]*b[0];
+				mydouble pI_i = A[i][1]*b[1];
+				const mydouble MLi = pU_i + pI_i;
+				int j,k;
 				for(j=0;j<2;j++) {
 					for(k=0;k<2;k++) {
 						const int istrans = (int)(j!=k);
-						// Probability of transition from j to k given the data equals the joint likelihood of the data and transition from j to k, divided by marginal likelihood of the data
+						mydouble joint;
 						if(istrans) {
-							numTrans[j][k] += (A[i][j]*prtrans*pi[k]*pemis[k]*bnext[k]/MLi).todouble();		// Note the use of bnext, not b
-							//							if(j==0 && k==1) cout << "pos = " << i << " numTrans[0][1] = " << numTrans[j][k].todouble() << endl; //(A[i][j]*ptrans[istrans]*pemis[k]*bnext[k]/ML).LOG() << endl;
+							joint = A[i][j]*prtrans*pi[k]*pemis[k]*bnext[k];
 						} else {
-							numTrans[j][k] += (A[i][j]*(prnotrans+prtrans*pi[k])*pemis[k]*bnext[k]/MLi).todouble();		// Note the use of bnext, not b
+							joint = A[i][j]*(prnotrans+prtrans*pi[k])*pemis[k]*bnext[k];
 						}
+						xi[(size_t)i*4+(size_t)(j*2+k)] = (joint/MLi).todouble();
 					}
-					// Expected distance between sites equals actual distance weighted by the probability the 5prime site was in state j
-					denTrans[j] += dist*ppost[j];											// NB:- the denominator is the same for both destination states
 				}
 			}
 		}
+		// Calculate the marginal probabilities that the hidden state is Unimported or Imported
+		mydouble pU = A[i][0]*b[0];
+		mydouble pI = A[i][1]*b[1];
+		const mydouble MLi = pU + pI;
+		pU /= MLi;
+		pI /= MLi;
+		gamma[(size_t)i*2] = pU.todouble();
+		gamma[(size_t)i*2+1] = pI.todouble();
 	}
-	// Return the marginal likelihood
-	//	cout << "numTrans = " << numTrans[0][0].todouble() << " " << numTrans[0][1].todouble() << " " << numTrans[1][0].todouble() << " " << numTrans[0][0].todouble() << endl;
+	// Parallel reduction over sites to build expected counts
+	Matrix<double> numEmis_global(2,2,0.0);
+	vector<double> denEmis_global(2,0.0);
+	Matrix<double> numTrans_global(2,2,0.0);
+	vector<double> denTrans_global(2,0.0);
+	#pragma omp parallel
+	{
+		double numEmis_loc[2][2]  = {{0.0, 0.0}, {0.0, 0.0}};
+		double denEmis_loc[2]     = {0.0, 0.0};
+		double numTrans_loc[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
+		double denTrans_loc[2]    = {0.0, 0.0};
+		#pragma omp for nowait
+		for(int i=0;i<npos;i++) {
+			const int o = (int)obs[i];
+			const double g0 = gamma[(size_t)i*2];
+			const double g1 = gamma[(size_t)i*2+1];
+			numEmis_loc[0][o] += g0;
+			numEmis_loc[1][o] += g1;
+			denEmis_loc[0] += g0;
+			denEmis_loc[1] += g1;
+		}
+		#pragma omp for nowait
+		for(int i=0;i<npos-1;i++) {
+			if(!dist_ok[(size_t)i]) continue;
+			const double d = dist[(size_t)i];
+			const double g0 = gamma[(size_t)i*2];
+			const double g1 = gamma[(size_t)i*2+1];
+			denTrans_loc[0] += d*g0;
+			denTrans_loc[1] += d*g1;
+			numTrans_loc[0][0] += xi[(size_t)i*4];
+			numTrans_loc[0][1] += xi[(size_t)i*4+1];
+			numTrans_loc[1][0] += xi[(size_t)i*4+2];
+			numTrans_loc[1][1] += xi[(size_t)i*4+3];
+		}
+		#pragma omp critical
+		{
+			for(int j=0;j<2;j++) {
+				for(int k=0;k<2;k++) {
+					numEmis_global[j][k]  += numEmis_loc[j][k];
+					numTrans_global[j][k] += numTrans_loc[j][k];
+				}
+				denEmis_global[j]  += denEmis_loc[j];
+				denTrans_global[j] += denTrans_loc[j];
+			}
+		}
+	}
+	numEmis  = numEmis_global;
+	denEmis  = denEmis_global;
+	numTrans = numTrans_global;
+	denTrans = denTrans_global;
 	return ML;
 }
 
@@ -2127,9 +2165,6 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	double mean_import_length = full_param[1];
 	double import_divergence = full_param[2];
 	posterior_a = vector<double>(3+informative.size());
-	// Storage for the expected number of transitions and emissions in the HMM
-	Matrix<double> numEmiss(2,2), numTrans(2,2);
-	vector<double> denEmiss(2),   denTrans(2);
 	// Counters
 	double mutI=0.0;			// Running total divergence at imported sites
 	double numU=0.0, numI=0.0;	// Running total number of transitions *to* unimported, imported regions
@@ -2138,35 +2173,49 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 	// Calculate the marginal likelihood and expected number of transitions and emissions by the forward-backward algorithm
 	// Include the effect of the prior
 	double ML = 0.0;
-	priorL = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
-	for(i=0;i<informative.size();i++) {
-		if(informative[i]) {
-			priorL += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
-			const int dec_id = tree.node[i].id;
-			const int anc_id = tree.node[i].ancestor->id;
-			const double branch_length = full_param[3+i];
-			ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
-			// Update estimate of the branch length
-			const double mutU_br = numEmiss[0][1];
-			const double nsiU_br = denEmiss[0];
-			full_param[3+i] = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
-			posterior_a[3+i] = (prior_a[3]+mutU_br);
-			// Increment counters for the other expectations
-			mutI += numEmiss[1][1];
-			nsiI += denEmiss[1];
-			const double numI_br = numTrans[0][1];
-			const double lenU_br = denTrans[0];
-			numI += numI_br;
-			lenU += full_param[3+i]*lenU_br;
-			numU += numTrans[1][0];
-			lenI += denTrans[1];
-			if(coutput) {
+	double priorL_branch = 0.0;
+
+	#pragma omp parallel for schedule(static) reduction(+:ML,priorL_branch,mutI,numU,numI,nsiI,lenU,lenI)
+	for(i=0;i<(int)informative.size();i++) {
+		if(!informative[i]) continue;
+		// Storage for the expected number of transitions and emissions in the HMM
+		Matrix<double> numEmiss(2,2), numTrans(2,2);
+		vector<double> denEmiss(2),   denTrans(2);
+		priorL_branch += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
+		const int dec_id = tree.node[i].id;
+		const int anc_id = tree.node[i].ancestor->id;
+		const double branch_length = full_param[3+i];
+		ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+		// Update estimate of the branch length
+		const double mutU_br = numEmiss[0][1];
+		const double nsiU_br = denEmiss[0];
+		const double new_branch_length = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
+		full_param[3+i] = new_branch_length;
+		posterior_a[3+i] = (prior_a[3]+mutU_br);
+		// Increment counters for the other expectations
+		mutI += numEmiss[1][1];
+		nsiI += denEmiss[1];
+		const double numI_br = numTrans[0][1];
+		const double lenU_br = denTrans[0];
+		numI += numI_br;
+		lenU += new_branch_length*lenU_br;
+		numU += numTrans[1][0];
+		lenI += denTrans[1];
+		if(coutput) {
+			#pragma omp critical
+			{
 				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
 				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
 				cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
 			}
 		}
 	}
+	// Add the non-branch prior pieces after (single-thread)
+	priorL = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0])
+		+ gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1])
+		+ gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2])
+		+ priorL_branch;
+
 	ML += priorL;
 	++neval;
 	// Update estimates of the recombination parameters
@@ -2193,36 +2242,78 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 		import_divergence = full_param[2];
 		// Update the likelihood
 		mutI=0.0; numU=0.0; numI=0.0; nsiI=0.0; lenU=0.0; lenI=0.0;
-		priorL = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0]) + gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1]) + gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2]);
 		new_ML = 0.;
-		for(i=0;i<informative.size();i++) {
-			if(informative[i]) {
-				priorL += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
+		double priorL_branch_it = 0.0;
+
+		#pragma omp parallel
+		{
+			// Allocate once per thread
+			Matrix<double> numEmiss_loc(2,2), numTrans_loc(2,2);
+			vector<double> denEmiss_loc(2),   denTrans_loc(2);
+
+			// Thread-local reductions
+			double new_ML_loc=0.0, priorL_loc=0.0;
+			double mutI_loc=0.0, numU_loc=0.0, numI_loc=0.0, nsiI_loc=0.0, lenU_loc=0.0, lenI_loc=0.0;
+
+			#pragma omp for schedule(static)
+			for(i=0;i<(int)informative.size();i++) {
+				if(!informative[i]) continue;
+				priorL_loc += gamma_loglikelihood(full_param[3+i], prior_a[3], prior_b[3]);
 				const int dec_id = tree.node[i].id;
 				const int anc_id = tree.node[i].ancestor->id;
 				const double branch_length = full_param[3+i];
-				new_ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+				new_ML_loc += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss_loc,denEmiss_loc,numTrans_loc,denTrans_loc).LOG();
 				// Update estimate of the branch length
-				const double mutU_br = numEmiss[0][1];
-				const double nsiU_br = denEmiss[0];
-				full_param[3+i] = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
+				const double mutU_br = numEmiss_loc[0][1];
+				const double nsiU_br = denEmiss_loc[0];
+				const double new_branch_length = (prior_a[3]+mutU_br)/(prior_b[3]+nsiU_br);
+				full_param[3+i] = new_branch_length;
 				posterior_a[3+i] = (prior_a[3]+mutU_br);
 				// Increment counters for the other expectations
-				mutI += numEmiss[1][1];
-				nsiI += denEmiss[1];
-				const double numI_br = numTrans[0][1];
-				const double lenU_br = denTrans[0];
-				numI += numI_br;
-				lenU += full_param[3+i]*lenU_br;
-				numU += numTrans[1][0];
-				lenI += denTrans[1];
+				mutI_loc += numEmiss_loc[1][1];
+				nsiI_loc += denEmiss_loc[1];
+				const double numI_br = numTrans_loc[0][1];
+				const double lenU_br = denTrans_loc[0];
+				numI_loc += numI_br;
+				lenU_loc += new_branch_length*lenU_br;
+				numU_loc += numTrans_loc[1][0];
+				lenI_loc += denTrans_loc[1];
 				if(coutput) {
-					cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
-					cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
-					cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
+					#pragma omp critical
+					{
+						cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss_loc[1][1] << " nI = " << denEmiss_loc[1] << endl;
+						cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans_loc[1][0] << " dI = " << denTrans_loc[1] << endl;
+						cout << "numTrans = " << numTrans_loc[0][0] << " " << numTrans_loc[0][1] << " " << numTrans_loc[1][0] << " " << numTrans_loc[0][0] << endl;
+					}
 				}
 			}
+
+			// Reduce once per thread (low overhead)
+			#pragma omp atomic
+			new_ML += new_ML_loc;
+			#pragma omp atomic
+			priorL_branch_it += priorL_loc;
+
+			#pragma omp atomic
+			mutI += mutI_loc;
+			#pragma omp atomic
+			nsiI += nsiI_loc;
+			#pragma omp atomic
+			numI += numI_loc;
+			#pragma omp atomic
+			lenU += lenU_loc;
+			#pragma omp atomic
+			numU += numU_loc;
+			#pragma omp atomic
+			lenI += lenI_loc;
 		}
+
+		// Add the non-branch prior pieces after (single-thread)
+		priorL = gamma_loglikelihood(full_param[0], prior_a[0], prior_b[0])
+			+ gamma_loglikelihood(1.0/full_param[1], prior_a[1], prior_b[1])
+			+ gamma_loglikelihood(full_param[2], prior_a[2], prior_b[2])
+			+ priorL_branch_it;
+
 		new_ML += priorL;
 		++neval;
 		// Update estimates of the recombination parameters
@@ -2258,15 +2349,11 @@ double Baum_Welch(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc,
 }
 
 double Baum_Welch0(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc, const vector<double> &position, const vector<int> &ipat, const double kappa, const vector<double> &pinuc, const vector<bool> &informative, const vector<double> &prior_a, const vector<double> &prior_b, const vector<double> &full_param, const vector<double> &posterior_a, const bool coutput) {
-	int i;
 	if(coutput) cout << setprecision(9);
 	// Initial parameters: use constants corresponding to zero recombination to avoid numerical inconsistencies
 	const double rho_over_theta = 0.0;
 	const double mean_import_length = 100.;
 	const double import_divergence = .01;
-	// Storage for the expected number of transitions and emissions in the HMM
-	Matrix<double> numEmiss(2,2), numTrans(2,2);
-	vector<double> denEmiss(2),   denTrans(2);
 	// Counters
 	double mutI=0.0;			// Running total divergence at imported sites
 	double numU=0.0, numI=0.0;	// Running total number of transitions *to* unimported, imported regions
@@ -2275,26 +2362,32 @@ double Baum_Welch0(const marginal_tree &tree, const Matrix<Nucleotide> &node_nuc
 	// Calculate the marginal likelihood and expected number of transitions and emissions by the forward-backward algorithm
 	// Include no effect of the prior
 	double ML = 0;
-	for(i=0;i<informative.size();i++) {
-		if(informative[i]) {
-			const int dec_id = tree.node[i].id;
-			const int anc_id = tree.node[i].ancestor->id;
-			// Utilize branch lengths from input tree
-			const double branch_length = tree.node[i].edge_time;
-			ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
-			// Do not update estimate of the branch length
-			const double mutU_br = numEmiss[0][1];
-			const double nsiU_br = denEmiss[0];
-			// Increment counters for the other expectations
-			mutI += numEmiss[1][1];
-			nsiI += denEmiss[1];
-			const double numI_br = numTrans[0][1];
-			const double lenU_br = denTrans[0];
-			numI += numI_br;
-			lenU += full_param[3+i]*lenU_br;
-			numU += numTrans[1][0];
-			lenI += denTrans[1];
-			if(coutput) {
+	#pragma omp parallel for schedule(static) reduction(+:ML,mutI,numU,numI,nsiI,lenU,lenI)
+	for(int i=0;i<(int)informative.size();i++) {
+		if(!informative[i]) continue;
+		// Storage for the expected number of transitions and emissions in the HMM
+		Matrix<double> numEmiss(2,2), numTrans(2,2);
+		vector<double> denEmiss(2),   denTrans(2);
+		const int dec_id = tree.node[i].id;
+		const int anc_id = tree.node[i].ancestor->id;
+		// Utilize branch lengths from input tree
+		const double branch_length = tree.node[i].edge_time;
+		ML += mydouble_forward_backward_expectations_ClonalFrame_branch(dec_id,anc_id,node_nuc,position,ipat,kappa,pinuc,branch_length,rho_over_theta,mean_import_length,import_divergence,numEmiss,denEmiss,numTrans,denTrans).LOG();
+		// Do not update estimate of the branch length
+		const double mutU_br = numEmiss[0][1];
+		const double nsiU_br = denEmiss[0];
+		// Increment counters for the other expectations
+		mutI += numEmiss[1][1];
+		nsiI += denEmiss[1];
+		const double numI_br = numTrans[0][1];
+		const double lenU_br = denTrans[0];
+		numI += numI_br;
+		lenU += full_param[3+i]*lenU_br;
+		numU += numTrans[1][0];
+		lenI += denTrans[1];
+		if(coutput) {
+			#pragma omp critical
+			{
 				cout << "nmut = " << mutU_br << " nU = " << nsiU_br << " nsub = " << numEmiss[1][1] << " nI = " << denEmiss[1] << endl;
 				cout << "nU>I = " << numI_br << " dU = " << lenU_br << " nI>U = " << numTrans[1][0] << " dI = " << denTrans[1] << endl;
 				cout << "numTrans = " << numTrans[0][0] << " " << numTrans[0][1] << " " << numTrans[1][0] << " " << numTrans[0][0] << endl;
