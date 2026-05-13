@@ -34,7 +34,7 @@
 #include "myutils/random.h"
 #include <limits>
 #include <iomanip>
-#define ClonalFrameML_version "v1.13"
+#define ClonalFrameML_version "v1.20"
 
 using std::cout;
 using myutils::NewickTree;
@@ -127,14 +127,13 @@ public:
 	// True member variable
 	mydouble ML;
 	int neval;
-	const bool multithread;
 	double crude_branch_length;
 	double min_branch_length;
 public:
 	ClonalFrameRescaleBranchFunction(const mt_node &_node, const Matrix<Nucleotide> &_node_nuc, const vector<int> &_pat1, const vector<int> &_cpat, const double _kappa,
-									const vector<double> &_pi, const bool _multithread, const double _crude_branch_length, const double _min_branch_length) :
+									const vector<double> &_pi, const double _crude_branch_length, const double _min_branch_length) :
 	node(_node), node_nuc(_node_nuc), pat1(_pat1), cpat(_cpat), kappa(_kappa), pi(_pi), neval(0),
-	multithread(_multithread), crude_branch_length(_crude_branch_length), min_branch_length(_min_branch_length) {};
+	crude_branch_length(_crude_branch_length), min_branch_length(_min_branch_length) {};
 	double f(const vector<double>& x) {
 		++neval;
 		// Process parameters

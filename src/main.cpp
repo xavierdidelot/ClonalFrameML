@@ -43,7 +43,7 @@ int main (const int argc, const char* argv[]) {
 		errTxt << "-ignore_incomplete_sites       true or false (default)   Ignore sites with any ambiguous bases." << endl;
 		errTxt << "-use_incompatible_sites        true (default) or false   Use homoplasious and multiallelic sites to correct branch lengths." << endl;
 		errTxt << "-show_progress                 true or false (default)   Output the progress of the maximum likelihood routines." << endl;
-		errTxt << "-num_threads                   value >=1 (default 1)     Number of threads to use in multithreaded parts of the code." << endl;
+		errTxt << "-num_threads                   value >=1 (default all)   Number of threads to use in multithreaded parts of the code." << endl;
 		errTxt << "-chromosome_name               name, eg \"chr\"            Output importation status file in BED format using given chromosome name." << endl;
 		errTxt << "-min_branch_length             value > 0 (default 1e-7)  Minimum branch length." << endl;
 		errTxt << "-reconstruct_invariant_sites   true or false (default)   Reconstruct the ancestral states at invariant sites." << endl;
@@ -81,6 +81,9 @@ int main (const int argc, const char* argv[]) {
 	string use_incompatible_sites="true", rescale_no_recombination="false";
 	string show_progress="false";
 	int num_threads = 1;
+	#ifdef _OPENMP
+	num_threads = omp_get_max_threads();//Using max number of threads as default
+	#endif
 	string output_filtered="false";
 	string string_prior_mean="0.1 0.001 0.1 0.0001", string_prior_sd="0.1 0.001 0.1 0.0001", string_initial_values = "0.1 0.001 0.05";
 	string guess_initial_m="true", em="true", embranch="false", label_original_tree="false", chr_name="";
@@ -127,12 +130,14 @@ int main (const int argc, const char* argv[]) {
 	bool EMBRANCH						= string_to_bool(embranch,						"embranch");
 	bool LABEL_ORIGINAL_TREE			= string_to_bool(label_original_tree,			"label_uncorrected_tree");
 	bool OUTPUT_FILTERED				= string_to_bool(output_filtered,				"output_filtered");
-	bool MULTITHREAD = false;
 	if(num_threads<1) {
 		error("num_threads must be at least 1");
 	}
 	#ifdef _OPENMP
 	omp_set_num_threads(num_threads);
+	cout << "Using " << num_threads << " threads." << endl;
+	#else
+	cout << "OpenMP not found, using only one thread." << endl;
 	#endif
 	if(brent_tolerance<=0.0 || brent_tolerance>=0.1) {
 		stringstream errTxt;
@@ -396,7 +401,7 @@ int main (const int argc, const char* argv[]) {
 				const double initial_branch_length = pd/pd_den;
 				// Minimum branch length
 				const double min_branch_length = global_min_branch_length;
-				ClonalFrameRescaleBranchFunction cff(ctree.node[i],node_nuc,pat1,cpat,kappa,empirical_nucleotide_frequencies,MULTITHREAD,initial_branch_length,min_branch_length);
+				ClonalFrameRescaleBranchFunction cff(ctree.node[i],node_nuc,pat1,cpat,kappa,empirical_nucleotide_frequencies,initial_branch_length,min_branch_length);
 				// Setup optimization function
 				Powell Pow(cff);
 				Pow.coutput = Pow.brent.coutput = SHOW_PROGRESS;
