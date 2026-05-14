@@ -21,6 +21,14 @@
 #include <omp.h>
 #endif
 
+#ifdef _OPENMP
+static void warn_if_over_parallelized(const int num_threads, const int informative_branches) {
+	if(informative_branches>0 && num_threads>informative_branches) {
+		warning("num_threads is greater than the number of informative branches; consider reducing -num_threads");
+	}
+}
+#endif
+
 int main (const int argc, const char* argv[]) {
 	clock_t start_time = clock();
 	cout << "ClonalFrameML " << ClonalFrameML_version << endl;
@@ -449,6 +457,13 @@ int main (const int argc, const char* argv[]) {
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameBaumWelch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
+			#ifdef _OPENMP
+			int n_informative_branches = 0;
+			for(i=0;i<cff.informative.size();i++) {
+				if(cff.informative[i]) ++n_informative_branches;
+			}
+			warn_if_over_parallelized(num_threads,n_informative_branches);
+			#endif
 			param = cff.maximize_likelihood(param);
 			ML = cff.ML;
 			cout << " L = " << ML << " P = " << cff.priorL << " R = " << param[0] << " I = " << param[1] << " D = " << param[2] << " in " << (double)(clock()-pow_start_time)/CLOCKS_PER_SEC << " s and " << cff.neval << " evaluations" << endl;
@@ -537,6 +552,13 @@ int main (const int argc, const char* argv[]) {
 			// Do inference
 			clock_t pow_start_time = clock();
 			ClonalFrameBaumWelchRhoPerBranch cff(ctree,node_nuc,isBLC,ipat,kappa,empirical_nucleotide_frequencies,is_imported,prior_a,prior_b,root_node,GUESS_INITIAL_M,SHOW_PROGRESS);
+			#ifdef _OPENMP
+			int n_informative_branches = 0;
+			for(i=0;i<cff.informative.size();i++) {
+				if(cff.informative[i]) ++n_informative_branches;
+			}
+			warn_if_over_parallelized(num_threads,n_informative_branches);
+			#endif
 			cff.maximize_likelihood(param);
 			ML = cff.ML;
 			cout << "Mean parameters:" << endl;
